@@ -26,6 +26,7 @@ use App\Http\Controllers\RequestFlowController;
 use App\Http\Controllers\RequestWithdrawalController;
 use App\Http\Controllers\ScreeningController;
 use App\Http\Controllers\VoidedMonitoringController;
+use App\Http\Controllers\WorkspaceRoleController;
 use Illuminate\Support\Facades\Route;
 
 Route::redirect('/', '/dashboard');
@@ -36,6 +37,7 @@ Route::middleware('guest')->group(function () {
 });
 
 Route::middleware('auth')->group(function () {
+    Route::post('/workspace-role', WorkspaceRoleController::class)->name('workspace-role.update');
     Route::get('/change-password', [PasswordChangeController::class, 'edit'])->name('password.change');
     Route::post('/change-password', [PasswordChangeController::class, 'update'])->name('password.update');
     Route::get('/dashboard', DashboardController::class)->name('dashboard');
@@ -120,6 +122,9 @@ Route::middleware('auth')->group(function () {
             Route::post('/{purchaseRequest}/quotations', [CanvassingController::class, 'storeQuotations'])
                 ->middleware('role:canvassing-staff,purchasing,purchasing-team,procurement-staff,it-staff,premises-staff,admin')
                 ->name('quotations.store');
+            Route::post('/{purchaseRequest}/without-quotation', [CanvassingController::class, 'submitWithoutQuotation'])
+                ->middleware('role:canvassing-staff,purchasing,purchasing-team,procurement-staff,admin')
+                ->name('without-quotation');
             Route::patch('/{purchaseRequest}/quotations/{quotation}', [CanvassingController::class, 'updateQuotation'])
                 ->middleware('role:canvassing-staff,purchasing,purchasing-team,procurement-staff,it-staff,premises-staff,admin')
                 ->name('quotations.update');

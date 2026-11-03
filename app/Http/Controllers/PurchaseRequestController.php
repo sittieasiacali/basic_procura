@@ -189,7 +189,7 @@ class PurchaseRequestController extends Controller
                 'requestor_id' => $request->user()->id,
                 'request_type' => 'UNCLASSIFIED',
                 'status' => PurchaseRequestStatus::Draft,
-                'current_responsible_role_id' => $request->user()->role_id,
+                'current_responsible_role_id' => $request->user()->activeRole()?->id,
                 'total_amount' => null,
             ]);
 

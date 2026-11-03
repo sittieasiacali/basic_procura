@@ -161,7 +161,8 @@
         $poFocus = ! $purchaseRequest->purchaseOrder
             && ! $purchaseRequest->skippedPurchaseOrder()
             && $purchaseRequest->status === \App\Enums\PurchaseRequestStatus::ForBudgetProcessing;
-        $shouldAutoOpenPurchaseOrderPreview = (int) session('purchase_order_created') === $purchaseRequest->purchaseOrder?->id;
+        $shouldAutoOpenPurchaseOrderPreview = ! session('workflow_submission_notice')
+            && (int) session('purchase_order_created') === $purchaseRequest->purchaseOrder?->id;
         $handoffPurchaseOrder = $purchaseRequest->purchaseOrder;
         $handoffPreparedApproval = $handoffPurchaseOrder?->approvalFor(\App\Enums\PurchaseOrderApprovalStage::PreparedBy);
         $handoffCheckedApproval = $handoffPurchaseOrder?->approvalFor(\App\Enums\PurchaseOrderApprovalStage::CheckedBy);
@@ -399,10 +400,10 @@
                             <div class="request-info-item"><dt class="request-info-label">Request Category</dt><dd class="request-info-value{{ $purchaseRequest->request_category ? '' : ' request-info-value--muted' }}">@if($purchaseRequest->request_category){{ \App\Models\PurchaseRequest::REQUESTED_TEAMS[$purchaseRequest->requested_team] ?? $purchaseRequest->requested_team }} · {{ \App\Models\PurchaseRequest::requestCategoryLabel($purchaseRequest->requested_team, $purchaseRequest->request_category) }}@if($purchaseRequest->request_scope) <span class="badge text-bg-light border ms-1">{{ \App\Models\PurchaseRequest::REQUEST_SCOPES[$purchaseRequest->request_scope] ?? $purchaseRequest->request_scope }}</span>@endif @else Not recorded @endif</dd></div>
                             <div class="request-info-item"><dt class="request-info-label">Request Date</dt><dd class="request-info-value">{{ $purchaseRequest->created_at->format('M d, Y') }}</dd></div>
                             @can('setScreeningPriority', $purchaseRequest)
-                                <div class="request-info-item">
+                                <div class="request-info-item request-info-item--wide request-info-item--priority">
                                     <dt class="request-info-label"><label for="screening-priority-level">Priority</label></dt>
                                     <dd class="request-info-value">
-                                        <form class="d-flex gap-2 align-items-center" method="POST" action="{{ route('request-flow.priority.update', $purchaseRequest) }}">
+                                        <form class="screening-priority-form" method="POST" action="{{ route('request-flow.priority.update', $purchaseRequest) }}">
                                             @csrf
                                             @method('PATCH')
                                             <select class="form-select form-select-sm @error('priority_level') is-invalid @enderror" id="screening-priority-level" name="priority_level" required>
@@ -411,7 +412,7 @@
                                                     <option value="{{ $priorityValue }}" @selected($purchaseRequest->priority_level === $priorityValue)>{{ $priorityLabel }}</option>
                                                 @endforeach
                                             </select>
-                                            <button class="btn btn-sm btn-outline-primary" type="submit">Save</button>
+                                            <button class="btn btn-sm btn-outline-primary" type="submit">Save priority</button>
                                         </form>
                                         @error('priority_level')<div class="text-danger small mt-1">{{ $message }}</div>@enderror
                                     </dd>
@@ -658,6 +659,12 @@
                             @if($recommendedQuotation)
                                 <div class="alert alert-info py-2 mb-3"><strong>Purchasing recommendation:</strong> {{ $recommendedQuotation->supplier->name }}. This is information for your review; it is not an automatic approval.</div>
                             @endif
+                            @if($quotations->isEmpty())
+                                <div class="alert alert-warning mb-0" role="status">
+                                    <strong>No supplier quotation or pricing provided.</strong>
+                                    <p class="mb-0 mt-1">Purchasing submitted this request for your attention. Acknowledge it and send it back to Purchasing for pricing follow-up, or return it with your instructions.</p>
+                                </div>
+                            @else
                             <fieldset>
                                 <legend class="form-label mb-2">President Supplier Decision <span class="text-danger">*</span></legend>
                                 <div class="small text-muted mb-2">Select the specific quotation you are approving. Any valid submitted quotation may be selected.</div>
@@ -679,6 +686,7 @@
                                     </table>
                                 </div>
                             </fieldset>
+                            @endif
                         </div>
                         <div class="mb-3"><label class="form-label" for="supplier-remarks">Remarks <span class="text-muted fw-normal">(optional)</span></label><textarea class="form-control" id="supplier-remarks" name="remarks" rows="3">{{ old('remarks') }}</textarea></div>
                         <div class="approval-signature-pad mt-3" data-signature-pad aria-labelledby="president-signature-heading">
@@ -686,11 +694,18 @@
                             <strong class="approval-signature-box__account">Sign as: {{ auth()->user()->name }}</strong>
                             <canvas class="approval-signature-pad__canvas" data-signature-canvas width="760" height="190" tabindex="0" aria-label="Draw your electronic signature"></canvas>
                             <input type="hidden" name="signature_name" value="{{ auth()->user()->name }}"><input type="hidden" name="signature_data" data-signature-data>
-                            <div class="approval-signature-pad__footer"><small>Draw your signature, then choose Proceed to Screening or Return. Your identity and decision time are recorded after submission.</small><button class="btn btn-sm btn-outline-primary" type="button" data-signature-clear>Clear signature</button></div>
+                            <div class="approval-signature-pad__footer"><small>Draw your signature to record your President review decision.</small><button class="btn btn-sm btn-outline-primary" type="button" data-signature-clear>Clear signature</button></div>
                             <div class="field-validation-message" data-signature-client-error hidden>Draw your signature before confirming this decision.</div>
                             @error('signature_data')<div class="field-validation-message">{{ $message }}</div>@enderror
                         </div>
-                        <div class="d-flex gap-2"><button class="btn btn-success" type="submit" name="decision" value="APPROVE">Approve Selected Supplier</button><button class="btn btn-outline-warning" type="button" data-bs-toggle="modal" data-bs-target="#president-return-modal">Return to Canvassing</button></div>
+                        <div class="d-flex flex-wrap gap-2">
+                            @if($quotations->isEmpty())
+                                <button class="btn btn-primary" type="submit" name="decision" value="ACKNOWLEDGE">Acknowledge &amp; return to Purchasing</button>
+                            @else
+                                <button class="btn btn-success" type="submit" name="decision" value="APPROVE">Approve Selected Supplier</button>
+                            @endif
+                            <button class="btn btn-outline-warning" type="button" data-bs-toggle="modal" data-bs-target="#president-return-modal">Return to Canvassing</button>
+                        </div>
                     </form>
                 </div>
             </div>
@@ -1596,8 +1611,7 @@
             });
 
             const rows = [...container.querySelectorAll('[data-quotation-row]')];
-            const activeRows = rows.filter((row) => rows.length === 1
-                || row.querySelector('[name$="[supplier_name]"]')?.value.trim()
+            const activeRows = rows.filter((row) => row.querySelector('[name$="[supplier_name]"]')?.value.trim()
                 || row.querySelector('[name$="[quoted_amount]"]')?.value.trim()
                 || row.querySelector('[name$="[delivery_lead_time]"]')?.value.trim()
                 || row.querySelector('[name$="[warranty]"]')?.value.trim()
@@ -1605,7 +1619,25 @@
                 || row.querySelector('[name$="[bank_details]"]')?.value.trim()
                 || row.querySelector('[name$="[remarks]"]')?.value.trim()
                 || row.querySelector('[data-recommended-quotation]')?.checked
-                || [...row.querySelectorAll('[name$="[item_id]"]')].some((field) => field.value));
+                || [...row.querySelectorAll('[name$="[item_id]"]')].some((field) => field.value)
+                || [...row.querySelectorAll('.bulk-item-quantity')].some(field => field.value && field.value !== '1')
+                || [...row.querySelectorAll('.bulk-item-price')].some(field => field.value && field.value !== '0'));
+
+            const confirmation = quotationForm.querySelector('[data-confirm-without-quotation]');
+            if (confirmation) confirmation.value = '0';
+            if (!activeRows.length) {
+                summary?.classList.add('d-none');
+                const code = quotationForm.dataset.requestCode;
+                const nextStage = quotationForm.dataset.nextStage;
+                if (!window.confirm(`Request ${code}: proceed to ${nextStage} without adding a supplier quotation? Existing saved quotations will be kept.`)) {
+                    event.preventDefault();
+                    return;
+                }
+                if (confirmation) confirmation.value = '1';
+                // Omit default VAT, location and bulk controls from genuinely empty rows.
+                rows.forEach(row => row.querySelectorAll('[name]').forEach(field => field.disabled = true));
+                return;
+            }
 
             const flagField = (field, rowNumber) => {
                 const wrapper = field.closest('[class*="col-"]') || field.parentElement;
@@ -1629,7 +1661,6 @@
                 });
             });
 
-            if (!activeRows.length) errors.push('Add and complete at least one quotation.');
             const recommendationBoxes = [...quotationForm.querySelectorAll('[data-recommended-quotation]')];
             if (recommendationBoxes.length && !activeRows.some((row) => row.querySelector('[data-recommended-quotation]')?.checked)) {
                 errors.push('Select one supplier as the purchasing recommendation.');

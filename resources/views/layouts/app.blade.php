@@ -29,7 +29,7 @@
 <body>
 @php
     $currentUser = auth()->user()->loadMissing(['role', 'campaign']);
-    $roleSlug = $currentUser->role?->slug;
+    $roleSlug = $currentUser->activeRole()?->slug;
     $isAdmin = $roleSlug === \App\Enums\RoleSlug::Admin->value;
     $ownerRoles = [
         \App\Enums\RoleSlug::Requestor->value,
@@ -200,7 +200,7 @@
                         <span class="user-avatar">{{ $initials ?: 'U' }}</span>
                         <span class="d-none d-sm-block">
                             <span class="user-menu-name">{{ $currentUser->name }}</span>
-                            <span class="user-menu-role">{{ $currentUser->role?->name ?? 'Unassigned role' }}</span>
+                            <span class="user-menu-role">{{ $currentUser->activeRole()?->name ?? 'Unassigned role' }}</span>
                         </span>
                     </button>
                     <div class="dropdown-menu dropdown-menu-end">
@@ -210,6 +210,7 @@
                             <div class="small text-muted mt-1">{{ $currentUser->campaign?->name ?? $currentUser->department ?? 'No campaign assigned' }}</div>
                         </div>
                         <div class="dropdown-divider"></div>
+                        @include('partials.workspace-role-menu')
                         <form method="POST" action="{{ route('logout') }}">
                             @csrf
                             <button class="dropdown-item text-danger d-flex align-items-center gap-2" type="submit">
@@ -225,6 +226,7 @@
 @endunless
 
 <main class="app-main {{ request()->routeIs('dashboard') ? 'app-main--dashboard' : '' }}">
+    @include('partials.workflow-handoff')
     @if(session('success'))
         <div class="alert alert-success alert-dismissible fade show" role="status">
             <div class="d-flex align-items-start gap-2">
@@ -271,6 +273,7 @@
 
 @include('partials.workflow-request-modal')
 @include('dashboard.partials.workflow-action-modal')
+@include('partials.workflow-submission-modal')
 @can('create', \App\Models\User::class)
     @include('admin.accounts.partials.create-modal')
 @endcan

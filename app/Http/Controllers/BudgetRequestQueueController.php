@@ -132,7 +132,7 @@ class BudgetRequestQueueController extends Controller
                     'metadata' => [
                         'previous_priority' => $previousPriority,
                         'priority_level' => $validated['priority_level'],
-                        'role' => $request->user()->role?->slug,
+                        'role' => $request->user()->activeRole()?->slug,
                     ],
                 ]);
             }

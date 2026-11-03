@@ -183,9 +183,21 @@ class PurchaseRequest extends Model
         }
 
         return $query->where(function (Builder $query) use ($user) {
-            $query->where('current_responsible_role_id', $user->role_id)
+            $query->where('current_responsible_role_id', $user->activeRole()?->id)
                 ->orWhereHas('screening', fn (Builder $query) => $query->where('screened_by', $user->id));
         });
+    }
+
+    /** Only canvassing submissions actually handed off by this account. */
+    public function scopeCanvassingProcessedBy(Builder $query, User $user): Builder
+    {
+        return $query->whereHas('auditLogs', fn (Builder $log) => $log
+            ->where('user_id', $user->id)
+            ->whereIn('action', [
+                'CANVASSING_UPDATED',
+                'CANVASSING_SUBMITTED_WITHOUT_QUOTATION',
+                'CANVASSING_SUBMITTED_WITHOUT_ADDITIONAL_QUOTATION',
+            ]));
     }
 
     public function scopeProcessedBy(Builder $query, User $user): Builder
@@ -194,7 +206,7 @@ class PurchaseRequest extends Model
             return $query->where(function (Builder $completed) use ($user): void {
                 $completed->whereHas('auditLogs', fn (Builder $log) => $log
                     ->where('user_id', $user->id)
-                    ->whereIn('action', ['SCREENING_QUOTATIONS_RECORDED', 'SCREENING_QUOTATION_RECOMMENDED']))
+                    ->whereIn('action', ['SCREENING_QUOTATIONS_RECORDED', 'SCREENING_QUOTATION_RECOMMENDED', 'SCREENING_SUBMITTED_WITHOUT_QUOTATION']))
                     ->orWhere(fn (Builder $released) => $released
                         ->whereHas('auditLogs', fn (Builder $log) => $log->where('user_id', $user->id)->where('action', 'INVENTORY_AVAILABLE'))
                         ->whereHas('auditLogs', fn (Builder $log) => $log->where('action', 'INVENTORY_RELEASED')));

@@ -841,6 +841,9 @@ function initializeWorkflowActionModal() {
     const frame = modalElement?.querySelector('[data-workflow-action-frame]');
     const title = modalElement?.querySelector('#workflow-action-modal-title');
     const loading = modalElement?.querySelector('[data-workflow-action-loading]');
+    const openPage = modalElement?.querySelector('[data-workflow-action-open]');
+    const expand = modalElement?.querySelector('[data-workflow-action-expand]');
+    const requestCode = modalElement?.querySelector('[data-workflow-request-code]');
 
     if (!modalElement || !frame || !title || !window.bootstrap) return;
 
@@ -850,24 +853,50 @@ function initializeWorkflowActionModal() {
     frame.addEventListener('load', () => {
         if (loading) loading.hidden = true;
         frame.removeAttribute('aria-busy');
+        try {
+            const code = frame.contentDocument?.querySelector('meta[name="workflow-request-code"]')?.content;
+            if (requestCode && code) {
+                requestCode.textContent = code;
+                requestCode.hidden = false;
+            }
+        } catch (_) {
+            // Keep the dialog usable when its destination cannot be inspected.
+        }
     });
 
     document.querySelectorAll('[data-workflow-action-modal]').forEach((trigger) => {
         trigger.addEventListener('click', (event) => {
             event.preventDefault();
             if (loading) loading.hidden = false;
+            if (requestCode) requestCode.hidden = true;
             frame.setAttribute('aria-busy', 'true');
             frame.src = trigger.href;
             title.textContent = trigger.dataset.workflowActionTitle || 'Workflow action';
+            frame.title = title.textContent;
+            if (openPage) {
+                openPage.href = trigger.href;
+                openPage.hidden = false;
+            }
             opened = true;
             modal.show();
         });
+    });
+
+    expand?.addEventListener('click', () => {
+        const expanded = modalElement.classList.toggle('workflow-action-expanded');
+        expand.setAttribute('aria-pressed', String(expanded));
+        expand.textContent = expanded ? 'Restore size' : 'Expand';
     });
 
     modalElement.addEventListener('hidden.bs.modal', () => {
         if (!opened) return;
 
         frame.src = 'about:blank';
+        modalElement.classList.remove('workflow-action-expanded');
+        if (expand) {
+            expand.setAttribute('aria-pressed', 'false');
+            expand.textContent = 'Expand';
+        }
         opened = false;
         window.location.reload();
     });
@@ -913,30 +942,69 @@ document.addEventListener('DOMContentLoaded', initializeEmbeddedForms);
 
 // Success message handed over by a closed action modal.
 function showHandedOverFlash() {
-    // Pages inside a modal share the dashboard's sessionStorage; leave the message for it.
-    if (document.documentElement.classList.contains('is-embedded')) return;
-    let message = null;
+    let notice = null;
+    const data = document.getElementById('workflow-submission-data');
     try {
-        message = sessionStorage.getItem('asi-procura:flash');
-        sessionStorage.removeItem('asi-procura:flash');
+        notice = data ? JSON.parse(data.textContent) : null;
+        if (!document.documentElement.classList.contains('is-embedded')) {
+            const stored = sessionStorage.getItem('asi-procura:submission');
+            sessionStorage.removeItem('asi-procura:submission');
+            if (stored) notice = JSON.parse(stored);
+        }
     } catch (_) {
-        return;
+        // Server-rendered receipts still work if browser storage is unavailable.
     }
-    const main = document.querySelector('.app-main');
-    if (!message || !main) return;
+    if (!notice) return;
+    const modalElement = document.getElementById('workflow-submission-modal');
+    if (!modalElement || !window.bootstrap) return;
+    if (notice.user_id && String(notice.user_id) !== modalElement.dataset.submissionUser) return;
+    if (document.documentElement.classList.contains('is-embedded')) {
+        try {
+            sessionStorage.setItem('asi-procura:submission', JSON.stringify(notice));
+            const parentModal = window.parent.document.getElementById('workflow-action-modal');
+            const instance = parentModal && window.parent.bootstrap?.Modal.getInstance(parentModal);
+            if (instance) {
+                instance.hide();
+                return;
+            }
+        } catch (_) {
+            // Show the receipt inside the frame when its parent cannot be reached.
+        }
+    }
 
-    const alert = document.createElement('div');
-    alert.className = 'alert alert-success alert-dismissible fade show';
-    alert.setAttribute('role', 'status');
-    const text = document.createElement('div');
-    text.textContent = message;
-    const close = document.createElement('button');
-    close.type = 'button';
-    close.className = 'btn-close';
-    close.setAttribute('data-bs-dismiss', 'alert');
-    close.setAttribute('aria-label', 'Dismiss notification');
-    alert.append(text, close);
-    main.prepend(alert);
+    try {
+        if (sessionStorage.getItem('asi-procura:last-submission') === notice.id) return;
+        sessionStorage.setItem('asi-procura:last-submission', notice.id);
+        sessionStorage.removeItem('asi-procura:flash');
+    } catch (_) { /* A receipt can still be displayed without storage. */ }
+
+    const requests = Array.isArray(notice.requests) ? notice.requests : [];
+    modalElement.querySelector('#workflow-submission-title').textContent = notice.title || 'Submission saved';
+    modalElement.querySelector('[data-submission-code]').textContent = requests.map(request => request.code).join(', ');
+    modalElement.querySelector('[data-submission-message]').textContent = notice.message || 'Your action was saved successfully.';
+    modalElement.querySelector('[data-submission-stage]').textContent = notice.stage || '';
+    const view = modalElement.querySelector('[data-submission-view]');
+    const safeUrl = value => {
+        try {
+            const url = new URL(value, window.location.origin);
+            return url.origin === window.location.origin && ['http:', 'https:'].includes(url.protocol) ? url.href : null;
+        } catch (_) { return null; }
+    };
+    const url = requests[0] && safeUrl(requests[0].url);
+    view.hidden = !url;
+    if (url) view.href = url;
+    const list = modalElement.querySelector('[data-submission-requests]');
+    list.replaceChildren();
+    list.hidden = requests.length < 2;
+    if (requests.length > 1) requests.forEach(request => {
+        const link = document.createElement('a');
+        const target = safeUrl(request.url);
+        if (!target) return;
+        link.href = target;
+        link.textContent = `View ${request.code}${request.stage ? ' · ' + request.stage : ''}`;
+        list.append(link);
+    });
+    window.bootstrap.Modal.getOrCreateInstance(modalElement).show();
 }
 
 document.addEventListener('DOMContentLoaded', showHandedOverFlash);

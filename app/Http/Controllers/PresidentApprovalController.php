@@ -21,7 +21,7 @@ class PresidentApprovalController extends Controller
         abort_unless($request->user()?->hasAnyRole([RoleSlug::President->value, RoleSlug::Admin->value]), 403);
 
         $validated = $request->validate([
-            'tab' => ['nullable', Rule::in(['all', 'pending', 'approved', 'rejected'])],
+            'tab' => ['nullable', Rule::in(['all', 'pending', 'approved', 'acknowledged', 'rejected'])],
         ]);
         $tab = $validated['tab'] ?? 'pending';
         // Include the legacy level names used by seeded/older approval rows.
@@ -32,7 +32,6 @@ class PresidentApprovalController extends Controller
         $pendingStatuses = [
             PurchaseRequestStatus::ForSupplierApproval->value,
         ];
-        $isAdmin = $request->user()->hasRole(RoleSlug::Admin->value);
 
         $query = PurchaseRequest::query()
             ->with([
@@ -41,10 +40,6 @@ class PresidentApprovalController extends Controller
                 'selectedSupplier:id,name',
                 'quotations' => fn ($query) => $query->with('supplier:id,name')->orderBy('price'),
             ])
-            ->when(! $isAdmin, fn ($query) => $query->where(function ($query) use ($pendingStatuses, $request) {
-                $query->whereNotIn('status', $pendingStatuses)
-                    ->orWhere('current_responsible_role_id', $request->user()->role_id);
-            }))
             ->where(function ($query) use ($tab, $presidentLevels) {
                 $pendingStatuses = [
                     PurchaseRequestStatus::ForSupplierApproval->value,
@@ -72,6 +67,12 @@ class PresidentApprovalController extends Controller
                     return;
                 }
 
+                if ($tab === 'acknowledged') {
+                    $query->whereHas('approvals', fn ($approval) => $approval->where('action', 'PRESIDENT_NO_QUOTATION_ACKNOWLEDGED'));
+
+                    return;
+                }
+
                 if ($tab === 'rejected') {
                     $query->whereNotIn('status', $pendingStatuses)
                         ->whereHas('approvals', function ($query) use ($presidentLevels) {
@@ -90,8 +91,8 @@ class PresidentApprovalController extends Controller
             })
             ->latest('updated_at');
 
-        $summaryQuery = PurchaseRequest::query()
-            ->when(! $isAdmin, fn ($query) => $query->where('current_responsible_role_id', $request->user()->role_id));
+        // President review is a shared role queue, including older handoffs with a stale role id.
+        $summaryQuery = PurchaseRequest::query();
 
         return view('president-approvals.index', [
             'requests' => $query->paginate(15)->withQueryString(),
@@ -113,7 +114,7 @@ class PresidentApprovalController extends Controller
         PurchaseRequestWorkflow $workflow,
     ): RedirectResponse {
         $validated = $request->validate([
-            'decision' => ['required', 'in:APPROVE,REJECT'],
+            'decision' => ['required', 'in:APPROVE,REJECT,ACKNOWLEDGE'],
             'quotation_id' => ['required_if:decision,APPROVE', 'nullable', 'integer'],
             'remarks' => ['nullable', 'string', 'max:2000'],
             ...WorkflowSignature::rules(),
@@ -126,6 +127,25 @@ class PresidentApprovalController extends Controller
 
             if ($lockedRequest->status !== PurchaseRequestStatus::ForSupplierApproval) {
                 throw ValidationException::withMessages(['status' => 'This request is no longer awaiting President supplier approval.']);
+            }
+
+            if ($validated['decision'] === 'ACKNOWLEDGE') {
+                if ($lockedRequest->quotations()->exists()) {
+                    throw ValidationException::withMessages(['decision' => 'This request has supplier quotations. Select a quotation to approve, or return it to Canvassing.']);
+                }
+                $workflow->transition(
+                    $lockedRequest,
+                    PurchaseRequestStatus::ForCanvassing,
+                    $request->user(),
+                    'PRESIDENT_NO_QUOTATION_ACKNOWLEDGED',
+                    $validated['remarks'] ?? 'President acknowledged the request without supplier pricing. Purchasing can follow up with quotation details.',
+                    'PRESIDENT_SUPPLIER_APPROVAL',
+                    ['without_quotation' => true, 'decision' => 'ACKNOWLEDGED'],
+                    $validated['signature_name'],
+                    $validated['signature_data'],
+                );
+
+                return;
             }
 
             if ($validated['decision'] === 'APPROVE') {
@@ -203,7 +223,10 @@ class PresidentApprovalController extends Controller
         });
 
         // Land on the request, which closes to a receipt naming the next stage.
-        return redirect()->route('purchase-requests.show', $purchaseRequest);
+        return ($request->boolean('_embedded') ? redirect()->route('workflow.done') : redirect()->route('purchase-requests.show', $purchaseRequest))
+            ->with('success', $validated['decision'] === 'ACKNOWLEDGE'
+                ? 'Request acknowledged without supplier pricing and returned to Purchasing for follow-up.'
+                : 'President decision recorded.');
     }
 
 }

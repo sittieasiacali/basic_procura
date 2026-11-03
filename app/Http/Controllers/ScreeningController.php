@@ -216,7 +216,8 @@ class ScreeningController extends Controller
         }
 
         // Both decisions hand the request on; the screener's page closes to a receipt.
-        return redirect()->route('purchase-requests.show', $purchaseRequest);
+        return ($request->boolean('_embedded') ? redirect()->route('workflow.done') : redirect()->route('purchase-requests.show', $purchaseRequest))
+            ->with('success', $purchaseRequest->request_number.': screening decision recorded.');
     }
 
     public function undo(

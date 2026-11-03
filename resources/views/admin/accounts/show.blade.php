@@ -23,7 +23,7 @@
                         <div class="col-sm-6"><div class="text-muted small">OM notification email</div><div>{{ $account->om_notification_email ?: 'Not assigned' }}</div></div>
                         <div class="col-sm-6"><div class="text-muted small">SMT notification email</div><div>{{ $account->smt_notification_email ?: 'Not assigned' }}</div></div>
                     @endif
-                    <div class="col-sm-6"><div class="text-muted small">Role</div><div>{{ \App\Support\AccountRoleCatalog::label($account->role) }}</div></div>
+                    <div class="col-sm-6"><div class="text-muted small">Assigned roles</div><x-role-badges :user="$account" /></div>
                     <div class="col-sm-6"><div class="text-muted small">Assigned campaign</div><div>{{ $account->campaign?->name ?? 'Not assigned' }}</div></div>
                     <div class="col-sm-6"><div class="detail-label">Status</div><span class="status-badge {{ $account->is_active ? 'status-completed' : 'status-neutral' }}">{{ $account->is_active ? 'Active' : 'Inactive' }}</span></div>
                     <div class="col-sm-6"><div class="text-muted small">Date created</div><div>{{ $account->created_at->format('M d, Y g:i A') }}</div></div>

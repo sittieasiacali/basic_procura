@@ -77,7 +77,7 @@
             @forelse($accountRows as $monitoredAccount)
                 <tr>
                     <td><a class="account-monitoring-name" href="{{ route('admin.accounts.show', $monitoredAccount) }}">{{ $monitoredAccount->name }}</a><span class="account-monitoring-email">{{ $monitoredAccount->email }}</span>@if($monitoredAccount->employee_id)<span class="account-monitoring-email">Employee ID: {{ $monitoredAccount->employee_id }}</span>@endif</td>
-                    <td><span class="account-monitoring-role-badge">{{ \App\Support\AccountRoleCatalog::label($monitoredAccount->role) }}</span></td>
+                    <td><x-role-badges :user="$monitoredAccount" /></td>
                     <td>{{ $monitoredAccount->campaign?->name ?? 'Not assigned' }}</td>
                     <td><span class="account-monitoring-status {{ $monitoredAccount->is_active ? 'is-active' : 'is-inactive' }}"><span aria-hidden="true"></span>{{ $monitoredAccount->is_active ? 'Active' : 'Inactive' }}</span></td>
                     <td class="text-nowrap"><time datetime="{{ $monitoredAccount->created_at?->toIso8601String() }}">{{ $monitoredAccount->created_at?->format('M j, Y') ?? 'Not recorded' }}</time></td>

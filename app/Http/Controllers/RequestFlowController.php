@@ -49,7 +49,7 @@ class RequestFlowController extends Controller
                 PurchaseRequestStatus::ForItScreening,
                 PurchaseRequestStatus::ForPremisesScreening,
             ], true)) {
-                [$requestType, $screeningStatus] = match ($request->user()->role?->slug) {
+                [$requestType, $screeningStatus] = match ($request->user()->activeRole()?->slug) {
                     RoleSlug::ItStaff->value => ['IT', PurchaseRequestStatus::ForItScreening],
                     RoleSlug::PremisesStaff->value => ['PREMISES', PurchaseRequestStatus::ForPremisesScreening],
                     default => abort(403),
@@ -80,7 +80,7 @@ class RequestFlowController extends Controller
                         'remarks' => "Request classified and claimed for {$requestType} screening.",
                         'ip_address' => $request->ip(),
                         'user_agent' => $request->userAgent(),
-                        'metadata' => ['role' => $request->user()->role?->slug, 'screening_team' => $requestType, 'previous_request_type' => $previousRequestType],
+                        'metadata' => ['role' => $request->user()->activeRole()?->slug, 'screening_team' => $requestType, 'previous_request_type' => $previousRequestType],
                     ]);
                 }
             }
@@ -135,7 +135,7 @@ class RequestFlowController extends Controller
                 'remarks' => 'Screening claim released back to the team queue.',
                 'ip_address' => $request->ip(),
                 'user_agent' => $request->userAgent(),
-                'metadata' => ['role' => $request->user()->role?->slug],
+                'metadata' => ['role' => $request->user()->activeRole()?->slug],
             ]);
         });
 

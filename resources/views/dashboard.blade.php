@@ -94,7 +94,7 @@
             <dl class="dashboard-context-details" aria-labelledby="workspace-heading">
                 <div>
                     <dt><x-ui.icon name="users" size="16" />Role</dt>
-                    <dd>{{ $user->role?->name ?? 'Unassigned' }}</dd>
+                    <dd>{{ $user->activeRole()?->name ?? 'Unassigned' }}</dd>
                 </div>
                 <div>
                     <dt><x-ui.icon name="campaign" size="16" />Team</dt>
@@ -329,10 +329,22 @@
                 <div class="card-header">
                     <div>
                         <h2 id="my-actions-heading">{{ $profile['actionLabel'] }}</h2>
-                        <p>{{ $executiveSummary ? 'Supplier selections waiting for your decision, oldest first' : 'Requests ready for your next step' }}</p>
+                        <p>{{ $executiveSummary ? 'Requests waiting for your decision, '.($approvalOrder === 'oldest' ? 'oldest first' : 'newest first') : 'Requests ready for your next step' }}</p>
                     </div>
-                    @if($executiveSummary && $actionCount > $myActions->count())
-                        <a class="dashboard-text-link" href="{{ route('purchase-requests.index', ['status' => \App\Enums\PurchaseRequestStatus::ForSupplierApproval->value]) }}">View all {{ number_format($actionCount) }} <x-ui.icon name="chevron-right" size="16" /></a>
+                    @if($executiveSummary)
+                        <form method="GET" action="{{ route('dashboard') }}#my-actions-heading" class="d-flex flex-wrap align-items-center gap-2">
+                            @foreach(request()->except('approval_order', 'approval_page') as $key => $value)
+                                @if(is_scalar($value))<input type="hidden" name="{{ $key }}" value="{{ $value }}">@endif
+                            @endforeach
+                            <label class="small text-muted" for="approval-order">Show</label>
+                            <select class="form-select form-select-sm w-auto" name="approval_order" id="approval-order" onchange="this.form.submit()">
+                                <option value="newest" @selected($approvalOrder === 'newest')>Newest submissions first</option>
+                                <option value="oldest" @selected($approvalOrder === 'oldest')>Oldest waiting first</option>
+                            </select>
+                        </form>
+                    @endif
+                    @if($presidentActionsPagination && $actionCount > 0)
+                        <span class="small text-muted">Showing {{ $presidentActionsPagination->firstItem() }}–{{ $presidentActionsPagination->lastItem() }} of {{ $presidentActionsPagination->total() }}</span>
                     @endif
                 </div>
                 @if($executiveSummary && $actionCount > 0)
@@ -398,6 +410,9 @@
                                 </span>
                             </div>
                             @if($executiveSummary)
+                                @if($purchaseRequest->quotations_count === 0)
+                                    <div class="alert alert-warning py-2 small mb-2">No supplier quotation or pricing provided. President acknowledgement requested.</div>
+                                @endif
                                 <div class="executive-decision">
                                     <div>
                                         <div class="executive-decision-label">Recommended supplier</div>
@@ -459,6 +474,10 @@
                 ])
             @endif
 
+            @if($presidentActionsPagination && $presidentActionsPagination->hasPages())
+                <div class="mb-4">{{ $presidentActionsPagination->fragment('my-actions-heading')->links() }}</div>
+            @endif
+
             @if($isWorkflowDashboard && ($creatorWorkflow !== 'budget-request' || $isBudgetProcessedView))
                 <section class="card dashboard-panel dashboard-recent-panel" aria-labelledby="processed-requests-heading">
                     @if($creatorWorkflow === 'budget-request')
@@ -479,7 +498,7 @@
                                 'budget-request' => 'Budget Maker processed',
                             } : (in_array($processedTab, ['created', 'approved'], true) ? 'Procurement Records' : 'Processed by me') }}</h2>
                             <p>{{ $creatorWorkflow ? match ($creatorWorkflow) {
-                                'canvassing' => 'Quotations submitted to the President for approval.',
+                                'canvassing' => 'Requests you personally submitted to the President, with or without quotations.',
                                 'purchase-order' => 'Purchase Orders prepared and submitted for checking.',
                                 'budget-request' => 'Budget Requests submitted by Budget Maker.',
                             } : match ($processedTab) {

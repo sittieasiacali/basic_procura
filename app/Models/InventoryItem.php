@@ -81,7 +81,7 @@ class InventoryItem extends Model
 
     public static function prefixForUser(User $user): ?string
     {
-        return match ($user->role?->slug) {
+        return match ($user->activeRole()?->slug) {
             RoleSlug::ItStaff->value => 'IT',
             RoleSlug::PremisesStaff->value => 'PREM',
             default => null,

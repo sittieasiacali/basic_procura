@@ -38,7 +38,7 @@ class PurchaseRequestPolicy
         return $user->hasRole(RoleSlug::Admin->value)
             || $purchaseRequest->requestor_id === $user->id
             || $purchaseRequest->team_leader_id === $user->id
-            || $purchaseRequest->current_responsible_role_id === $user->role_id
+            || $purchaseRequest->current_responsible_role_id === $user->activeRole()?->id
             || $purchaseRequest->screening?->screened_by === $user->id
             || ($purchaseRequest->purchaseOrder && $purchaseRequest->purchaseOrder->approvals()
                 ->where(fn ($approval) => $approval->where('assigned_user_id', $user->id)->orWhere('acted_by', $user->id))
@@ -227,7 +227,7 @@ class PurchaseRequestPolicy
 
     public function claim(User $user, PurchaseRequest $purchaseRequest): bool
     {
-        $teamStatus = match ($user->role?->slug) {
+        $teamStatus = match ($user->activeRole()?->slug) {
             RoleSlug::ItStaff->value => PurchaseRequestStatus::ForItScreening,
             RoleSlug::PremisesStaff->value => PurchaseRequestStatus::ForPremisesScreening,
             default => null,
@@ -266,7 +266,7 @@ class PurchaseRequestPolicy
 
     public function unclaim(User $user, PurchaseRequest $purchaseRequest): bool
     {
-        $teamStatus = match ($user->role?->slug) {
+        $teamStatus = match ($user->activeRole()?->slug) {
             RoleSlug::ItStaff->value => PurchaseRequestStatus::ForItScreening,
             RoleSlug::PremisesStaff->value => PurchaseRequestStatus::ForPremisesScreening,
             default => null,

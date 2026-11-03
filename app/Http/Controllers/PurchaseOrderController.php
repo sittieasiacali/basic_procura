@@ -279,7 +279,7 @@ class PurchaseOrderController extends Controller
                 'remarks' => 'Purchase order created and submitted for checking.',
                 'ip_address' => $request->ip(),
                 'user_agent' => $request->userAgent(),
-                'metadata' => ['role' => $request->user()->role?->slug, 'purchase_order_id' => $order->id, 'source' => 'approved_quotation'],
+                'metadata' => ['role' => $request->user()->activeRole()?->slug, 'purchase_order_id' => $order->id, 'source' => 'approved_quotation'],
             ]);
             $this->workflowEmails->purchaseOrderMoved($order, $request->user());
             $created = true; return $order;
@@ -310,7 +310,7 @@ class PurchaseOrderController extends Controller
                 'remarks' => $validated['remarks'] ?? 'Proceeded to Budget Request without a Purchase Order.',
                 'ip_address' => $request->ip(),
                 'user_agent' => $request->userAgent(),
-                'metadata' => ['role' => $request->user()->role?->slug],
+                'metadata' => ['role' => $request->user()->activeRole()?->slug],
             ]);
         });
 

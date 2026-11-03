@@ -4,10 +4,18 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
+    @isset($purchaseRequest)<meta name="workflow-request-code" content="{{ $purchaseRequest->request_number }}">@endisset
     <meta name="theme-color" content="#0b3b8f">
     <title>@yield('title', 'Home') &middot; {{ config('app.name') }}</title>
     <link rel="icon" type="image/png" href="{{ asset('assets/images/asi-coin.png') }}">
     <link href="{{ asset('assets/vendor/bootstrap/bootstrap.min.css') }}" rel="stylesheet">
+    <script>
+        try {
+            if (window.self !== window.top) document.documentElement.classList.add('is-embedded');
+        } catch (_) {
+            document.documentElement.classList.add('is-embedded');
+        }
+    </script>
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>
 <body class="procura-home-body">
@@ -22,7 +30,7 @@
                 <span class="procura-home-avatar">{{ str($homeUser->name)->explode(' ')->filter()->take(2)->map(fn ($part) => str($part)->substr(0, 1)->upper())->join('') ?: 'U' }}</span>
                 <span class="procura-home-profile-copy">
                     <strong>{{ $homeUser->name }}</strong>
-                    <small>{{ $homeUser->role?->name ?? 'User' }}</small>
+                    <small>{{ $homeUser->activeRole()?->name ?? 'User' }}</small>
                 </span>
             </button>
             <div class="dropdown-menu dropdown-menu-end procura-home-profile-menu">
@@ -31,6 +39,7 @@
                     <div class="small text-muted">{{ $homeUser->email }}</div>
                 </div>
                 <div class="dropdown-divider"></div>
+                @include('partials.workspace-role-menu')
                 <form method="POST" action="{{ route('logout') }}">
                     @csrf
                     <button class="dropdown-item text-danger d-flex align-items-center gap-2" type="submit">
@@ -42,6 +51,7 @@
     </header>
 
     <main class="procura-home-main">
+        @include('partials.workflow-handoff')
         @if(session('success'))
             <div class="alert alert-success alert-dismissible fade show" role="status">
                 {{ session('success') }}
@@ -54,6 +64,7 @@
 
     @include('partials.workflow-request-modal')
     @include('dashboard.partials.workflow-action-modal')
+    @include('partials.workflow-submission-modal')
 
     <script src="{{ asset('assets/vendor/bootstrap/bootstrap.bundle.min.js') }}"></script>
     @stack('scripts')

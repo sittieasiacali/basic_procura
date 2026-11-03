@@ -171,6 +171,26 @@ class RequestStageReceipt
                 'title' => 'Submitted to President.',
                 'message' => 'You submitted the supplier recommendation on :date. The request will now move to the President for supplier approval. Your canvassing stage is closed and no further action is required from you unless the request is returned.',
             ],
+            'CANVASSING_SUBMITTED_WITHOUT_QUOTATION' => [
+                'statuses' => [PurchaseRequestStatus::ForSupplierApproval],
+                'title' => 'Submitted to President.',
+                'message' => 'You submitted this request without supplier pricing on :date. The President can now review and acknowledge it.',
+            ],
+            'CANVASSING_SUBMITTED_WITHOUT_ADDITIONAL_QUOTATION' => [
+                'statuses' => [PurchaseRequestStatus::ForSupplierApproval],
+                'title' => 'Submitted to President.',
+                'message' => 'You submitted this request to the President on :date. Previously saved quotations were kept for review.',
+            ],
+            'SCREENING_SUBMITTED_WITHOUT_QUOTATION' => [
+                'statuses' => [PurchaseRequestStatus::ForCanvassing],
+                'title' => 'Submitted to Canvassing.',
+                'message' => 'You handed this request to Canvassing on :date without adding a quotation.',
+            ],
+            'PRESIDENT_NO_QUOTATION_ACKNOWLEDGED' => [
+                'statuses' => [PurchaseRequestStatus::ForCanvassing],
+                'title' => 'Acknowledged and returned to Purchasing.',
+                'message' => 'You acknowledged this request without supplier pricing on :date. Purchasing can now follow up.',
+            ],
             'PRESIDENT_SUPPLIER_APPROVAL_APPROVED' => [
                 'statuses' => [PurchaseRequestStatus::ForBudgetProcessing],
                 'title' => 'Submitted to Purchasing.',

@@ -145,9 +145,12 @@ class DashboardController extends Controller
         // for how much, and how long it has waited (oldest first).
         $isExecutiveQueue = $user->hasRole(RoleSlug::President->value) && $purchaseOrderQueue === null && $creatorWorkflow === null;
         $executiveSummary = null;
+        $approvalOrder = $request->query('approval_order') === 'oldest' ? 'oldest' : 'newest';
         if ($isExecutiveQueue) {
             $recommendedQuotations = fn ($query) => $query->where('is_recommended', true)->with('supplier:id,name');
-            $myActionsQuery->with(['quotations' => $recommendedQuotations])->reorder()->oldest('updated_at');
+            $direction = $approvalOrder === 'oldest' ? 'asc' : 'desc';
+            $myActionsQuery->with(['quotations' => $recommendedQuotations])->withCount('quotations')
+                ->reorder()->orderBy('updated_at', $direction)->orderBy('id', $direction);
             $queued = (clone $actionableRequests)->with(['quotations' => $recommendedQuotations])->get(['purchase_requests.id', 'purchase_requests.total_amount', 'purchase_requests.updated_at']);
             $executiveSummary = [
                 'value' => $queued->sum(fn (PurchaseRequest $purchaseRequest) => $this->decisionAmount($purchaseRequest)),
@@ -201,10 +204,11 @@ class DashboardController extends Controller
         $budgetCreatedCount = $loadsBudgetRegister ? BudgetRequest::query()->count() : null;
         $budgetApprovedCount = $loadsBudgetRegister ? BudgetRequest::query()->finallyApproved()->count() : null;
 
-        $myActions = $myActionsQuery
-            ->latest('updated_at')
-            ->limit($isBudgetMaker ? 20 : ($isExecutiveQueue ? 12 : 6))
-            ->get()
+        $presidentActionsPagination = $isExecutiveQueue
+            ? $myActionsQuery->paginate(12, ['*'], 'approval_page')->withQueryString()
+            : null;
+        $myActions = ($presidentActionsPagination?->getCollection() ?? $myActionsQuery
+            ->latest('updated_at')->limit($isBudgetMaker ? 20 : 6)->get())
             ->map(function (PurchaseRequest $purchaseRequest) use ($user, $isExecutiveQueue): ?array {
                 $details = $this->actionDetails($user, $purchaseRequest);
 
@@ -305,8 +309,7 @@ class DashboardController extends Controller
             : null;
         $canvassingRecords = $creatorWorkflow === 'canvassing'
             ? $this->applyTableRequestFilters(PurchaseRequest::query(), $this->tableFilters($request, 'canvassing'), fn (Builder $query) => $query)
-                ->whereHas('quotations')
-                ->whereHas('auditLogs', fn (Builder $audit) => $audit->where('action', 'CANVASSING_UPDATED'))
+                ->canvassingProcessedBy($user)
                 ->with(['quotations.supplier', 'requestor:id,name'])
                 ->latest('updated_at')
                 ->paginate(10, ['*'], 'canvassing_page')
@@ -340,7 +343,7 @@ class DashboardController extends Controller
         if ($creatorWorkflow !== null) {
             $processedTabCounts = match ($creatorWorkflow) {
                 'canvassing' => [
-                    'processed' => PurchaseRequest::query()->whereHas('quotations')->whereHas('auditLogs', fn (Builder $audit) => $audit->where('action', 'CANVASSING_UPDATED'))->count(),
+                    'processed' => PurchaseRequest::query()->canvassingProcessedBy($user)->count(),
                 ],
                 'purchase-order' => [
                     'processed' => PurchaseOrder::query()->count(),
@@ -387,6 +390,8 @@ class DashboardController extends Controller
             'myActions' => $myActions,
             'actionCount' => $actionCount,
             'executiveSummary' => $executiveSummary,
+            'approvalOrder' => $approvalOrder,
+            'presidentActionsPagination' => $presidentActionsPagination,
             'actionSearch' => $actionSearch,
             'budgetRequests' => $budgetRequests,
             'budgetRegisterTab' => $budgetRegisterTab,
@@ -833,7 +838,7 @@ class DashboardController extends Controller
         }
 
         $query = PurchaseRequest::query()->visibleTo($user);
-        $role = $user->role?->slug;
+        $role = $user->activeRole()?->slug;
 
         if ($role === RoleSlug::Admin->value) {
             return $query->whereIn('status', [
@@ -1052,7 +1057,7 @@ class DashboardController extends Controller
     /** @return array<string, string> */
     private function profile(User $user): array
     {
-        return match ($user->role?->slug) {
+        return match ($user->activeRole()?->slug) {
             RoleSlug::PoWorkflow->value, RoleSlug::PoChecker->value, RoleSlug::PoNoted->value, RoleSlug::PoApprover->value => [
                 'eyebrow' => 'Purchase Order workflow',
                 'description' => 'Review only the Purchase Orders assigned to your configured workflow stage.',

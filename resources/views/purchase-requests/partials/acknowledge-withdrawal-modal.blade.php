@@ -17,7 +17,7 @@
                     <dt>Withdrawal reason</dt>
                     <dd class="text-break">{{ $purchaseRequest->withdrawal_reason }}</dd>
                     <dt>Acknowledging account</dt>
-                    <dd>{{ auth()->user()->name }}<span class="d-block small text-muted">{{ auth()->user()->email }} &middot; {{ auth()->user()->role?->name }}</span></dd>
+                    <dd>{{ auth()->user()->name }}<span class="d-block small text-muted">{{ auth()->user()->email }} &middot; {{ auth()->user()->activeRole()?->name }}</span></dd>
                 </dl>
                 <label class="form-label" for="acknowledgment-remarks-{{ $purchaseRequest->id }}">Acknowledgment remarks (optional)</label>
                 <textarea class="form-control" id="acknowledgment-remarks-{{ $purchaseRequest->id }}" name="acknowledgment_remarks" rows="3" maxlength="2000"></textarea>

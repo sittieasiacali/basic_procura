@@ -7,8 +7,9 @@
         <div>
             <div class="page-eyebrow">Executive workspace</div>
             <h1>For Approval</h1>
-            <p>Review supplier quotations assigned to the President.</p>
+            <p>Review Purchasing submissions, including requests without supplier pricing.</p>
         </div>
+        <a class="btn btn-outline-primary" href="{{ route('president-approvals.index', ['tab' => 'pending']) }}">Refresh pending requests</a>
     </header>
 
     <div class="row g-3 mb-4" aria-label="Approval summary">
@@ -31,7 +32,7 @@
 
     <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
         <nav class="nav nav-pills approval-tabs" aria-label="President approval history">
-            @foreach(['all' => 'All', 'pending' => 'For Approval', 'approved' => 'Approved', 'rejected' => 'Rejected / Returned'] as $key => $label)
+            @foreach(['all' => 'All', 'pending' => 'For Approval', 'approved' => 'Approved', 'acknowledged' => 'Acknowledged', 'rejected' => 'Rejected / Returned'] as $key => $label)
                 <a class="nav-link {{ $tab === $key ? 'active' : '' }}" href="{{ route('president-approvals.index', ['tab' => $key]) }}">{{ $label }}</a>
             @endforeach
         </nav>
@@ -64,7 +65,7 @@
                         $reviewQuotations = \App\Models\SupplierQuotation::deduplicateForReview($purchaseRequest->quotations);
                         $recommendation = $reviewQuotations->firstWhere('is_recommended', true);
                         $recommendedQuotes = $recommendation ? $reviewQuotations->where('supplier_id', $recommendation->supplier_id) : collect();
-                        $stage = $purchaseRequest->status === \App\Enums\PurchaseRequestStatus::ForSupplierApproval ? 'Supplier Approval' : 'President Decision';
+                        $stage = $purchaseRequest->status === \App\Enums\PurchaseRequestStatus::ForSupplierApproval ? ($reviewQuotations->isEmpty() ? 'Request acknowledgement' : 'Supplier Approval') : 'President Decision';
                         $reviewAnchor = $purchaseRequest->status === \App\Enums\PurchaseRequestStatus::ForSupplierApproval ? '#supplier-approval-actions' : '';
                     @endphp
                     <tr>
@@ -82,7 +83,11 @@
                                 <div class="fw-semibold">{{ $recommendation->supplier?->name ?? 'Unavailable' }}</div>
                                 <div class="small text-muted">&#8369; {{ number_format((float) $recommendedQuotes->sum('price'), 2) }}{{ $recommendedQuotes->count() > 1 ? ' across '.$recommendedQuotes->count().' quoted lines' : '' }}</div>
                             @else
-                                <span class="text-muted">Not supplied</span>
+                                @if($reviewQuotations->isEmpty())
+                                    <span class="badge text-bg-warning">No quotation / pricing provided</span>
+                                @else
+                                    <span class="text-muted">Not supplied</span>
+                                @endif
                             @endif
                         </td>
                         <td class="text-end text-nowrap">{{ $purchaseRequest->total_amount === null ? 'Not estimated' : '₱ '.number_format((float) $purchaseRequest->total_amount, 2) }}</td>

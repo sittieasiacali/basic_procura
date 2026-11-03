@@ -100,7 +100,7 @@ class RequestWithdrawalController extends Controller
                     'requestor_id' => $locked->requestor_id,
                     'acknowledged_by_name' => $request->user()->name,
                     'acknowledged_by_email' => $request->user()->email,
-                    'acknowledged_by_role' => $request->user()->role?->name,
+                    'acknowledged_by_role' => $request->user()->activeRole()?->name,
                 ],
             );
         });

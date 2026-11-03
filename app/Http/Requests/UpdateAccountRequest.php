@@ -2,8 +2,7 @@
 
 namespace App\Http\Requests;
 
-use App\Enums\RoleSlug;
-use App\Models\Role;
+use App\Http\Requests\Concerns\ValidatesAccountRoles;
 use App\Support\AccountRoleCatalog;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
@@ -11,6 +10,8 @@ use Illuminate\Validation\Rules\Password;
 
 class UpdateAccountRequest extends FormRequest
 {
+    use ValidatesAccountRoles;
+
     public function authorize(): bool
     {
         return $this->user()?->can('update', $this->route('account')) ?? false;
@@ -37,6 +38,8 @@ class UpdateAccountRequest extends FormRequest
             'smt_notification_email' => [Rule::excludeIf(! $requiresRecipients), Rule::requiredIf($requiresRecipients), 'email', 'max:255'],
             'password_confirmation' => ['nullable', 'required_with:password', 'string'],
             'role_id' => ['required', 'integer', Rule::exists('roles', 'id')->where(fn ($query) => $query->whereIn('slug', array_keys(AccountRoleCatalog::labels()))->orWhere('id', $this->route('account')?->role_id))],
+            'role_ids' => ['required', 'array', 'min:1', 'max:20'],
+            'role_ids.*' => ['required', 'integer', 'distinct', Rule::exists('roles', 'id')->where(fn ($query) => $query->whereIn('slug', array_keys(AccountRoleCatalog::labels()))->orWhereIn('id', $this->route('account')->assignedRoles()->pluck('id')))],
             'campaign_id' => [
                 Rule::requiredIf($this->roleRequiresCampaign()),
                 'nullable',
@@ -65,6 +68,7 @@ class UpdateAccountRequest extends FormRequest
 
     protected function prepareForValidation(): void
     {
+        $this->prepareRoleSelection();
         $employeeId = $this->input('employee_id', $this->route('account')?->employee_id);
         $username = $this->input('username', $this->route('account')?->username);
         $teamId = $this->input('team_id', $this->route('account')?->team_id);
@@ -78,12 +82,5 @@ class UpdateAccountRequest extends FormRequest
             'om_notification_email' => is_string($this->input('om_notification_email')) ? strtolower(trim($this->input('om_notification_email'))) : $this->input('om_notification_email'),
             'smt_notification_email' => is_string($this->input('smt_notification_email')) ? strtolower(trim($this->input('smt_notification_email'))) : $this->input('smt_notification_email'),
         ]);
-    }
-
-    private function roleRequiresCampaign(): bool
-    {
-        $slug = Role::query()->whereKey($this->input('role_id'))->value('slug');
-
-        return in_array($slug, [RoleSlug::Requestor->value, RoleSlug::TeamLeader->value], true);
     }
 }

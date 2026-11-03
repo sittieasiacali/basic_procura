@@ -53,7 +53,29 @@ Auto-generate creates a random 16-character temporary password. Passwords requir
 
 Use **PO Workflow Assignments** to select the default account for each PO stage. PO CHECKER, PO NOTED, and PO APPROVER accounts can act only at their corresponding stage on POs assigned to them.
 
+### Multiple roles and workspaces
+
+The **Add New User / Create Account** campaign dropdown uses the 41 operational campaigns in `AccountCampaignCatalog`. Its data migration adds missing names without renaming existing campaigns, changing bank account numbers, or reassigning users. Existing campaigns remain available when editing existing accounts. Budget Request bank account choices remain separate.
+
+In **Manage Users / Manage Accounts**, use **Add New User** or **Edit** and check every role the person needs. For example, assign PURCHASING and TL / REQUESTOR to let one account prepare purchase orders and submit its own requests. Campaign and assigned OM/SMT emails are required whenever TL / REQUESTOR is selected, including as an additional role. Roles are managed by Admins; no employee names are hardcoded.
+
+Accounts with multiple roles have **Switch role** in the profile menu. Selecting a role opens its dashboard and uses that role's permissions for subsequent requests. Each session remembers its selection; signing in again starts with the account's original/default role. Removing a role takes effect on the user's next request. Existing single-role accounts keep their original access. Manage PO stage defaults separately in **PO Workflow Assignments**.
+
+This feature adds the `role_user` table. Before deploying, back up the server database, install dependencies and build assets as usual, then run `php artisan migrate --force`, `php artisan config:clear`, and `php artisan view:clear` before restarting the application. Preserve the server's `.env`, APP_KEY, database and uploads. The feature does not automatically assign new roles to existing accounts.
+
 ## OM and SMT activity emails
+
+### Canvassing without quotations
+
+In the Purchasing workspace, a request with no saved supplier quotations offers **Proceed without quotation** with an optional note. This sends it to the shared President review queue. Existing quotations continue through supplier recommendation and approval.
+
+The main quotation Submit button also accepts completely empty Manual or Bulk rows: confirm the request code and destination to proceed without adding a quotation. Cancel leaves the form untouched; partially entered quotations still require valid details. Existing saved quotations are preserved. IT / Premises can complete their quotation handoff to Canvassing in the same way after recording inventory as unavailable. Request codes appear in the action modal header and handoff receipts for Screening, Canvassing, and President decisions.
+
+The President dashboard shows newest handoffs first, offers an oldest-first sort, and paginates the full pending queue. **Canvassing processed** shows only requests personally handed off by the signed-in account, including submissions without quotations; its total uses the same account ownership rule.
+
+Successful workflow submissions display a **Submission saved** popup with the request code, result and next/current stage. Choose **View request** for the read-only request preview or **Cancel** to dismiss the popup and remain on the current page. The saved submission is retained. This covers request submission, Screening, Canvassing, President review, PO steps, Budget, payment and receiving, including forms submitted inside dashboard modals. Failed validation does not display a success popup. Each receipt appears once, and grouped submissions list their request codes.
+
+The President sees a missing quotation/pricing notice and can sign **Acknowledge & return to Purchasing** for follow-up. Acknowledgements are listed in their own history tab and do not select a supplier, approve a price, or generate a PO/Budget Request. Normal supplier approval still requires a specific quotation. Modal submissions show a handoff receipt and refresh the submitting dashboard; the President queue also provides **Refresh pending requests**.
 
 Admin account creation and editing require an **OM notification email** and **SMT notification email** for Requestor / Team Leader accounts. Update existing TL accounts to assign these recipients. Other account roles do not require them.
 

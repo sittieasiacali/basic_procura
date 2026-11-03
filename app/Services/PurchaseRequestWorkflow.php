@@ -118,12 +118,24 @@ class PurchaseRequestWorkflow
 
         $this->recordAudit($purchaseRequest, $user, $action, $previousStatus, $newStatus, $remarks, $metadata);
         $this->activityNotifier->requestMoved($purchaseRequest, $previousStatus, $action);
+        if (request()->hasSession()) {
+            request()->session()->flash('workflow_request_code', $purchaseRequest->request_number);
+            request()->session()->flash('workflow_next_stage', match ($newStatus) {
+                PurchaseRequestStatus::ForCanvassing => 'Sent to Canvassing',
+                PurchaseRequestStatus::ForSupplierApproval => 'Sent to President review',
+                PurchaseRequestStatus::ForProcurement => 'Screening completed · Quotation / Canvassing preparation',
+                default => 'Current stage: '.str($newStatus->value)->replace('_', ' ')->title(),
+            });
+        }
     }
 
     private function responsibleRoleId(PurchaseRequestStatus $status, PurchaseRequest $purchaseRequest): ?int
     {
         if (in_array($status, [PurchaseRequestStatus::Draft, PurchaseRequestStatus::Returned], true)) {
-            return $purchaseRequest->requestor()->value('role_id');
+            $requestor = $purchaseRequest->requestor;
+
+            return $requestor?->assignedRoles()->first(fn ($role) => in_array($role->slug, [RoleSlug::Requestor->value, RoleSlug::TeamLeader->value, RoleSlug::Tl->value], true))?->id
+                ?? $requestor?->role_id;
         }
 
         // A paused withdrawal stays with the staff handling the stage where it stopped.
@@ -173,7 +185,7 @@ class PurchaseRequestWorkflow
             'remarks' => $remarks,
             'ip_address' => request()->ip(),
             'user_agent' => request()->userAgent(),
-            'metadata' => ['role' => $user->role?->slug, ...$metadata],
+            'metadata' => ['role' => $user->activeRole()?->slug, ...$metadata],
         ]);
     }
 }

@@ -17,11 +17,47 @@ use Illuminate\Validation\ValidationException;
 
 class CanvassingController extends Controller
 {
+    public function submitWithoutQuotation(
+        Request $request,
+        PurchaseRequest $purchaseRequest,
+        PurchaseRequestWorkflow $workflow,
+    ): RedirectResponse {
+        $validated = $request->validate(['remarks' => ['nullable', 'string', 'max:2000']]);
+        DB::transaction(function () use ($request, $purchaseRequest, $workflow, $validated): void {
+            $locked = PurchaseRequest::query()->lockForUpdate()->findOrFail($purchaseRequest->id);
+            $this->authorize('manageCanvassing', $locked);
+            $screening = $request->user()->hasAnyRole([RoleSlug::ItStaff->value, RoleSlug::PremisesStaff->value])
+                && $request->user()->can('recommendScreeningQuotation', $locked);
+            if (! in_array($locked->status, [PurchaseRequestStatus::ForProcurement, PurchaseRequestStatus::ForCanvassing], true)) {
+                throw ValidationException::withMessages(['status' => 'This request is no longer awaiting canvassing.']);
+            }
+            $count = $locked->quotations()->count();
+            if (! $screening) {
+                $locked->forceFill(['selected_supplier_id' => null])->save();
+                $locked->quotations()->update(['is_approved' => false, 'approved_by' => null, 'approved_at' => null]);
+            }
+            $nextStatus = $screening ? PurchaseRequestStatus::ForCanvassing : PurchaseRequestStatus::ForSupplierApproval;
+            $workflow->transition(
+                $locked,
+                $nextStatus,
+                $request->user(),
+                $screening ? 'SCREENING_SUBMITTED_WITHOUT_QUOTATION' : ($count ? 'CANVASSING_SUBMITTED_WITHOUT_ADDITIONAL_QUOTATION' : 'CANVASSING_SUBMITTED_WITHOUT_QUOTATION'),
+                $validated['remarks'] ?? ($screening ? 'Screening submitted the request to Canvassing without adding a quotation.' : 'Purchasing submitted the request to the President without adding a quotation.'),
+                $screening ? 'IT_PREMISES_QUOTATION' : 'PURCHASING',
+                ['without_quotation' => $count === 0, 'quotation_count' => $count],
+            );
+        });
+
+        return ($request->boolean('_embedded') ? redirect()->route('workflow.done') : redirect()->route('purchase-requests.show', $purchaseRequest))
+            ->with('success', $purchaseRequest->request_number.': submitted without adding a quotation.');
+    }
+
     public function storeQuotations(
         Request $request,
         PurchaseRequest $purchaseRequest,
         PurchaseRequestWorkflow $workflow,
     ): RedirectResponse {
+        $request->validate(['quotations' => ['nullable', 'array', 'max:50'], 'quotations.*' => ['array']]);
         // The Add quotation button may leave an unused empty row in the form.
         // Ignore only rows with no quotation data; partially completed rows remain
         // subject to the normal validation rules below.
@@ -29,17 +65,30 @@ class CanvassingController extends Controller
             'quotations' => collect($request->input('quotations', []))
                 ->filter(function (array $quotation): bool {
                     return filled($quotation['supplier_name'] ?? null)
-                        || ($quotation['quoted_amount'] ?? null) !== null
+                        || filled($quotation['quoted_amount'] ?? null)
                         || filled($quotation['delivery_lead_time'] ?? null)
                         || filled($quotation['warranty'] ?? null)
                         || filled($quotation['quotation_url'] ?? null)
                         || filled($quotation['bank_details'] ?? null)
                         || filled($quotation['remarks'] ?? null)
-                        || filled($quotation['items'] ?? []);
+                        || filter_var($quotation['recommended'] ?? false, FILTER_VALIDATE_BOOLEAN)
+                        || collect($quotation['items'] ?? [])->contains(fn ($item) => ! is_array($item)
+                            || filled($item['item_id'] ?? null)
+                            || (filled($item['quantity'] ?? null) && (string) $item['quantity'] !== '1')
+                            || (filled($item['unit_price'] ?? null) && (string) $item['unit_price'] !== '0'));
                 })
                 ->values()
                 ->all(),
         ]);
+
+        if ($request->input('quotations') === []) {
+            $request->validate(['confirmed_without_quotation' => ['required', 'accepted']], [
+                'confirmed_without_quotation.required' => 'Confirm that you want to proceed without adding a quotation.',
+                'confirmed_without_quotation.accepted' => 'Confirm that you want to proceed without adding a quotation.',
+            ]);
+
+            return $this->submitWithoutQuotation($request, $purchaseRequest, $workflow);
+        }
 
         $validated = $request->validate([
             'quotation_mode' => ['required', Rule::in(['manual', 'bulk'])],
@@ -259,7 +308,8 @@ class CanvassingController extends Controller
 
         // Submitting the recommendation hands the request to the President; that page closes to a receipt.
         if (! $screeningQuotationSaved) {
-            return redirect()->route('purchase-requests.show', $purchaseRequest);
+            return ($request->boolean('_embedded') ? redirect()->route('workflow.done') : redirect()->route('purchase-requests.show', $purchaseRequest))
+                ->with('success', "Quotation {$quotationReferences} saved and submitted for President approval.");
         }
 
         return redirect()->route('purchase-requests.show', $purchaseRequest)

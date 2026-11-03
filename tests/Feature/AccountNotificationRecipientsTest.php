@@ -28,7 +28,8 @@ class AccountNotificationRecipientsTest extends TestCase
         foreach (['admin.accounts.index', 'dashboard'] as $route) {
             $response = $this->get(route($route))->assertOk();
             $xpath = $this->xpath($response->getContent());
-            $this->assertSame('TL / REQUESTOR', $xpath->evaluate('normalize-space(//select[@id="new-user-role"]/option[@selected])'));
+            $requestorRoleId = $this->roleId(RoleSlug::Requestor);
+            $this->assertSame(1, $xpath->query('//input[@name="role_ids[]" and @value="'.$requestorRoleId.'" and @checked]')->length);
             $this->assertSame(1, $xpath->query('//fieldset[@data-new-user-requestor-fields and not(@hidden) and not(@disabled)]')->length);
             foreach (['new-user-om-email', 'new-user-smt-email'] as $id) {
                 $this->assertSame(1, $xpath->query('//input[@id="'.$id.'" and @type="email" and @required]')->length);
@@ -96,6 +97,7 @@ class AccountNotificationRecipientsTest extends TestCase
     {
         $document = new DOMDocument;
         @$document->loadHTML($html);
+
         return new DOMXPath($document);
     }
 
@@ -109,7 +111,7 @@ class AccountNotificationRecipientsTest extends TestCase
         return [
             'employee_id' => 'TL-RECIPIENT-TEST', 'name' => 'Recipient Test TL', 'email' => 'tl@example.test',
             'role_id' => $this->roleId(RoleSlug::Requestor),
-            'campaign_id' => Campaign::query()->firstOrCreate(['name' => 'Recipient testing'], ['is_active' => true])->id,
+            'campaign_id' => Campaign::query()->where('name', 'AC MOBILITY - EVRO')->firstOrFail()->id,
             'om_notification_email' => 'om@example.test', 'smt_notification_email' => 'smt@example.test',
             'password' => 'TemporaryTest123!', 'is_active' => true, 'create_account_modal' => 1, 'account_origin' => 'accounts',
         ];

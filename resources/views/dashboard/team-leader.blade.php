@@ -4,7 +4,7 @@
 
 @section('content')
     <div class="team-leader-dashboard">
-        <x-ui.page-header :eyebrow="$user->role->name.' workspace'" title="My requests" description="Track your requests in one simple view.">
+        <x-ui.page-header :eyebrow="$user->activeRole()?->name.' workspace'" title="My requests" description="Track your requests in one simple view.">
             <x-slot:actions>
                 @if($myItemsCount > 0)
                     <a class="btn btn-outline-primary d-inline-flex align-items-center gap-2" href="{{ route('inventory.index', ['view' => 'released']) }}"><x-ui.icon name="check-circle" size="17" />My items</a>

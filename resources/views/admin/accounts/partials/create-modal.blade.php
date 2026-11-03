@@ -1,7 +1,7 @@
 @php
-    $newUserSelectedRole = (string) old('role_id', $newUserRoles->firstWhere('slug', \App\Enums\RoleSlug::Requestor->value)['id'] ?? $newUserRoles->first()['id'] ?? '');
+    $newUserSelectedRoles = old('role_ids', old('role_selection') ? [] : [old('role_id', $newUserRoles->firstWhere('slug', \App\Enums\RoleSlug::Requestor->value)['id'] ?? $newUserRoles->first()['id'] ?? '')]);
     $newUserRequestorIds = $newUserRoles->whereIn('slug', [\App\Enums\RoleSlug::Requestor->value, \App\Enums\RoleSlug::TeamLeader->value])->pluck('id')->map(fn ($id) => (string) $id)->all();
-    $newUserIsRequestor = in_array($newUserSelectedRole, $newUserRequestorIds, true);
+    $newUserIsRequestor = count(array_intersect((array) $newUserSelectedRoles, $newUserRequestorIds)) > 0;
     $newUserHasErrors = old('create_account_modal') && $errors->any();
 @endphp
 <div class="modal fade new-user-modal" id="add-new-user-modal" tabindex="-1" aria-labelledby="add-new-user-title" aria-hidden="true" @if(request()->boolean('create_user') || $newUserHasErrors) data-new-user-auto-open @endif>
@@ -38,12 +38,8 @@
                         <input class="form-control @if($newUserHasErrors && $errors->has('email')) is-invalid @endif" type="email" id="new-user-email" name="email" value="{{ old('email') }}" placeholder="name@example.com" maxlength="255" required>
                         @if($newUserHasErrors) @error('email')<div class="invalid-feedback">{{ $message }}</div>@enderror @endif
                     </div>
-                    <div>
-                        <label for="new-user-role">Role <span>*</span></label>
-                        <select class="form-select @if($newUserHasErrors && $errors->has('role_id')) is-invalid @endif" id="new-user-role" name="role_id" required>
-                            @foreach($newUserRoles as $newUserRole)<option value="{{ $newUserRole['id'] }}" @selected($newUserSelectedRole === (string) $newUserRole['id'])>{{ $newUserRole['label'] }}</option>@endforeach
-                        </select>
-                        @if($newUserHasErrors) @error('role_id')<div class="invalid-feedback">{{ $message }}</div>@enderror @endif
+                    <div class="new-user-full-width">
+                        <x-account-role-checkboxes :options="$newUserRoles" :selected="$newUserSelectedRoles" prefix="new-user" />
                     </div>
                     <div>
                         <label for="new-user-team-id">Team ID</label>
@@ -93,15 +89,15 @@
     const form = modal.querySelector('[data-new-user-form]');
     const password = modal.querySelector('#new-user-password');
     const toggle = modal.querySelector('[data-new-user-toggle-password]');
-    const role = modal.querySelector('#new-user-role');
+    const roles = modal.querySelectorAll('[data-role-picker] input[type="checkbox"]');
     const requestorFields = modal.querySelector('[data-new-user-requestor-fields]');
     const requestorRoleIds = @json($newUserRequestorIds);
     const syncRole = () => {
-        const isRequestor = requestorRoleIds.includes(role.value);
+        const isRequestor = Array.from(roles).some(role => role.checked && requestorRoleIds.includes(role.value));
         requestorFields.disabled = !isRequestor;
         requestorFields.querySelectorAll('input,select').forEach(input => input.required = isRequestor);
     };
-    role.addEventListener('change', syncRole);
+    roles.forEach(role => role.addEventListener('change', syncRole));
     syncRole();
     toggle.addEventListener('click', () => {
         const show = password.type === 'password';

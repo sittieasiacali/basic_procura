@@ -55,7 +55,7 @@
                     <tr>
                         <td class="fw-medium">{{ $account->name }}@if($account->employee_id)<span class="d-block small text-muted">{{ $account->employee_id }}</span>@endif</td>
                         <td>{{ $account->email }}</td>
-                        <td>{{ \App\Support\AccountRoleCatalog::label($account->role) }}</td>
+                        <td><x-role-badges :user="$account" /></td>
                         <td>{{ $account->campaign?->name ?? 'Not assigned' }}</td>
                         <td><span class="status-badge {{ $account->is_active ? 'status-completed' : 'status-neutral' }}">{{ $account->is_active ? 'Active' : 'Inactive' }}</span></td>
                         <td class="text-nowrap">{{ $account->created_at->format('M d, Y') }}</td>

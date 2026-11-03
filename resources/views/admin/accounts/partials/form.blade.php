@@ -1,7 +1,8 @@
 @php
     $editing = isset($account);
     $campaignRoleIds = $roles->whereIn('slug', [\App\Enums\RoleSlug::Requestor->value, \App\Enums\RoleSlug::TeamLeader->value])->pluck('id')->values();
-    $requiresActivityRecipients = $campaignRoleIds->contains((int) old('role_id', $account->role_id ?? 0));
+    $selectedRoles = old('role_ids', old('role_selection') ? [] : (isset($account) ? $account->assignedRoles()->pluck('id')->all() : []));
+    $requiresActivityRecipients = $campaignRoleIds->intersect((array) $selectedRoles)->isNotEmpty();
     $passwordError = $errors->first('password');
     $confirmationMismatch = $passwordError && str_contains(strtolower($passwordError), 'confirmation');
 @endphp
@@ -34,13 +35,8 @@
                 @error('email')<div class="invalid-feedback">{{ $message }}</div>@enderror
                 <div class="form-text">Workflow emails go to the TL's assigned OM and SMT recipients.</div>
             </div>
-            <div class="col-md-6">
-                <label class="form-label" for="role_id">Role</label>
-                <select class="form-select @error('role_id') is-invalid @enderror" id="role_id" name="role_id" required>
-                    <option value="">Select a role</option>
-                    @foreach($roles as $role)<option value="{{ $role->id }}" @selected((string) old('role_id', $account->role_id ?? '') === (string) $role->id)>{{ \App\Support\AccountRoleCatalog::label($role) }}</option>@endforeach
-                </select>
-                @error('role_id')<div class="invalid-feedback">{{ $message }}</div>@enderror
+            <div class="col-12">
+                <x-account-role-checkboxes :options="$roles->map(fn ($role) => ['id' => $role->id, 'label' => \App\Support\AccountRoleCatalog::label($role)])" :selected="$selectedRoles" prefix="edit-account" />
             </div>
             <div class="col-md-6">
                 <label class="form-label" for="campaign_id">Campaign <span class="text-muted" id="campaign-requirement">(required for Requestor and Team Leader / Requestor)</span></label>
@@ -107,11 +103,11 @@
 @push('scripts')
 <script>
     (() => {
-        const role = document.getElementById('role_id');
+        const roles = document.querySelectorAll('.procura-form-page [data-role-picker] input[type="checkbox"]');
         const campaign = document.getElementById('campaign_id');
         const requiredRoleIds = @json($campaignRoleIds);
         const syncCampaignRequirement = () => {
-            const requiresRecipients = requiredRoleIds.includes(Number(role.value));
+            const requiresRecipients = Array.from(roles).some(role => role.checked && requiredRoleIds.includes(Number(role.value)));
             campaign.required = requiresRecipients;
             document.getElementById('tl-notification-fields').hidden = ! requiresRecipients;
             ['om_notification_email', 'smt_notification_email'].forEach((id) => {
@@ -120,7 +116,7 @@
                 input.disabled = ! requiresRecipients;
             });
         };
-        role.addEventListener('change', syncCampaignRequirement);
+        roles.forEach(role => role.addEventListener('change', syncCampaignRequirement));
         syncCampaignRequirement();
 
         document.querySelectorAll('[data-password-target]').forEach((button) => {

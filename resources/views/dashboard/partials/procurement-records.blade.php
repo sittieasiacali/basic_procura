@@ -16,13 +16,13 @@
                         <td class="table-row-number">{{ $canvassingRecords->firstItem() + $loop->index }}</td>
                         <td><a class="fw-semibold text-decoration-none" href="{{ route('purchase-requests.show', $record) }}" data-workflow-request-preview>{{ $record->request_number }}</a><div class="small text-muted">{{ $record->title }}</div></td>
                         <td>{{ $record->quotations->pluck('supplier_id')->unique()->count() }}</td>
-                        <td>{{ $recommended?->supplier?->name ?? 'Pending selection' }}</td>
+                        <td>{{ $recommended?->supplier?->name ?? ($record->quotations->isEmpty() ? 'Submitted without quotation' : 'President to review') }}</td>
                         <td><x-status-badge :status="$record->status" /></td>
                         <td class="text-end small text-muted text-nowrap">{{ $record->updated_at->format('M j, Y g:i A') }}</td>
                         <td class="text-end"><a class="btn btn-sm btn-outline-primary" href="{{ route('purchase-requests.show', $record) }}" data-workflow-request-preview>View request</a></td>
                     </tr>
                 @empty
-                    <tr><td colspan="7"><x-ui.empty-state icon="receipt" title="No canvassing records found" description="Quotation records will appear here after they are saved." /></td></tr>
+                    <tr><td colspan="7"><x-ui.empty-state icon="receipt" title="No canvassing records found" description="Requests you personally submit from Canvassing will appear here." /></td></tr>
                 @endforelse
             </tbody>
         </table>

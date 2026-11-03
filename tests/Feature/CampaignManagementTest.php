@@ -23,7 +23,7 @@ class CampaignManagementTest extends TestCase
 
     public function test_admin_can_view_search_and_filter_campaign_list(): void
     {
-        $operations = Campaign::query()->firstOrFail();
+        $operations = Campaign::query()->where('name', 'Operations')->firstOrFail();
         $hidden = Campaign::query()->create(['name' => 'Inactive Support', 'description' => 'Hidden result', 'is_active' => false]);
 
         $this->actingAs($this->user(RoleSlug::Admin))

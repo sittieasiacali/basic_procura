@@ -33,7 +33,7 @@ class AccountController extends Controller
         ]);
 
         $accounts = User::query()
-            ->with(['role', 'campaign'])
+            ->with(['role', 'roles', 'campaign'])
             ->when($filters['search'] ?? null, function ($query, string $search) {
                 $query->where(function ($query) use ($search) {
                     $query->where('name', 'like', "%{$search}%")
@@ -42,7 +42,7 @@ class AccountController extends Controller
                         ->orWhere('username', 'like', "%{$search}%");
                 });
             })
-            ->when($filters['role_id'] ?? null, fn ($query, $roleId) => $query->where('role_id', $roleId))
+            ->when($filters['role_id'] ?? null, fn ($query, $roleId) => $query->withAssignedRole((int) $roleId))
             ->when($filters['campaign_id'] ?? null, fn ($query, $campaignId) => $query->where('campaign_id', $campaignId))
             ->when(filled($filters['is_active'] ?? null), fn ($query) => $query->where('is_active', $filters['is_active']))
             ->latest()
@@ -84,7 +84,10 @@ class AccountController extends Controller
                 'email_verified_at' => now(),
             ]);
 
+            $account->roles()->sync($validated['role_ids']);
+
             $this->audit($account, $request->user(), 'ACCOUNT_CREATED', null, $account->is_active ? 'ACTIVE' : 'INACTIVE', [
+                'role_ids' => $validated['role_ids'],
                 'role_id' => $account->role_id,
                 'campaign_id' => $account->campaign_id,
                 'om_notification_email' => $account->om_notification_email,
@@ -106,7 +109,7 @@ class AccountController extends Controller
     public function show(User $account): View
     {
         $this->authorize('view', $account);
-        $account->load(['role', 'campaign', 'auditLogs.user']);
+        $account->load(['role', 'roles', 'campaign', 'auditLogs.user']);
 
         return view('admin.accounts.show', compact('account'));
     }
@@ -116,7 +119,7 @@ class AccountController extends Controller
         $this->authorize('update', $account);
 
         return view('admin.accounts.edit', [
-            'account' => $account->load(['role', 'campaign']),
+            'account' => $account->load(['role', 'roles', 'campaign']),
             ...$this->formOptions($account),
         ]);
     }
@@ -128,11 +131,12 @@ class AccountController extends Controller
         DB::transaction(function () use ($request, $account, $validated) {
             $lockedAccount = User::query()->lockForUpdate()->findOrFail($account->id);
             $this->authorize('update', $lockedAccount);
+            $beforeRoleIds = $lockedAccount->assignedRoles()->pluck('id')->sort()->values()->all();
             $before = $lockedAccount->only(['name', 'email', 'employee_id', 'username', 'team_id', 'role_id', 'campaign_id', 'is_active', 'om_notification_email', 'smt_notification_email']);
 
             $this->ensureActiveAdminRemains(
                 $lockedAccount,
-                (int) $validated['role_id'],
+                $validated['role_ids'],
                 (bool) $validated['is_active'],
             );
 
@@ -155,6 +159,9 @@ class AccountController extends Controller
             }
 
             $lockedAccount->save();
+            $lockedAccount->roles()->sync($validated['role_ids']);
+            $afterRoleIds = array_map('intval', $validated['role_ids']);
+            sort($afterRoleIds);
             $after = $lockedAccount->only(['name', 'email', 'employee_id', 'username', 'team_id', 'role_id', 'campaign_id', 'is_active', 'om_notification_email', 'smt_notification_email']);
             $changedFields = array_keys(array_diff_assoc($after, $before));
 
@@ -162,10 +169,12 @@ class AccountController extends Controller
                 'changed_fields' => $changedFields,
             ]);
 
-            if ($before['role_id'] !== $after['role_id']) {
+            if ($beforeRoleIds !== $afterRoleIds) {
                 $this->audit($lockedAccount, $request->user(), 'ROLE_CHANGED', null, null, [
                     'from_role_id' => $before['role_id'],
                     'to_role_id' => $after['role_id'],
+                    'from_role_ids' => $beforeRoleIds,
+                    'to_role_ids' => $afterRoleIds,
                 ]);
             }
 
@@ -203,7 +212,7 @@ class AccountController extends Controller
             $lockedAccount = User::query()->lockForUpdate()->findOrFail($account->id);
             $newStatus = ! $lockedAccount->is_active;
 
-            $this->ensureActiveAdminRemains($lockedAccount, (int) $lockedAccount->role_id, $newStatus);
+            $this->ensureActiveAdminRemains($lockedAccount, $lockedAccount->assignedRoles()->pluck('id')->all(), $newStatus);
 
             $previous = $lockedAccount->is_active ? 'ACTIVE' : 'INACTIVE';
             $lockedAccount->forceFill(['is_active' => $newStatus])->save();
@@ -237,23 +246,23 @@ class AccountController extends Controller
             'roles' => Role::query()->where(function ($query) use ($account) {
                 $query->whereIn('slug', array_keys(AccountRoleCatalog::labels()));
                 if ($account?->role_id) {
-                    $query->orWhere('id', $account->role_id);
+                    $query->orWhereIn('id', $account->assignedRoles()->pluck('id'));
                 }
             })->orderBy('name')->get(),
             'campaigns' => $campaigns,
         ];
     }
 
-    private function ensureActiveAdminRemains(User $account, int $newRoleId, bool $newActive): void
+    private function ensureActiveAdminRemains(User $account, array $newRoleIds, bool $newActive): void
     {
-        if (! $account->is_active || ! $account->hasRole(RoleSlug::Admin->value)) {
+        if (! $account->is_active || ! $account->hasAssignedRole(RoleSlug::Admin->value)) {
             return;
         }
 
         $adminRoleId = Role::query()->where('slug', RoleSlug::Admin->value)->value('id');
-        $removesActiveAdmin = ! $newActive || $newRoleId !== (int) $adminRoleId;
+        $removesActiveAdmin = ! $newActive || ! in_array((int) $adminRoleId, array_map('intval', $newRoleIds), true);
 
-        if ($removesActiveAdmin && User::query()->where('role_id', $adminRoleId)->where('is_active', true)->count() <= 1) {
+        if ($removesActiveAdmin && User::query()->withAssignedRole((int) $adminRoleId)->where('is_active', true)->count() <= 1) {
             throw ValidationException::withMessages([
                 'is_active' => 'The only active Admin cannot be deactivated or assigned a different role.',
             ]);

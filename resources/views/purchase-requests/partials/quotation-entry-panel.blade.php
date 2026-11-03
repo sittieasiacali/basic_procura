@@ -4,7 +4,7 @@
         @php ($screeningQuotationEntry = auth()->user()->hasAnyRole([\App\Enums\RoleSlug::ItStaff->value, \App\Enums\RoleSlug::PremisesStaff->value]) && $teamCanRecommendQuotation); @endphp
         <div class="card action-panel mb-3 no-print quotation-entry-panel" id="canvassing-actions">
             <div class="card-header fw-semibold d-flex justify-content-between align-items-center gap-2">
-                <span>{{ $screeningQuotationEntry ? 'Quotations' : 'Canvassing & Quotations' }} <span class="badge text-bg-primary ms-1" aria-label="{{ $quotations->count() }} saved quotations">{{ $quotations->count() }}</span><small class="text-muted fw-normal d-block">{{ $screeningQuotationEntry ? 'Record quotations to complete this stage and submit the request to Canvassing.' : 'Purchasing submits a supplier recommendation; President approval is required.' }}</small></span>
+                <span>{{ $screeningQuotationEntry ? 'Quotations' : 'Canvassing & Quotations' }} <span class="badge text-bg-primary ms-1" aria-label="{{ $quotations->count() }} saved quotations">{{ $quotations->count() }}</span><small class="text-muted fw-normal d-block">{{ $screeningQuotationEntry ? 'Record quotations to complete this stage and submit the request to Canvassing.' : 'Send this request to President review, with or without supplier quotations.' }}</small></span>
                 <div class="d-flex gap-2">
                     @can('undoScreening', $purchaseRequest)
                         <form method="POST" action="{{ route('request-flow.screening.undo', $purchaseRequest) }}" onsubmit="return confirm('Undo the Inventory Unavailable decision? The request returns to screening so you can decide whether stock is available.');">
@@ -17,9 +17,27 @@
                 </div>
             </div>
             <div class="card-body{{ session('quotation_saved') ? ' d-none' : '' }}" id="quotation-entry-body">
-                <form method="POST" action="{{ route('canvassing.quotations.store', $purchaseRequest) }}" class="row g-3" data-validation-context="canvassing" data-quotation-form novalidate>
+                @if(! $screeningQuotationEntry && $quotations->isEmpty() && in_array($purchaseRequest->status, [\App\Enums\PurchaseRequestStatus::ForProcurement, \App\Enums\PurchaseRequestStatus::ForCanvassing], true))
+                    <div class="border rounded p-3 mb-4 bg-light">
+                        <h3 class="h6">Quotation is optional</h3>
+                        <p class="small text-muted">You can send this request to the President now without supplier quotations, or add quotations below.</p>
+                        <form method="POST" action="{{ route('canvassing.without-quotation', $purchaseRequest) }}" data-confirm-message="Request {{ $purchaseRequest->request_number }}: proceed to President review without adding a quotation?" onsubmit="return window.confirm(this.dataset.confirmMessage)">
+                            @csrf
+                            <input type="hidden" name="_validation_context" value="without-quotation">
+                            @if(old('_validation_context') === 'without-quotation' && $errors->any())
+                                <div class="alert alert-danger" role="alert">{{ $errors->first() }}</div>
+                            @endif
+                            <label class="form-label small" for="no-quotation-remarks">Note to the President <span class="text-muted">(optional)</span></label>
+                            <textarea class="form-control mb-3" id="no-quotation-remarks" name="remarks" rows="2" maxlength="2000" placeholder="Explain why no quotation is included">{{ old('_validation_context') === 'without-quotation' ? old('remarks') : '' }}</textarea>
+                            <button class="btn btn-primary" type="submit">Proceed without quotation</button>
+                        </form>
+                    </div>
+                @endif
+                <form method="POST" action="{{ route('canvassing.quotations.store', $purchaseRequest) }}" class="row g-3" data-validation-context="canvassing" data-quotation-form data-request-code="{{ $purchaseRequest->request_number }}" data-next-stage="{{ $screeningQuotationEntry ? 'Canvassing' : 'President review' }}" novalidate>
                     @csrf
                     <input type="hidden" name="_validation_context" value="canvassing">
+                    <input type="hidden" name="confirmed_without_quotation" value="0" data-confirm-without-quotation>
+                    <div class="col-12"><p class="small text-muted mb-0">Request <strong>{{ $purchaseRequest->request_number }}</strong> · Quotations are optional. Leave the quotation rows empty and submit to proceed to {{ $screeningQuotationEntry ? 'Canvassing' : 'President review' }} after confirmation. Complete any quotation you choose to enter.</p></div>
                     <div class="col-12"><div class="alert alert-danger d-none mb-0" data-quotation-errors role="alert" tabindex="-1"><strong>Please complete the highlighted quotation fields.</strong><ul class="mb-0 mt-1" data-quotation-error-list></ul></div></div>
                     @if(old('_validation_context') === 'canvassing' && $errors->any())
                         <div class="col-12"><div class="alert alert-danger mb-0" role="alert"><strong>Quotation was not submitted.</strong><ul class="mb-0 mt-1">@foreach($errors->all() as $message)<li>{{ $message }}</li>@endforeach</ul></div></div>
@@ -70,7 +88,7 @@
                     <div class="col-12 d-none" id="quotation-empty-state">
                         <div class="alert alert-light mb-0">No quotation rows. Select <strong>Add quotation</strong> to create a new entry.</div>
                     </div>
-                    <div class="col-12 quotation-submit-bar"><button class="btn btn-primary" type="submit" data-submit-quotations>{{ $screeningQuotationEntry ? 'Submit to Canvassing' : 'Submit Supplier Recommendation' }}</button></div>
+                    <div class="col-12 quotation-submit-bar"><button class="btn btn-primary" type="submit" data-submit-quotations>{{ $screeningQuotationEntry ? 'Proceed to Canvassing' : 'Proceed to President review' }}</button></div>
                 </form>
             </div>
         </div>

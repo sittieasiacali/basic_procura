@@ -3,6 +3,7 @@
 namespace App\Providers;
 
 use App\Models\Campaign;
+use App\Support\AccountCampaignCatalog;
 use App\Support\AccountRoleCatalog;
 use App\Support\WorkflowRemarks;
 use Illuminate\Pagination\Paginator;
@@ -27,7 +28,8 @@ class AppServiceProvider extends ServiceProvider
         Paginator::useBootstrapFive();
         View::composer('admin.accounts.partials.create-modal', fn ($view) => $view->with([
             'newUserRoles' => AccountRoleCatalog::options(),
-            'newUserCampaigns' => Campaign::query()->where('is_active', true)->orderBy('name')->get(['id', 'name']),
+            'newUserCampaigns' => Campaign::query()->where('is_active', true)
+                ->whereIn('name', AccountCampaignCatalog::NAMES)->orderBy('name')->get(['id', 'name']),
         ]));
         View::composer([
             'dashboard', 'dashboard.team-leader', 'purchase-requests.index', 'purchase-requests.show',

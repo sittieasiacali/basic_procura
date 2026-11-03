@@ -13980,3 +13980,62 @@ body:has(#add-new-user-modal.show) > .modal-backdrop { background: #fff; opacity
             #160d76;
     }
 }
+
+/* Account role assignments */
+.account-role-picker { min-width: 0; padding: 0; margin: 0; border: 0; }
+.account-role-picker legend { float: none; width: auto; font-size: .875rem; font-weight: 600; }
+.account-role-options { display: grid; grid-template-columns: repeat(auto-fit, minmax(155px, 1fr)); gap: .5rem; }
+.account-role-options .account-role-option { display: flex; align-items: center; gap: .6rem; padding: .75rem; margin: 0; border: 1px solid var(--asi-border); border-radius: .5rem; cursor: pointer; font-size: .8rem; line-height: 1.4; }
+.account-role-option input { width: 1rem; height: 1rem; flex: 0 0 auto; accent-color: var(--asi-navy); }
+.account-role-options .account-role-option span { color: var(--asi-ink); }
+.account-role-option:has(input:checked) { border-color: var(--asi-navy); background: #f3f3ff; }
+.account-role-option:has(input:focus-visible) { outline: 2px solid var(--asi-blue); outline-offset: 2px; }
+
+/* Comfortable workflow dialogs with a single scrolling document. */
+#workflow-action-modal .workflow-action-modal { max-width: min(96vw, 88rem); margin: 3vh auto; }
+#workflow-action-modal .modal-content { height: 94vh; height: 94dvh; min-height: 0; }
+#workflow-action-modal .modal-header { flex: 0 0 auto; flex-wrap: wrap; padding: .85rem 1.15rem; }
+.workflow-action-tools { display: flex; align-items: center; flex-wrap: wrap; gap: .5rem; margin-left: auto; }
+.workflow-action-tools .workflow-action-close { width: auto; height: auto; padding: .4rem .75rem; margin-left: 0; border: 1px solid var(--asi-border); border-radius: .5rem; }
+.workflow-action-tools .btn { display: inline-flex; align-items: center; justify-content: center; gap: .4rem; min-height: 38px; white-space: nowrap; }
+#workflow-action-modal .modal-body { min-height: 0; }
+#workflow-action-modal .workflow-action-frame { min-width: 0; box-shadow: none; }
+#workflow-action-modal.workflow-action-expanded .modal-dialog { max-width: calc(100vw - 1rem); margin: .5rem auto; }
+#workflow-action-modal.workflow-action-expanded .modal-content { height: calc(100vh - 1rem); height: calc(100dvh - 1rem); }
+.is-embedded .procura-home-header { display: none; }
+.is-embedded .procura-home-main { width: 100%; padding: 1.1rem clamp(.85rem, 2vw, 1.75rem) 2rem; }
+.is-embedded .request-information-section > .row { align-items: start; }
+.is-embedded .request-summary-column .quotation-summary-card { height: auto !important; }
+.screening-priority-form { display: flex; align-items: center; flex-wrap: wrap; gap: .65rem; }
+.screening-priority-form .form-select { flex: 1 1 11rem; width: auto; min-width: 0; max-width: 22rem; min-height: 40px; font-size: .875rem; }
+.screening-priority-form .btn { flex: 0 0 auto; min-height: 40px; padding-inline: 1rem; white-space: nowrap; overflow-wrap: normal; }
+.request-info-item--priority { align-items: center; }
+.request-info-item--priority label { margin-bottom: 0; }
+.is-embedded .request-info-item { grid-template-columns: minmax(6rem, .85fr) minmax(0, 1.15fr); }
+.is-embedded .request-info-item--wide { grid-template-columns: minmax(6rem, 12rem) minmax(0, 1fr); }
+@media (max-width: 1099.98px) {
+    .is-embedded .request-information-main, .is-embedded .request-summary-column { width: 100%; }
+    .is-embedded .quotation-overview { display: flex; flex-wrap: wrap; gap: 1rem 2rem; }
+    .is-embedded .quotation-overview > div { flex: 1 1 10rem; }
+}
+@media (max-width: 767.98px) {
+    .is-embedded .request-info-grid { grid-template-columns: minmax(0, 1fr); }
+    .is-embedded .request-info-item--wide { grid-template-columns: minmax(6rem, .85fr) minmax(0, 1.15fr); }
+    #workflow-action-modal .workflow-action-tools { width: 100%; justify-content: flex-end; margin-left: 0; }
+    #workflow-action-modal .modal-dialog { max-width: 100%; margin: 0; }
+    #workflow-action-modal .modal-content { height: 100vh; height: 100dvh; border-radius: 0; }
+    #workflow-action-modal .modal-header { gap: .5rem; padding: .65rem .75rem; }
+    .workflow-action-tools { gap: .35rem; }
+    .workflow-action-tools .btn { min-height: 40px; font-size: .75rem; padding: .4rem .6rem; }
+    [data-workflow-action-expand] { display: none !important; }
+}
+
+/* Persistent completion receipt for workflow submissions. */
+.workflow-submission-content { border: 0; border-top: 4px solid var(--asi-success); border-radius: 1rem; box-shadow: 0 1.5rem 4rem rgb(16 8 84 / 20%); }
+.workflow-submission-content .modal-header { padding: 1.1rem 1.25rem; }
+.workflow-submission-content .modal-body { padding: 1.25rem; }
+.workflow-submission-content .modal-footer { gap: .5rem; padding: 1rem 1.25rem; }
+.workflow-submission-content .btn { min-height: 42px; }
+.workflow-submission-icon { display: inline-flex; align-items: center; justify-content: center; width: 52px; height: 52px; flex: 0 0 auto; border-radius: 50%; background: #e9f6ef; color: var(--asi-success); }
+.workflow-submission-stage { padding: .85rem 1rem; border-radius: .6rem; background: #f3f5ff; color: var(--asi-navy); font-weight: 600; }
+[data-submission-code] { overflow-wrap: anywhere; }

@@ -3,18 +3,23 @@
 namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
-use Database\Factories\UserFactory;
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\Relations\HasMany;
 use App\Enums\PurchaseOrderApprovalStage;
 use App\Enums\RoleSlug;
+use Database\Factories\UserFactory;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Support\Collection;
 
 class User extends Authenticatable
 {
+    private ?Role $workspaceRole = null;
+
     /** @use HasFactory<UserFactory> */
     use HasFactory, Notifiable;
 
@@ -75,6 +80,38 @@ class User extends Authenticatable
         return $this->belongsTo(Campaign::class);
     }
 
+    public function roles(): BelongsToMany
+    {
+        return $this->belongsToMany(Role::class);
+    }
+
+    /** Includes the original role for accounts created before multi-role access. */
+    public function assignedRoles(): Collection
+    {
+        return $this->roles->concat($this->role ? [$this->role] : [])->unique('id')->values();
+    }
+
+    public function activeRole(): ?Role
+    {
+        return $this->workspaceRole ?? $this->role;
+    }
+
+    public function useWorkspaceRole(?Role $role): void
+    {
+        $this->workspaceRole = $role;
+    }
+
+    public function hasAssignedRole(string $slug): bool
+    {
+        return $this->assignedRoles()->contains('slug', $slug);
+    }
+
+    public function scopeWithAssignedRole(Builder $query, int $roleId): Builder
+    {
+        return $query->where(fn (Builder $roles) => $roles->where('role_id', $roleId)
+            ->orWhereHas('roles', fn (Builder $role) => $role->where('roles.id', $roleId)));
+    }
+
     public function auditLogs(): MorphMany
     {
         return $this->morphMany(AuditLog::class, 'auditable');
@@ -92,7 +129,7 @@ class User extends Authenticatable
 
     public function hasPoRole(PurchaseOrderApprovalStage $stage): bool
     {
-        $roleStage = match ($this->role?->slug) {
+        $roleStage = match ($this->activeRole()?->slug) {
             RoleSlug::PoChecker->value => PurchaseOrderApprovalStage::CheckedBy,
             RoleSlug::PoNoted->value => PurchaseOrderApprovalStage::NotedBy,
             RoleSlug::PoApprover->value => PurchaseOrderApprovalStage::ApprovedBy,
@@ -107,18 +144,21 @@ class User extends Authenticatable
             return true;
         }
 
-        return $this->poRoleAssignments()->where('stage', $stage->value)->exists();
+        // Legacy PO assignments remain available in their original workspace.
+        return $this->assignedRoles()->count() === 1
+            && $this->activeRole()?->id === $this->role_id
+            && $this->poRoleAssignments()->where('stage', $stage->value)->exists();
     }
 
     public function hasRole(string $role): bool
     {
-        return $this->role?->slug === $role;
+        return $this->activeRole()?->slug === $role;
     }
 
     /** @param list<string> $roles */
     public function hasAnyRole(array $roles): bool
     {
-        return $this->role !== null && in_array($this->role->slug, $roles, true);
+        return in_array($this->activeRole()?->slug, $roles, true);
     }
 
     /** Priority level is a Budget Request and payment concern; other roles never see it. */

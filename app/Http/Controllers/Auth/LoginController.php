@@ -32,6 +32,7 @@ class LoginController extends Controller
         }
 
         $request->session()->regenerate();
+        $request->session()->forget('workspace_role_id');
 
         return redirect()->intended(route('dashboard'));
     }

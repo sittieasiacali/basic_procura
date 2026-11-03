@@ -119,7 +119,8 @@ class RequestRevisionsTest extends TestCase
         $preparer = $this->user(RoleSlug::PurchasingTeam);
 
         $this->actingAs($preparer)->get(route('purchase-requests.show', $request))->assertOk()->assertSee('Proceed without PO');
-        $this->post(route('purchase-orders.skip', $request), ['remarks' => 'Small cash purchase.'])->assertSessionHasNoErrors();
+        $this->post(route('purchase-orders.skip', $request), ['remarks' => 'Small cash purchase.'])->assertSessionHasNoErrors()
+            ->assertSessionHas('workflow_submission_notice', fn ($notice) => $notice['requests'][0]['code'] === $request->request_number);
         $request->refresh();
         $this->assertNotNull($request->purchase_order_skipped_at);
         $this->assertNull($request->purchaseOrder);
