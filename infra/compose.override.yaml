@@ -1,0 +1,20 @@
+# Automatically loaded by `docker compose` when commands run from this folder.
+# The exported production bundle intentionally does not include this file.
+services:
+  database:
+    # Source checkouts may run on a new PC that does not have the database
+    # image yet. Exported production bundles keep compose.yaml's offline
+    # `pull_policy: never` behavior because this override is not exported.
+    pull_policy: missing
+  app:
+    build:
+      context: ..
+      dockerfile: infra/docker/Dockerfile
+      target: app
+    environment:
+      PROCURA_RUN_MIGRATIONS: "1"
+  web:
+    build:
+      context: ..
+      dockerfile: infra/docker/Dockerfile
+      target: web

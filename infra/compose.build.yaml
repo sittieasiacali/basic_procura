@@ -1,0 +1,12 @@
+# Build-time override only. Never needed by the exported deployment bundle.
+services:
+  app:
+    build:
+      context: ${PROCURA_SOURCE_CONTEXT:-..}
+      dockerfile: infra/docker/Dockerfile
+      target: app
+  web:
+    build:
+      context: ${PROCURA_SOURCE_CONTEXT:-..}
+      dockerfile: infra/docker/Dockerfile
+      target: web

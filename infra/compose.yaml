@@ -1,0 +1,122 @@
+name: ${COMPOSE_PROJECT_NAME:-procura}
+
+x-app: &app
+  image: ${PROCURA_APP_IMAGE:-procura/app:local}
+  pull_policy: never
+  restart: unless-stopped
+  init: false
+  env_file: runtime.env
+  environment:
+    APP_KEY_FILE: /run/secrets/app_key
+    DB_PASSWORD_FILE: /run/secrets/db_password
+    MAIL_PASSWORD_FILE: /run/secrets/smtp_password
+    DB_HOST: database
+    DB_PORT: "3306"
+  secrets: [app_key, db_password, smtp_password]
+  read_only: true
+  security_opt: [no-new-privileges:true]
+  volumes:
+    - uploads:/var/www/html/storage/app
+  tmpfs:
+    - /tmp:uid=33,gid=33,mode=1777
+    - /var/www/html/bootstrap/cache:uid=33,gid=33,mode=0775
+    - /var/www/html/storage/framework:uid=33,gid=33,mode=0775
+    - /var/www/html/storage/logs:uid=33,gid=33,mode=0775
+  depends_on:
+    database:
+      condition: service_healthy
+
+services:
+  database:
+    image: ${PROCURA_DB_IMAGE:-mariadb:10.11}
+    pull_policy: never
+    restart: unless-stopped
+    environment:
+      MARIADB_DATABASE: ${DB_DATABASE:-basic_procura}
+      MARIADB_USER: ${DB_USERNAME:-procura}
+      MARIADB_PASSWORD_FILE: /run/secrets/db_password
+      MARIADB_ROOT_PASSWORD_FILE: /run/secrets/db_root_password
+    secrets: [db_password, db_root_password]
+    volumes:
+      - database:/var/lib/mysql
+    healthcheck:
+      test: [CMD, healthcheck.sh, --connect, --innodb_initialized]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
+
+  app:
+    <<: *app
+    healthcheck:
+      test: [CMD, php, /usr/local/lib/procura/health.php, app]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 30s
+
+  worker:
+    <<: *app
+    command: [php, artisan, queue:work, --sleep=3, --tries=3, --timeout=60, --max-time=3600, --no-interaction]
+    stop_grace_period: 90s
+    depends_on:
+      app:
+        condition: service_healthy
+    healthcheck:
+      test: [CMD, php, /usr/local/lib/procura/health.php, worker]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+
+  scheduler:
+    <<: *app
+    command: [php, artisan, schedule:work, --no-interaction]
+    stop_grace_period: 70s
+    depends_on:
+      app:
+        condition: service_healthy
+    healthcheck:
+      test: [CMD, php, /usr/local/lib/procura/health.php, scheduler]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+
+  web:
+    image: ${PROCURA_WEB_IMAGE:-procura/web:local}
+    pull_policy: never
+    restart: unless-stopped
+    read_only: true
+    security_opt: [no-new-privileges:true]
+    ports:
+      - "${HTTP_BIND:-127.0.0.1}:${HTTP_PORT:-8080}:8080"
+    volumes:
+      - uploads:/var/www/html/storage/app:ro
+    tmpfs:
+      - /tmp:uid=101,gid=101,mode=1777
+      - /var/cache/nginx:uid=101,gid=101,mode=0700
+    depends_on:
+      app:
+        condition: service_healthy
+    healthcheck:
+      test: [CMD, wget, -q, --spider, http://127.0.0.1:8080/healthz]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+
+volumes:
+  database:
+    name: ${COMPOSE_PROJECT_NAME:-procura}_database
+  uploads:
+    name: ${COMPOSE_PROJECT_NAME:-procura}_uploads
+
+secrets:
+  app_key:
+    file: ./secrets/app_key.txt
+  db_password:
+    file: ./secrets/db_password.txt
+  db_root_password:
+    file: ./secrets/db_root_password.txt
+  smtp_password:
+    file: ./secrets/smtp_password.txt

@@ -1,0 +1,45 @@
+/* ASI Finance light-mode reference tokens.
+   No selectors are styled automatically. Map these into the current theme.
+   Font files are NOT loaded by this file. Preserve existing dark-mode tokens. */
+:root {
+  --asi-navy: #160D76;
+  --asi-blue: #4094D9;
+  --asi-orange: #F08530;
+  --asi-powder: #FFFFFA;
+  --asi-black: #222222;
+
+  --asi-background: var(--asi-powder);
+  --asi-surface: var(--asi-powder);
+  --asi-text: var(--asi-black);
+  --asi-heading: var(--asi-navy);
+  --asi-primary: var(--asi-navy);
+  --asi-on-primary: var(--asi-powder);
+  --asi-sidebar: var(--asi-navy);
+  --asi-sidebar-text: var(--asi-powder);
+  --asi-sidebar-selected: rgb(64 148 217 / 20%);
+  --asi-accent: var(--asi-blue);
+  --asi-on-accent: var(--asi-black);
+  --asi-highlight: var(--asi-orange);
+  --asi-on-highlight: var(--asi-black);
+  --asi-recommended-surface: #FEF0E2;
+  --asi-information-surface: #ECF5FC;
+  --asi-muted-text: #5D616B;
+  --asi-border: #DEDFE8;
+  --asi-control-border: #858493;
+  --asi-focus: var(--asi-navy);
+  --asi-focus-on-dark: var(--asi-powder);
+
+  --asi-font-heading: 'Cardo', Georgia, serif;
+  --asi-font-body: 'Open Sans', Arial, sans-serif;
+  --asi-space-1: 0.25rem;
+  --asi-space-2: 0.5rem;
+  --asi-space-3: 0.75rem;
+  --asi-space-4: 1rem;
+  --asi-space-6: 1.5rem;
+  --asi-space-8: 2rem;
+  --asi-space-12: 3rem;
+  --asi-radius-control: 0.5rem;
+  --asi-radius-card: 0.75rem;
+  --asi-shadow-card: 0 2px 10px rgb(22 13 118 / 5%);
+  --asi-sidebar-width: 16rem;
+}
