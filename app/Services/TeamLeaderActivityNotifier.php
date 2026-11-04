@@ -6,8 +6,10 @@ use App\Enums\RoleSlug;
 use App\Models\PurchaseRequest;
 use App\Models\User;
 use App\Notifications\TeamLeaderRequestActivity;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Notification;
+use Illuminate\Support\Facades\Schema;
 
 class TeamLeaderActivityNotifier
 {
@@ -34,13 +36,21 @@ class TeamLeaderActivityNotifier
     {
         // Some workflow queues load only the requestor's name. Read the actual
         // recipient fields rather than relying on a partially loaded relation.
-        $owner = User::query()->with(['role:id,slug', 'roles:id,slug'])->find($purchaseRequest->requestor_id, [
+        $owner = User::query()->with('role:id,slug')->find($purchaseRequest->requestor_id, [
             'id', 'role_id', 'om_notification_email', 'smt_notification_email',
         ]);
         // Recipient eligibility follows assigned roles, independent of the
         // account's primary role or currently selected workspace.
-        if (! $owner || (! $owner->hasAssignedRole(RoleSlug::Requestor->value)
-            && ! $owner->hasAssignedRole(RoleSlug::TeamLeader->value))) {
+        // Query secondary assignments directly to support servers whose User
+        // model predates the multi-role relationship methods.
+        $requestorRoles = [RoleSlug::Requestor->value, RoleSlug::TeamLeader->value];
+        $eligible = $owner && (in_array($owner->role?->slug, $requestorRoles, true)
+            || (Schema::hasTable('role_user') && DB::table('role_user')
+                ->join('roles', 'roles.id', '=', 'role_user.role_id')
+                ->where('role_user.user_id', $owner->id)
+                ->whereIn('roles.slug', $requestorRoles)
+                ->exists()));
+        if (! $eligible) {
             return [];
         }
 
