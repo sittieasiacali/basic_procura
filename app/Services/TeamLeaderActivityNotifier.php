@@ -34,10 +34,13 @@ class TeamLeaderActivityNotifier
     {
         // Some workflow queues load only the requestor's name. Read the actual
         // recipient fields rather than relying on a partially loaded relation.
-        $owner = User::query()->with('role:id,slug')->find($purchaseRequest->requestor_id, [
+        $owner = User::query()->with(['role:id,slug', 'roles:id,slug'])->find($purchaseRequest->requestor_id, [
             'id', 'role_id', 'om_notification_email', 'smt_notification_email',
         ]);
-        if (! $owner?->hasAnyRole([RoleSlug::Requestor->value, RoleSlug::TeamLeader->value])) {
+        // Recipient eligibility follows assigned roles, independent of the
+        // account's primary role or currently selected workspace.
+        if (! $owner || (! $owner->hasAssignedRole(RoleSlug::Requestor->value)
+            && ! $owner->hasAssignedRole(RoleSlug::TeamLeader->value))) {
             return [];
         }
 
