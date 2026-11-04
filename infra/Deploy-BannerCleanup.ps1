@@ -36,8 +36,10 @@ if ($homeTemplate.Contains($include)) {
     $homeTemplate = Replace-Once $homeTemplate $include ("@unless(request()->routeIs('purchase-requests.show'))`r`n            " + $include + "`r`n        @endunless") 'workflow banner include'
 } elseif ($homeTemplate.Contains($inline) -or $homeTemplate.Contains("@if(session('workflow_request_code') && ! request()->routeIs('purchase-requests.show'))")) {
     $homeTemplate = Replace-Once $homeTemplate $inline "@if(session('workflow_request_code') && ! request()->routeIs('purchase-requests.show'))" 'inline workflow banner'
-} else {
+} elseif ($homeTemplate -match 'workflow_request_code|workflow_next_stage|workflow-handoff') {
     throw 'Unrecognized workflow banner in home.blade.php. No templates have been changed.'
+} else {
+    Write-Host 'No request/stage banner in this layout; applying the screening receipt cleanup.'
 }
 $homeTemplate = Replace-Once $homeTemplate "@if(session('success'))" "@if(session('success') && ! session('workflow_submission_notice'))" 'success banner'
 $changes[$homeTemplatePath] = $homeTemplate
