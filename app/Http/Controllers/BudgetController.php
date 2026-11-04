@@ -396,7 +396,7 @@ class BudgetController extends Controller
     /** Inside the dashboard action modal, close the modal instead of loading the next page in it. */
     private function finished(Request $request, RedirectResponse $redirect, string $message): RedirectResponse
     {
-        return ($request->boolean('_embedded') ? redirect()->route('workflow.done') : $redirect)
+        return ($request->boolean('_embedded') ? redirect()->away(route('workflow.done', [], false)) : $redirect)
             ->with('success', $message);
     }
 

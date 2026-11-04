@@ -48,7 +48,8 @@ class CanvassingController extends Controller
             );
         });
 
-        return ($request->boolean('_embedded') ? redirect()->route('workflow.done') : redirect()->route('purchase-requests.show', $purchaseRequest))
+        // Preserve the browser's HTTPS origin even when a proxy forwards HTTP to PHP.
+        return ($request->boolean('_embedded') ? redirect()->away(route('workflow.done', [], false)) : redirect()->route('purchase-requests.show', $purchaseRequest))
             ->with('success', $purchaseRequest->request_number.': submitted without adding a quotation.');
     }
 
@@ -307,8 +308,9 @@ class CanvassingController extends Controller
         $screeningQuotationSaved = $saveResult['is_screening'];
 
         // Submitting the recommendation hands the request to the President; that page closes to a receipt.
+        // Use a relative Location so HTTPS does not depend on proxy scheme detection.
         if (! $screeningQuotationSaved) {
-            return ($request->boolean('_embedded') ? redirect()->route('workflow.done') : redirect()->route('purchase-requests.show', $purchaseRequest))
+            return ($request->boolean('_embedded') ? redirect()->away(route('workflow.done', [], false)) : redirect()->route('purchase-requests.show', $purchaseRequest))
                 ->with('success', "Quotation {$quotationReferences} saved and submitted for President approval.");
         }
 

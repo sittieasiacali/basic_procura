@@ -223,7 +223,7 @@ class ScreeningController extends Controller
         }
 
         // Available stock completes screening and closes the action iframe.
-        return ($request->boolean('_embedded') ? redirect()->route('workflow.done') : redirect()->route('purchase-requests.show', $purchaseRequest))
+        return ($request->boolean('_embedded') ? redirect()->away(route('workflow.done', [], false)) : redirect()->route('purchase-requests.show', $purchaseRequest))
             ->with('success', $purchaseRequest->request_number.': screening decision recorded.');
     }
 

@@ -223,7 +223,7 @@ class PresidentApprovalController extends Controller
         });
 
         // Land on the request, which closes to a receipt naming the next stage.
-        return ($request->boolean('_embedded') ? redirect()->route('workflow.done') : redirect()->route('purchase-requests.show', $purchaseRequest))
+        return ($request->boolean('_embedded') ? redirect()->away(route('workflow.done', [], false)) : redirect()->route('purchase-requests.show', $purchaseRequest))
             ->with('success', $validated['decision'] === 'ACKNOWLEDGE'
                 ? 'Request acknowledged without supplier pricing and returned to Purchasing for follow-up.'
                 : 'President decision recorded.');
