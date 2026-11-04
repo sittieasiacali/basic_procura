@@ -218,7 +218,9 @@
             }
         }
         $requestStageReceipt = $handoffReceipt === null ? \App\Support\RequestStageReceipt::for($purchaseRequest, auth()->user()) : null;
-        if ($requestStageReceipt) {
+        // Screening submissions are confirmed by the popup. Keep the request
+        // details visible instead of replacing them with a second confirmation.
+        if ($requestStageReceipt && ! in_array($requestStageReceipt['action'], ['SUBMITTED_FOR_SCREENING', 'RESUBMITTED_FOR_SCREENING'], true)) {
             // Like the PO stages, the closed page shows only the hand-off message.
             $handoffReceipt = ['title' => $requestStageReceipt['title'], 'message' => $requestStageReceipt['message']];
         }

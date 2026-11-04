@@ -52,7 +52,7 @@
 
     <main class="procura-home-main">
         @include('partials.workflow-handoff')
-        @if(session('success'))
+        @if(session('success') && ! session('workflow_submission_notice'))
             <div class="alert alert-success alert-dismissible fade show" role="status">
                 {{ session('success') }}
                 <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Dismiss"></button>

@@ -48,7 +48,10 @@ class DirectScreeningSubmissionTest extends TestCase
             $this->assertSame('SUBMITTED_FOR_SCREENING', $request->approvals()->sole()->action);
             $this->assertSame('REQUESTOR_SUBMISSION', $request->approvals()->sole()->approval_level);
             $this->get(route('purchase-requests.show', $request))->assertOk()
-                ->assertSee('Submitted to IT / Premises screening.')
+                ->assertDontSee('You signed and submitted this request')
+                ->assertDontSee('data-po-handoff-confirmation', false)
+                ->assertSee('purchase-request-page-header', false)
+                ->assertSee('id="workflow-submission-data"', false)
                 ->assertDontSee('Submit for OM Approval');
         }
         Notification::assertSentOnDemandTimes(WorkflowHandoffEmail::class, 4);
