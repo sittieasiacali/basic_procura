@@ -1,11 +1,14 @@
 [CmdletBinding()]
 param(
-    [string]$ProjectRoot = (Split-Path $PSScriptRoot -Parent),
+    [string]$ProjectRoot = '',
     [string]$PhpPath = 'C:\xampp\php\php.exe',
     [switch]$ValidateOnly
 )
 
 $ErrorActionPreference = 'Stop'
+if ([string]::IsNullOrWhiteSpace($ProjectRoot)) {
+    $ProjectRoot = Split-Path -Parent (Split-Path -Parent $MyInvocation.MyCommand.Path)
+}
 $ProjectRoot = (Resolve-Path -LiteralPath $ProjectRoot).Path
 $utf8 = New-Object System.Text.UTF8Encoding($false)
 $changes = [ordered]@{}
