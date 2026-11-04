@@ -849,15 +849,40 @@ function initializeWorkflowActionModal() {
 
     const modal = window.bootstrap.Modal.getOrCreateInstance(modalElement);
     let opened = false;
+    let completionPending = false;
+
+    const closeCompletedAction = () => {
+        if (completionPending) modal.hide();
+    };
+    // Bootstrap ignores hide() during its opening animation. Retry once the
+    // action window has finished opening if a very fast submission completed.
+    modalElement.addEventListener('shown.bs.modal', closeCompletedAction);
 
     frame.addEventListener('load', () => {
         if (loading) loading.hidden = true;
         frame.removeAttribute('aria-busy');
         try {
-            const code = frame.contentDocument?.querySelector('meta[name="workflow-request-code"]')?.content;
+            const document = frame.contentDocument;
+            const code = document?.querySelector('meta[name="workflow-request-code"]')?.content;
             if (requestCode && code) {
                 requestCode.textContent = code;
                 requestCode.hidden = false;
+            }
+            // A completed POST can reach the receipt even when its inline
+            // closing script fails. Let the parent finish the handoff as well.
+            if (opened && document?.querySelector('meta[name="workflow-completed"][content="true"]')) {
+                const data = document.getElementById('workflow-completion-data');
+                try {
+                    const result = data ? JSON.parse(data.textContent) : null;
+                    if (result?.notice) {
+                        sessionStorage.setItem('asi-procura:submission', JSON.stringify(result.notice));
+                        sessionStorage.removeItem('asi-procura:flash');
+                    } else if (result?.message) {
+                        sessionStorage.setItem('asi-procura:flash', result.message);
+                    }
+                } catch (_) { /* A storage failure must not leave the action window stuck. */ }
+                completionPending = true;
+                closeCompletedAction();
             }
         } catch (_) {
             // Keep the dialog usable when its destination cannot be inspected.
@@ -878,6 +903,7 @@ function initializeWorkflowActionModal() {
                 openPage.hidden = false;
             }
             opened = true;
+            completionPending = false;
             modal.show();
         });
     });
@@ -898,6 +924,7 @@ function initializeWorkflowActionModal() {
             expand.textContent = 'Expand';
         }
         opened = false;
+        completionPending = false;
         window.location.reload();
     });
 }

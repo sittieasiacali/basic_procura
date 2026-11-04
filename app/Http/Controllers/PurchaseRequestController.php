@@ -304,11 +304,15 @@ class PurchaseRequestController extends Controller
         $purchaseOrderDocument = $purchaseRequest->purchaseOrder
             ? PurchaseOrderDocumentData::from($purchaseRequest)
             : null;
-        $inventoryItems = InventoryItem::query()
-            ->visibleToTeam($request->user())
-            ->where('status', 'LOGGED')
-            ->where('quantity', '>', 0)
-            ->orderBy('description')->get();
+        // The stock picker is only rendered while this user can screen stock.
+        // Quotation entry and later stages do not need the inventory catalogue.
+        $inventoryItems = $request->user()->can('screen', $purchaseRequest)
+            ? InventoryItem::query()
+                ->visibleToTeam($request->user())
+                ->where('status', 'LOGGED')
+                ->where('quantity', '>', 0)
+                ->orderBy('description')->get()
+            : collect();
 
         $processedPurchaseOrders = $purchaseRequest->purchaseOrder?->isProcessed()
             ? collect([$purchaseRequest->purchaseOrder])

@@ -215,7 +215,14 @@ class ScreeningController extends Controller
             ]);
         }
 
-        // Both decisions hand the request on; the screener's page closes to a receipt.
+        // Unavailable stock opens quotation entry for the same screener. Keep
+        // the dashboard iframe open instead of closing it and reloading its queues.
+        if ($validated['decision'] === 'UNAVAILABLE') {
+            return redirect()->to(route('purchase-requests.show', $purchaseRequest).'#canvassing-actions')
+                ->with('success', 'Inventory marked unavailable. You can now add quotations.');
+        }
+
+        // Available stock completes screening and closes the action iframe.
         return ($request->boolean('_embedded') ? redirect()->route('workflow.done') : redirect()->route('purchase-requests.show', $purchaseRequest))
             ->with('success', $purchaseRequest->request_number.': screening decision recorded.');
     }

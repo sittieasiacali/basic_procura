@@ -31,18 +31,20 @@ class WorkflowSubmissionPopupTest extends TestCase
         ])->assertRedirect(route('workflow.done'))->assertSessionHas('workflow_submission_notice', fn ($notice) => count($notice['requests']) === 1 && $notice['requests'][0]['code'] === $request->request_number
             && str_contains($notice['requests'][0]['url'], 'preview=1')
             && $notice['stage'] === 'Sent to President review');
-        $this->get(route('workflow.done'))->assertOk()->assertSee('asi-procura:submission')->assertSee($request->request_number);
+        $this->get(route('workflow.done'))->assertOk()->assertSee('asi-procura:submission')->assertSee($request->request_number)
+            ->assertSee('name="workflow-completed" content="true"', false)
+            ->assertSee('id="workflow-completion-data"', false);
         $this->get(route('dashboard'))->assertOk()->assertSee('View request')->assertSee('Cancel');
         $this->assertSame(PurchaseRequestStatus::ForSupplierApproval, $request->fresh()->status);
     }
 
-    public function test_screening_and_president_actions_have_the_same_popup_payload(): void
+    public function test_unavailable_screening_stays_open_and_president_handoff_has_a_popup(): void
     {
         $actor = $this->user(RoleSlug::ItStaff);
         $request = $this->requestFor($actor, PurchaseRequestStatus::ForItScreening);
         $this->actingAs($actor)->post(route('request-flow.screening.store', $request), [
             'decision' => 'UNAVAILABLE', ...$this->workflowSignature($actor),
-        ])->assertSessionHasNoErrors()->assertSessionHas('workflow_submission_notice', fn ($notice) => $notice['requests'][0]['code'] === $request->request_number && str_contains($notice['stage'], 'Screening completed'));
+        ])->assertSessionHasNoErrors()->assertSessionMissing('workflow_submission_notice');
 
         $president = $this->user(RoleSlug::President);
         $request->update(['status' => PurchaseRequestStatus::ForSupplierApproval]);

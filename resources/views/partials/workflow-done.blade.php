@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Saved &middot; {{ config('app.name') }}</title>
     <meta name="workflow-request-code" content="{{ session('workflow_request_code') }}">
+    <meta name="workflow-completed" content="true">
 </head>
 <body style="font-family: 'Open Sans', Arial, sans-serif; color: #160d76; padding: 2rem; text-align: center;">
     @if(session('workflow_request_code'))
@@ -13,6 +14,15 @@
     @endif
     <p>{{ session('success', 'Saved.') }}</p>
     <p><a href="{{ route('dashboard') }}">Back to dashboard</a></p>
+    @php
+        $completionData = [
+            'notice' => session('workflow_submission_notice'),
+            'message' => session('workflow_request_code')
+                ? trim(session('workflow_request_code').' · '.session('workflow_next_stage').' '.session('success', 'Saved.'))
+                : session('success', 'Saved.'),
+        ];
+    @endphp
+    <script type="application/json" id="workflow-completion-data">@json($completionData)</script>
     <script>
         // Hand the message to the dashboard, then close the action modal (closing reloads the dashboard).
         (function () {

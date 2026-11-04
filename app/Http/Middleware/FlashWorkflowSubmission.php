@@ -28,6 +28,12 @@ class FlashWorkflowSubmission
             return $response;
         }
 
+        // This decision opens quotation entry for the same screener; a success
+        // popup would close the iframe before they can enter their quotations.
+        if ($request->routeIs('request-flow.screening.store') && $request->input('decision') === 'UNAVAILABLE') {
+            return $response;
+        }
+
         $requests = $this->requests($request);
         if ($requests->isEmpty()) {
             return $response;

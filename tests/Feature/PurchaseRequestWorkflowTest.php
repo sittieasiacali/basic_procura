@@ -864,11 +864,36 @@ class PurchaseRequestWorkflowTest extends TestCase
         $this->assertSame(PurchaseRequestStatus::Draft, $draft->fresh()->status);
     }
 
+    public function test_embedded_inventory_unavailable_opens_quotation_entry_without_reloading_dashboard(): void
+    {
+        foreach (['IT' => RoleSlug::ItStaff, 'PREMISES' => RoleSlug::PremisesStaff] as $team => $role) {
+            $request = $this->screeningRequest($team);
+            $staff = $this->user($role);
+            $this->actingAs($staff);
+            if ($team === 'PREMISES') {
+                $this->post(route('request-flow.claim', $request))->assertRedirect();
+            }
+
+            $this->post(route('request-flow.screening.store', $request), [
+                ...$this->workflowSignature($staff),
+                'decision' => 'UNAVAILABLE',
+                '_embedded' => 1,
+            ])->assertSessionHasNoErrors()
+                ->assertSessionMissing('workflow_submission_notice')
+                ->assertRedirect(route('purchase-requests.show', $request).'#canvassing-actions');
+
+            $this->assertSame(PurchaseRequestStatus::ForProcurement, $request->fresh()->status);
+            $this->get(route('purchase-requests.show', $request))->assertOk()
+                ->assertViewHas('inventoryItems', fn ($items) => $items->isEmpty())
+                ->assertSee('id="canvassing-actions"', false);
+        }
+    }
+
     public function test_inventory_unavailable_modal_submission_returns_json(): void
     {
         $request = $this->screeningRequest('IT');
         $staff = $this->user(RoleSlug::ItStaff);
-        $this->actingAs($staff)->post(route('request-flow.claim', $request))->assertRedirect();
+        $this->actingAs($staff);
 
         // The Inventory Unavailable modal submits in the background and expects JSON back.
         $this->postJson(route('request-flow.screening.store', $request), [
