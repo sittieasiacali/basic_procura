@@ -15,7 +15,7 @@ class CampaignSeeder extends Seeder
         ];
 
         foreach ($campaigns as $name => $accountNumber) {
-            Campaign::query()->updateOrCreate(
+            Campaign::query()->firstOrCreate(
                 ['name' => $name],
                 ['account_number' => $accountNumber, 'is_active' => true],
             );

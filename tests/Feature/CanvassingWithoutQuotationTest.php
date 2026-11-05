@@ -159,7 +159,7 @@ class CanvassingWithoutQuotationTest extends TestCase
                     'warranty' => '1 year', 'quotation_url' => 'https://example.test/quotation',
                     'bank_details' => 'Supplier payment details', 'recommended' => 1,
                 ]],
-            ])->assertRedirect(route('workflow.done'))->assertSessionHasNoErrors()->assertSessionHas('success');
+            ])->assertRedirect(route('workflow.done'))->assertHeader('Location', route('workflow.done', [], false))->assertSessionHasNoErrors()->assertSessionHas('success');
         $this->assertSame(PurchaseRequestStatus::ForSupplierApproval, $request->fresh()->status);
         $quotation = $request->quotations()->firstOrFail();
         $president = $this->user(RoleSlug::President);

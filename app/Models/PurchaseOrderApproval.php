@@ -32,14 +32,7 @@ class PurchaseOrderApproval extends Model
             return false;
         }
 
-        $prefix = 'data:image/png;base64,';
-        if (! str_starts_with($this->signature_data, $prefix)) {
-            return false;
-        }
-
-        $image = base64_decode(substr($this->signature_data, strlen($prefix)), true);
-
-        return $image !== false && strlen($image) >= 64;
+        return \App\Support\WorkflowSignature::isValidImage($this->signature_data);
     }
     public function purchaseOrder(): BelongsTo
     {

@@ -363,6 +363,17 @@ class BudgetMakerSelectionTest extends TestCase
         $this->actingAs($this->user(RoleSlug::Requestor))->post(route('budget.store'), $payload)->assertForbidden();
     }
 
+    public function test_register_export_treats_formula_like_supplier_names_as_text(): void
+    {
+        [$maker, $requests, , $source] = $this->fixture(1);
+        $this->prepareAll($maker, $requests, $source);
+        $requests[0]->purchaseOrder->supplier->update(['name' => '=1+1']);
+        $csv = $this->actingAs($this->user(RoleSlug::PurchasingTeam))
+            ->get(route('budget.export', ['stage' => 'finance', 'maker_only' => 1]))
+            ->assertOk()->streamedContent();
+        $this->assertStringContainsString("'=1+1", $csv);
+    }
+
     public function test_register_is_split_by_stage_and_exports_the_list(): void
     {
         [$maker, $requests, , $source] = $this->fixture(2);

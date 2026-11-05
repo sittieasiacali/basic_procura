@@ -70,7 +70,7 @@ class BudgetRequestExportController extends Controller
 
             foreach ($budgetRequests as $budgetRequest) {
                 $orders = $budgetRequest->lines->pluck('purchaseOrder')->filter()->unique('id');
-                fputcsv($out, [
+                $row = [
                     $budgetRequest->budget_request_number,
                     $budgetRequest->stage()[0],
                     $orders->pluck('po_number')->join('; '),
@@ -90,7 +90,8 @@ class BudgetRequestExportController extends Controller
                     collect($budgetRequest->lines->all())->map(fn ($line) => $line->purchaseOrder?->purchase_request_id)
                         ->push($budgetRequest->purchase_request_id)->filter()->unique()
                         ->map(fn ($id) => $workflowRemarks->textForRequest((int) $id))->filter()->join("\n\n"),
-                ]);
+                ];
+                fputcsv($out, array_map(fn ($value) => preg_match('/^[=+@\-\t\r]/', (string) $value) ? "'".$value : $value, $row));
             }
 
             fclose($out);

@@ -12,9 +12,12 @@ use Illuminate\Database\Seeder;
 
 class RoleWorkflowSampleSeeder extends Seeder
 {
+    use \Database\Seeders\Concerns\RequiresDemoEnvironment;
+
     /** Create five idempotent queue samples for each active workflow stage. */
     public function run(): void
     {
+        $this->requireDemoEnvironment();
         $this->call([RoleSeeder::class, CampaignSeeder::class, SampleUserSeeder::class]);
 
         $roles = Role::query()->pluck('id', 'slug');

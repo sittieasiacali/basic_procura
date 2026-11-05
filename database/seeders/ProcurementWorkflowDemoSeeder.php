@@ -26,8 +26,11 @@ use Illuminate\Support\Facades\Storage;
 
 class ProcurementWorkflowDemoSeeder extends Seeder
 {
+    use \Database\Seeders\Concerns\RequiresDemoEnvironment;
+
     public function run(): void
     {
+        $this->requireDemoEnvironment();
         $this->call([RoleSeeder::class, CampaignSeeder::class, SampleUserSeeder::class]);
 
         $users = User::query()

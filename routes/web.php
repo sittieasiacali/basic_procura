@@ -3,6 +3,7 @@
 use App\Http\Controllers\Admin\AccountController;
 use App\Http\Controllers\Admin\CampaignController;
 use App\Http\Controllers\Admin\PurchaseOrderWorkflowAssignmentController;
+use App\Http\Controllers\Admin\SystemHealthController;
 use App\Http\Controllers\AttachmentController;
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\Auth\PasswordChangeController;
@@ -210,6 +211,7 @@ Route::prefix('purchase-orders')
             Route::resource('campaigns', CampaignController::class)->except(['destroy']);
             Route::patch('/campaigns/{campaign}/status', [CampaignController::class, 'status'])
                 ->name('campaigns.status');
+            Route::get('/system-health', SystemHealthController::class)->name('system-health');
         });
 
     Route::post('/logout', [LoginController::class, 'destroy'])->name('logout');

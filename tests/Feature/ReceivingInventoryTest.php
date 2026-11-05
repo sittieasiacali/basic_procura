@@ -540,7 +540,7 @@ class ReceivingInventoryTest extends TestCase
     {
         return [
             'signature_name' => $user->name,
-            'signature_data' => 'data:image/png;base64,'.base64_encode(str_repeat('signature-stroke', 12)),
+            'signature_data' => $this->signatureImage(),
         ];
     }
 

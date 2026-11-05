@@ -129,6 +129,12 @@
             'active' => request()->routeIs('admin.campaigns.*'),
             'icon' => 'campaign',
         ];
+        $primaryNavigation[] = [
+            'label' => 'System Health',
+            'url' => route('admin.system-health'),
+            'active' => request()->routeIs('admin.system-health'),
+            'icon' => 'shield-check',
+        ];
     }
 
     $navbarNotifications = $currentUser->unreadNotifications()->latest()->limit(6)->get();

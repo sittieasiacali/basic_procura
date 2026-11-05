@@ -17,9 +17,14 @@ class DatabaseSeeder extends Seeder
         $this->call([
             RoleSeeder::class,
             CampaignSeeder::class,
-            SampleUserSeeder::class,
-            ProcurementWorkflowDemoSeeder::class,
-            RoleWorkflowSampleSeeder::class,
         ]);
+
+        if (app()->environment('local', 'testing')) {
+            $this->call([
+                SampleUserSeeder::class,
+                ProcurementWorkflowDemoSeeder::class,
+                RoleWorkflowSampleSeeder::class,
+            ]);
+        }
     }
 }

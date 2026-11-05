@@ -177,7 +177,7 @@ class ScreeningAutoRoutingTest extends TestCase
         $owner = $request->requestor;
         $this->actingAs($owner)->post(route('purchase-requests.submit', $request), [
             'signature_name' => $owner->name,
-            'signature_data' => 'data:image/png;base64,'.base64_encode(str_repeat('signature-stroke', 12)),
+            'signature_data' => $this->signatureImage(),
         ])->assertSessionHasNoErrors();
     }
 

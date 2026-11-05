@@ -7,6 +7,11 @@ use Illuminate\Foundation\Testing\TestCase as BaseTestCase;
 
 abstract class TestCase extends BaseTestCase
 {
+    protected function signatureImage(): string
+    {
+        return 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/l9sAAAAASUVORK5CYII=';
+    }
+
     /**
      * The signature fields a user submits with a signed workflow action.
      *
@@ -16,7 +21,7 @@ abstract class TestCase extends BaseTestCase
     {
         return [
             'signature_name' => $user->name,
-            'signature_data' => 'data:image/png;base64,'.base64_encode(str_repeat('signature-stroke', 12)),
+            'signature_data' => $this->signatureImage(),
         ];
     }
 }

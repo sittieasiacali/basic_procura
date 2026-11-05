@@ -11,8 +11,11 @@ use Illuminate\Support\Facades\Hash;
 
 class SampleUserSeeder extends Seeder
 {
+    use \Database\Seeders\Concerns\RequiresDemoEnvironment;
+
     public function run(): void
     {
+        $this->requireDemoEnvironment();
         $password = Hash::make((string) env('DEMO_USER_PASSWORD', 'Procura123!'));
 
         $users = [

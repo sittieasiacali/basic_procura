@@ -14,10 +14,10 @@ return [
         'address' => env('PROCUREMENT_COMPANY_ADDRESS', 'Seneca Plaza, E. Rodriguez Sr. Ave, New Manila, Quezon City, Metro Manila'),
         'logo' => 'assets/images/Allianz_logo.png',
     ],
-    /* Fixed signatories printed on every Budget Request transaction sheet. */
+    /* Optional printed labels; recorded transaction actors are the default. */
     'budget_request_signatories' => [
-        'requested_by' => env('PROCUREMENT_BR_REQUESTED_BY', "Sir Jaden and Ma'am Cherry"),
-        'approved_by' => env('PROCUREMENT_BR_APPROVED_BY', "Ma'am Weng / Sir Pat"),
+        'requested_by' => env('PROCUREMENT_BR_REQUESTED_BY'),
+        'approved_by' => env('PROCUREMENT_BR_APPROVED_BY'),
     ],
     /* The verified spreadsheet layout is shared by the saved transaction options. */
     'purchase_order_templates' => [
@@ -26,6 +26,11 @@ return [
             'CASH' => 'bank-deposit-spreadsheet',
             'CHECK' => 'bank-deposit-spreadsheet',
         ],
+    ],
+    /* System Health page and daily alert (php artisan health:check --notify). */
+    'health' => [
+        'stuck_days' => (int) env('HEALTH_STUCK_DAYS', 3),
+        'alert_email' => env('HEALTH_ALERT_EMAIL') ?: null,
     ],
     'units' => [
         'pc' => 'Piece (pc)', 'set' => 'Set (set)', 'pair' => 'Pair (pair)', 'pack' => 'Pack (pack)',

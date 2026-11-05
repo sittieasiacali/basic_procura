@@ -6,6 +6,7 @@ use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Schedule;
 use Illuminate\Support\Facades\Validator;
 
 Artisan::command('inspire', function () {
@@ -104,3 +105,7 @@ Artisan::command('budget:combine-finalized {--dry-run : Only list what would be 
 
     return Command::SUCCESS;
 })->purpose('Combine Budget Requests finalized together into one group BR.');
+
+// Daily System Health alert; emails HEALTH_ALERT_EMAIL only when a check is red.
+// Requires the Laravel scheduler (php artisan schedule:run every minute, e.g. via Windows Task Scheduler).
+Schedule::command('health:check --notify')->dailyAt('07:00');

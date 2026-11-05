@@ -218,6 +218,6 @@ class PresidentApprovalQueueTest extends TestCase
 
     private function signatureData(): string
     {
-        return 'data:image/png;base64,'.base64_encode(str_repeat('signature-stroke', 12));
+        return $this->signatureImage();
     }
 }

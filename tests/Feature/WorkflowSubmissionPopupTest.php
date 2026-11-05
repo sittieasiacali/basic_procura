@@ -28,7 +28,7 @@ class WorkflowSubmissionPopupTest extends TestCase
         $this->actingAs($actor)->post(route('canvassing.quotations.store', $request), [
             'quotation_mode' => 'manual', 'quotations' => [], 'confirmed_without_quotation' => 1, '_embedded' => 1,
             'purchase_request_id' => $this->requestFor($this->user(RoleSlug::Requestor), PurchaseRequestStatus::Draft)->id,
-        ])->assertRedirect(route('workflow.done'))->assertSessionHas('workflow_submission_notice', fn ($notice) => count($notice['requests']) === 1 && $notice['requests'][0]['code'] === $request->request_number
+        ])->assertRedirect(route('workflow.done'))->assertHeader('Location', route('workflow.done', [], false))->assertSessionHas('workflow_submission_notice', fn ($notice) => count($notice['requests']) === 1 && $notice['requests'][0]['code'] === $request->request_number
             && str_contains($notice['requests'][0]['url'], 'preview=1')
             && $notice['stage'] === 'Sent to President review');
         $this->get(route('workflow.done'))->assertOk()->assertSee('asi-procura:submission')->assertSee($request->request_number)
@@ -53,6 +53,28 @@ class WorkflowSubmissionPopupTest extends TestCase
         ])->assertSessionHasNoErrors()->assertSessionHas('workflow_submission_notice', fn ($notice) => $notice['requests'][0]['code'] === $request->request_number && $notice['stage'] === 'Sent to Canvassing');
         $this->get(route('purchase-requests.show', $request))->assertOk()
             ->assertSee('id="workflow-submission-data"', false)->assertSee('View request')->assertSee('Cancel');
+    }
+
+    public function test_embedded_president_approval_preserves_the_browser_origin(): void
+    {
+        $actor = $this->user(RoleSlug::President);
+        $request = $this->requestFor($actor, PurchaseRequestStatus::ForSupplierApproval);
+        $supplier = \App\Models\Supplier::create(['name' => 'Secure redirect supplier', 'is_active' => true]);
+        $quotation = $request->quotations()->create([
+            'supplier_id' => $supplier->id,
+            'created_by' => $actor->id,
+            'item_or_service' => $request->title,
+            'price' => 100,
+            'is_recommended' => true,
+        ]);
+
+        $this->actingAs($actor)->post(route('president-approvals.supplier.decision', $request), [
+            '_embedded' => 1, 'decision' => 'APPROVE', 'quotation_id' => $quotation->id,
+            ...$this->workflowSignature($actor),
+        ])->assertSessionHasNoErrors()->assertRedirect()
+            ->assertHeader('Location', route('workflow.done', [], false));
+
+        $this->assertSame(PurchaseRequestStatus::ForBudgetProcessing, $request->fresh()->status);
     }
 
     public function test_failed_submissions_and_simple_page_visits_do_not_create_a_success_popup(): void

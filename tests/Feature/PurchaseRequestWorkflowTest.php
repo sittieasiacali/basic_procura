@@ -3067,7 +3067,7 @@ class PurchaseRequestWorkflowTest extends TestCase
 
     private function signatureData(): string
     {
-        return 'data:image/png;base64,'.base64_encode(str_repeat('signature-stroke', 12));
+        return $this->signatureImage();
     }
     private function inventoryItem(PurchaseRequest $purchaseRequest, float $quantity): InventoryItem
     {
@@ -3311,7 +3311,7 @@ $this->actingAs($creator)->get(route('purchase-requests.show', $request))
             'tax_amount' => 0,
             'total_amount' => 5000,
         ]);
-        $checkedSignature = 'data:image/png;base64,'.base64_encode(str_repeat('preserved-checker-signature', 8));
+        $checkedSignature = $this->signatureImage();
         $invalidNotedSignature = 'data:image/png;base64,'.base64_encode('incomplete');
         foreach ([
             [PurchaseOrderApprovalStage::PreparedBy, $preparer, 'APPROVED', null],
@@ -3457,7 +3457,7 @@ $this->actingAs($creator)->get(route('purchase-requests.show', $request))
             ->assertOk()
             ->assertSee('It is saved automatically when you select Move to Checker.');
 
-        $signatureData = 'data:image/png;base64,'.base64_encode(str_repeat('signature-stroke', 12));
+        $signatureData = $this->signatureImage();
 
         $this->actingAs($purchasing)
             ->post(route('purchase-orders.prepare-signature', $request), [

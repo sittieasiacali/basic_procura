@@ -13,8 +13,11 @@ use RuntimeException;
 
 class BudgetRequestDemoSeeder extends Seeder
 {
+    use \Database\Seeders\Concerns\RequiresDemoEnvironment;
+
     public function run(): void
     {
+        $this->requireDemoEnvironment();
         $requestor = User::query()->where('email', 'requestor@example.com')->first();
         $purchasing = User::query()->where('email', 'purchasing@example.com')->first();
         $president = User::query()->where('email', 'president@example.com')->first();

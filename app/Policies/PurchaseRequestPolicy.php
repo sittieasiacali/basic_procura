@@ -202,8 +202,6 @@ class PurchaseRequestPolicy
             // Finance records receipt of goods it paid for (it can add stock, never release it).
             RoleSlug::Finance->value,
             RoleSlug::Admin->value,
-            // TEMPORARY TESTING ACCESS: remove Purchasing to restore strict RBAC.
-            RoleSlug::Purchasing->value,
         ]);
     }
 

@@ -7,7 +7,7 @@
 <div class="br-sheet-signatures budget-signatures">
     <div class="br-signature">
         <div class="br-signature-label">Requested by:</div>
-        <div class="br-signature-name">{{ config('procurement.budget_request_signatories.requested_by') }}</div>
+        <div class="br-signature-name">{{ config('procurement.budget_request_signatories.requested_by') ?: ($budget->requester?->name ?? 'Not recorded') }}</div>
     </div>
     <div class="br-signature">
         <div class="br-signature-label">Prepared by:</div>
@@ -22,6 +22,6 @@
     </div>
     <div class="br-signature">
         <div class="br-signature-label">Approved by:</div>
-        <div class="br-signature-name">{{ config('procurement.budget_request_signatories.approved_by') }}</div>
+        <div class="br-signature-name">{{ config('procurement.budget_request_signatories.approved_by') ?: ($budget->finalApprover?->name ?? $budget->approver?->name ?? 'Pending approval') }}</div>
     </div>
 </div>

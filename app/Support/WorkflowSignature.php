@@ -36,15 +36,26 @@ class WorkflowSignature
         }
 
         $signature = (string) ($validated['signature_data'] ?? '');
-        $prefix = 'data:image/png;base64,';
-        $encoded = str_starts_with($signature, $prefix) ? substr($signature, strlen($prefix)) : false;
-        $image = $encoded === false ? false : base64_decode($encoded, true);
-
-        if ($image === false || strlen($image) < 64) {
+        if (! self::isValidImage($signature)) {
             throw ValidationException::withMessages([
                 'signature_data' => 'Draw your signature before confirming this decision.',
             ]);
         }
+    }
+
+    public static function isValidImage(string $signature): bool
+    {
+        $prefix = 'data:image/png;base64,';
+        if (strlen($signature) > 500000 || ! str_starts_with($signature, $prefix)) {
+            return false;
+        }
+        $binary = base64_decode(substr($signature, strlen($prefix)), true);
+        $size = $binary === false ? false : @getimagesizefromstring($binary);
+
+        return $size !== false && $size[2] === IMAGETYPE_PNG
+            && $size[0] > 0 && $size[1] > 0
+            && $size[0] <= 2048 && $size[1] <= 2048
+            && $size[0] * $size[1] <= 1000000;
     }
 
     /**
@@ -57,6 +68,10 @@ class WorkflowSignature
         $prefix = 'data:image/png;base64,';
         if ($signature === null || ! str_starts_with($signature, $prefix) || ! function_exists('imagecreatefromstring')) {
             return $signature;
+        }
+
+        if (! self::isValidImage($signature)) {
+            return null;
         }
 
         $binary = base64_decode(substr($signature, strlen($prefix)), true);

@@ -312,7 +312,7 @@ class DashboardTest extends TestCase
                     'status' => $completed ? 'APPROVED' : 'PENDING',
                     'decision' => $completed ? 'APPROVED' : null,
                     'signature_name' => $completed ? $actor->name : null,
-                    'signature_data' => $completed ? 'data:image/png;base64,'.base64_encode(str_repeat('signature-stroke', 12)) : null,
+                    'signature_data' => $completed ? $this->signatureImage() : null,
                     'signed_at' => $completed ? now() : null,
                     'acted_at' => $completed ? now() : null,
                 ]);
@@ -356,7 +356,7 @@ class DashboardTest extends TestCase
         $this->actingAs($smt)->post(route('purchase-orders.acknowledge', $forChecking))->assertForbidden();
         $this->actingAs($teamLead)->post(route('purchase-orders.approve', $forChecking), ['decision' => 'APPROVE'])->assertForbidden();
 
-        $signature = 'data:image/png;base64,'.base64_encode(str_repeat('signature-stroke', 12));
+        $signature = $this->signatureImage();
         $this->actingAs($teamLead)->post(route('purchase-orders.signature', [$forChecking, PurchaseOrderApprovalStage::CheckedBy->value]), ['signature_name' => $teamLead->name, 'signature_data' => $signature])->assertSessionHasNoErrors();
         $this->actingAs($teamLead)->post(route('purchase-orders.check', $forChecking))->assertSessionHasNoErrors();
         $poNumber = $forChecking->purchaseOrder->po_number;
@@ -476,7 +476,7 @@ class DashboardTest extends TestCase
         $this->assertSame(1, substr_count($page->getContent(), 'data-bs-target="#edit-purchase-order"'));
         $this->assertSame(1, substr_count($page->getContent(), 'Print after approval'));
 
-        $signature = 'data:image/png;base64,'.base64_encode(str_repeat('signature-stroke', 12));
+        $signature = $this->signatureImage();
         $this->actingAs($preparer)
             ->post(route('purchase-orders.signature', [$purchaseRequest, PurchaseOrderApprovalStage::PreparedBy->value]), [
                 'signature_name' => $preparer->name,
@@ -692,7 +692,7 @@ class DashboardTest extends TestCase
                     'stage' => $stage, 'assigned_user_id' => $actor->id, 'acted_by' => $completed ? $actor->id : null,
                     'status' => $completed ? 'APPROVED' : 'PENDING', 'decision' => $completed ? 'APPROVED' : null,
                     'signature_name' => $completed ? $actor->name : null,
-                    'signature_data' => $completed ? 'data:image/png;base64,'.base64_encode(str_repeat('signature-stroke', 12)) : null,
+                    'signature_data' => $completed ? $this->signatureImage() : null,
                     'signed_at' => $completed ? now() : null, 'acted_at' => $completed ? now() : null,
                 ]);
             }
