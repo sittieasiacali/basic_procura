@@ -5,6 +5,9 @@
     $label = match ($value) {
         'FOR_OM_SMTS_APPROVAL' => 'For SMT Approval',
         'FOR_TEAM_SCREENING' => 'For IT / Premises Classification',
+        // IT / Premises record supplier quotations at this stage, before Canvassing.
+        'FOR_PROCUREMENT' => 'For Quotation',
+        'FOR_SUPPLIER_APPROVAL' => 'For President Supplier Approval',
         'WITHDRAWAL_PENDING' => 'Withdrawal Pending Acknowledgment',
         'FOR_BUDGET_MAKER', 'FOR_BUDGET_CHECKER', 'FOR_BUDGET_PROCEEDER', 'AWAITING_PRESIDENT_FINAL_APPROVAL' => 'Awaiting Purchasing Final Approval',
         default => str($value)->replace('_', ' ')->title(),

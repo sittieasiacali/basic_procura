@@ -34,7 +34,7 @@
                         <div class="flow-request-card-footer">
                             <a class="btn btn-sm btn-outline-primary" href="{{ route('purchase-requests.show', $purchaseRequest) }}" data-workflow-request-preview>View request <x-ui.icon name="chevron-right" size="15" /></a>
                             @can('withdraw', $purchaseRequest)
-                                <button class="btn btn-sm btn-outline-danger" type="button" data-bs-toggle="modal" data-bs-target="#void-request-modal" data-void-url="{{ route('purchase-requests.withdraw', $purchaseRequest) }}" data-void-number="{{ $purchaseRequest->request_number }}" data-void-title="{{ $purchaseRequest->title }}" data-void-stage="{{ \App\Support\RequestWithdrawal::stageLabel($purchaseRequest->status->value) }}"><x-ui.icon name="x-circle" size="15" /> Void</button>
+                                <button class="btn btn-sm btn-outline-danger" type="button" data-bs-toggle="modal" data-bs-target="#void-request-modal" data-void-url="{{ route('purchase-requests.withdraw', $purchaseRequest) }}" data-void-number="{{ $purchaseRequest->request_number }}" data-void-title="{{ $purchaseRequest->title }}" data-void-stage="{{ \App\Support\RequestWithdrawal::stageLabel($purchaseRequest->status->value) }}" data-void-immediate="{{ \App\Support\RequestWithdrawal::voidsImmediately($purchaseRequest) ? '1' : '0' }}"><x-ui.icon name="x-circle" size="15" /> Void</button>
                             @endcan
                         </div>
                     </article>
@@ -59,7 +59,8 @@
                     <div class="modal-body">
                         <div class="alert alert-warning small d-flex gap-2" role="note">
                             <x-ui.icon name="warning" size="16" />
-                            <div>This withdraws the <strong>whole request and all its items</strong>. Processing pauses now, and the staff handling it (<span data-void-stage></span>) acknowledge it before it is voided. This cannot be undone.</div>
+                            <div data-void-message-acknowledged>This withdraws the <strong>whole request and all its items</strong>. Processing pauses now, and the staff handling it (<span data-void-stage></span>) acknowledge it before it is voided. This cannot be undone.</div>
+                            <div data-void-message-immediate hidden>This voids the <strong>whole request and all its items</strong> right away. No staff are handling it yet, so no acknowledgment is needed. This cannot be undone.</div>
                         </div>
                         <label class="form-label" for="void-reason">Reason</label>
                         <textarea class="form-control" id="void-reason" name="withdrawal_reason" rows="3" minlength="5" maxlength="2000" required placeholder="e.g. No longer needed; duplicate of another request."></textarea>

@@ -32,7 +32,11 @@ class PurchaseRequestPolicy
     {
         if ($user->hasAnyRole([RoleSlug::ItStaff->value, RoleSlug::PremisesStaff->value])) {
             return $purchaseRequest->requestor_id === $user->id
-                || PurchaseRequest::query()->visibleTo($user)->whereKey($purchaseRequest->id)->exists();
+                || PurchaseRequest::query()->visibleTo($user)->whereKey($purchaseRequest->id)->exists()
+                // A paused withdrawal leaves the screening statuses; the team that must
+                // acknowledge it (or did) still needs to open it.
+                || RequestWithdrawal::canAcknowledge($user, $purchaseRequest)
+                || ($purchaseRequest->withdrawal_acknowledged_by !== null && (int) $purchaseRequest->withdrawal_acknowledged_by === $user->id);
         }
 
         return $user->hasRole(RoleSlug::Admin->value)
@@ -140,7 +144,8 @@ class PurchaseRequestPolicy
 
     public function viewPriority(User $user, PurchaseRequest $purchaseRequest): bool
     {
-        return $user->canViewPriority();
+        // The requestor chooses the priority when submitting, so they may see it on their own request.
+        return $user->canViewPriority() || $purchaseRequest->requestor_id === $user->id;
     }
 
     /** IT / Premises set the priority while the request is in their hands: screening, then quotation entry. */
@@ -246,11 +251,11 @@ class PurchaseRequestPolicy
             && in_array($purchaseRequest->requested_team, [null, $team], true);
     }
 
-    /** The requestor may withdraw a submitted request until a Purchase Order exists. */
+    /** The requestor may void a draft, or withdraw a submitted request until a Purchase Order exists. */
     public function withdraw(User $user, PurchaseRequest $purchaseRequest): bool
     {
         return $user->id === $purchaseRequest->requestor_id
-            && in_array($purchaseRequest->status, PurchaseRequestStatus::withdrawable(), true)
+            && in_array($purchaseRequest->status, [PurchaseRequestStatus::Draft, ...PurchaseRequestStatus::withdrawable()], true)
             // Lists load the PO already; use it instead of one query per card.
             && ($purchaseRequest->relationLoaded('purchaseOrder')
                 ? $purchaseRequest->purchaseOrder === null

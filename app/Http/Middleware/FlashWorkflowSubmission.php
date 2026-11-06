@@ -20,7 +20,8 @@ class FlashWorkflowSubmission
         if ($request->isMethodSafe() || ! $request->hasSession()
             || ! $request->routeIs('purchase-requests.*', 'request-flow.*', 'canvassing.*', 'president-approvals.*', 'purchase-orders.*', 'budget.*', 'payments.*', 'receiving.*')
             || ! ($response instanceof RedirectResponse || ($response instanceof JsonResponse && $response->isSuccessful()))
-            || in_array('errors', $request->session()->get('_flash.new', []), true)) {
+            || in_array('errors', $request->session()->get('_flash.new', []), true)
+            || in_array('error', $request->session()->get('_flash.new', []), true)) {
             return $response;
         }
 

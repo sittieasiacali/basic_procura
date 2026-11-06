@@ -211,7 +211,9 @@ class PurchaseRequestController extends Controller
 
         // A submitted request closes to its screening handoff receipt.
         if ($action === 'submit') {
-            return redirect()->route('purchase-requests.show', $purchaseRequest);
+            return $request->boolean('_embedded')
+                ? redirect()->away(route('workflow.done', [], false))
+                : redirect()->route('purchase-requests.show', $purchaseRequest);
         }
 
         return redirect()->route('purchase-requests.show', $purchaseRequest)->with('success', 'Purchase request saved as draft.');
@@ -248,7 +250,7 @@ class PurchaseRequestController extends Controller
         $purchaseRequest->load([
             'requestor',
             'teamLeader',
-            'items',
+            'items.attachments',
             'selectedSupplier',
             'approvals' => fn ($query) => $query->orderBy('acted_at')->orderBy('id'),
             'approvals.user.role',
@@ -368,7 +370,9 @@ class PurchaseRequestController extends Controller
         });
 
         if ($action === 'submit') {
-            return redirect()->route('purchase-requests.show', $purchaseRequest);
+            return $request->boolean('_embedded')
+                ? redirect()->away(route('workflow.done', [], false))
+                : redirect()->route('purchase-requests.show', $purchaseRequest);
         }
 
         return redirect()->route('purchase-requests.show', $purchaseRequest)->with('success', 'Purchase request updated.');
@@ -389,6 +393,12 @@ class PurchaseRequestController extends Controller
         DB::transaction(function () use ($request, $purchaseRequest, $workflow, $validated) {
             $lockedRequest = PurchaseRequest::query()->lockForUpdate()->findOrFail($purchaseRequest->id);
             $this->authorize('submit', $lockedRequest);
+
+            if (blank($lockedRequest->priority_level)) {
+                throw ValidationException::withMessages([
+                    'priority_level' => 'Edit the request and choose a priority before submitting.',
+                ]);
+            }
 
             $items = $lockedRequest->items()->with('attachments')->get();
             if ($items->isEmpty()) {
@@ -413,7 +423,9 @@ class PurchaseRequestController extends Controller
             );
         });
 
-        return redirect()->route('purchase-requests.show', $purchaseRequest);
+        return $request->boolean('_embedded')
+            ? redirect()->away(route('workflow.done', [], false))
+            : redirect()->route('purchase-requests.show', $purchaseRequest);
     }
 
     /**
@@ -445,8 +457,9 @@ class PurchaseRequestController extends Controller
         foreach ($items as $itemData) {
             $attachment = $itemData['attachment'] ?? null;
             $picture = $itemData['picture'] ?? null;
+            $quotationFile = $itemData['quotation_file'] ?? null;
             $itemId = $itemData['id'] ?? null;
-            unset($itemData['attachment'], $itemData['picture'], $itemData['id']);
+            unset($itemData['attachment'], $itemData['picture'], $itemData['quotation_file'], $itemData['id']);
 
             $item = $itemId ? $existingItems->get((int) $itemId) : new PurchaseRequestItem;
 
@@ -472,6 +485,9 @@ class PurchaseRequestController extends Controller
             }
             if ($picture instanceof UploadedFile) {
                 $this->storeItemAttachment($item, $picture, $user, PurchaseRequestItem::ATTACHMENT_PICTURE);
+            }
+            if ($quotationFile instanceof UploadedFile) {
+                $this->storeItemAttachment($item, $quotationFile, $user, PurchaseRequestItem::ATTACHMENT_QUOTATION);
             }
         }
 

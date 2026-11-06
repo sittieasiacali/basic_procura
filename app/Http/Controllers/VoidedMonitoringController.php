@@ -26,6 +26,8 @@ class VoidedMonitoringController extends Controller
         // stopped earlier in the process. Acknowledgment stays with the handling staff.
         $voidedMonitoring = PurchaseRequest::query()
             ->whereIn('status', filled($filters['voided_status'] ?? null) ? [$filters['voided_status']] : $statuses)
+            // Drafts voided by their requestor never reached staff.
+            ->where(fn (Builder $query) => $query->whereNull('withdrawal_stage')->orWhere('withdrawal_stage', '!=', PurchaseRequestStatus::Draft->value))
             ->when($search !== '', function (Builder $query) use ($search): void {
                 $term = '%'.addcslashes($search, '%_\\').'%';
                 $query->where(fn (Builder $query) => $query

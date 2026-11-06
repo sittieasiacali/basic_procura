@@ -11,7 +11,7 @@
                 </button>
             </div>
             <div class="modal-body p-0">
-                <iframe class="workflow-action-frame" title="Request preview" data-workflow-request-frame></iframe>
+                <iframe class="workflow-action-frame" title="Request preview" data-workflow-request-frame allow="fullscreen" allowfullscreen></iframe>
             </div>
         </div>
     </div>

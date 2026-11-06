@@ -16,7 +16,7 @@
         @endphp
         <div class="table-responsive"><table class="table mb-0"><thead><tr><th>Item</th><th>Quotation</th>@if($hasRequestEstimates)<th>Qty</th><th>Unit</th><th>Unit price</th><th>Estimated total</th>@endif</tr></thead><tbody>
             @foreach($purchaseRequest->items as $item)
-                <tr><td>{{ $item->description }}@if($item->reference_url) <a href="{{ $item->reference_url }}" target="_blank" rel="noopener noreferrer">Reference</a>@endif @foreach($item->attachments as $attachment)<a href="{{ route('attachments.download', $attachment) }}">{{ $attachment->original_name }}</a> @endforeach</td><td>{{ $item->brand_specifications ?: '—' }}</td>@if($hasRequestEstimates)<td>{{ $item->quantity === null ? '—' : number_format((float) $item->quantity, 2) }}</td><td>{{ $item->unit ?: '—' }}</td><td>{{ $item->estimated_unit_price === null ? '—' : '₱ '.number_format((float) $item->estimated_unit_price, 2) }}</td><td>{{ $item->estimated_total === null ? '—' : '₱ '.number_format((float) $item->estimated_total, 2) }}</td>@endif</tr>
+                <tr><td>{{ $item->description }}@if($item->reference_url) <a href="{{ $item->reference_url }}" target="_blank" rel="noopener noreferrer">Reference</a>@endif @foreach($item->attachments as $attachment)<div><x-attachment-link :attachment="$attachment" :label="\App\Models\PurchaseRequestItem::attachmentLabel($attachment->category)" /></div>@endforeach</td><td>{{ $item->brand_specifications ?: '—' }}</td>@if($hasRequestEstimates)<td>{{ $item->quantity === null ? '—' : number_format((float) $item->quantity, 2) }}</td><td>{{ $item->unit ?: '—' }}</td><td>{{ $item->estimated_unit_price === null ? '—' : '₱ '.number_format((float) $item->estimated_unit_price, 2) }}</td><td>{{ $item->estimated_total === null ? '—' : '₱ '.number_format((float) $item->estimated_total, 2) }}</td>@endif</tr>
             @endforeach
         </tbody>@if($hasRequestEstimates && $purchaseRequest->total_amount !== null)<tfoot><tr><th colspan="5">Request estimate</th><th>₱ {{ number_format((float) $purchaseRequest->total_amount, 2) }}</th></tr></tfoot>@endif</table></div>
         @if($purchaseRequest->screening)
@@ -28,7 +28,7 @@
                     <div><dt>Decision date</dt><dd>{{ $purchaseRequest->screening->decided_at?->format('M d, Y g:i A') ?? 'Not recorded' }}</dd></div>
                     <div><dt>Screening remarks</dt><dd>{{ $purchaseRequest->screening->evidence ?: 'N/A' }}</dd></div>
                     @foreach($purchaseRequest->screening->attachments as $attachment)
-                        <div><dt>Attachment</dt><dd><a href="{{ route('attachments.download', $attachment) }}">{{ $attachment->original_name }}</a></dd></div>
+                        <div><dt>Attachment</dt><dd><x-attachment-link :attachment="$attachment" /></dd></div>
                     @endforeach
                 </dl>
                 @if($purchaseRequest->screening->assets->isNotEmpty())

@@ -110,6 +110,43 @@ class DirectScreeningSubmissionTest extends TestCase
         Notification::assertCount(2);
     }
 
+    public function test_embedded_screening_submissions_return_a_lightweight_receipt(): void
+    {
+        $owner = $this->owner();
+        $this->actingAs($owner);
+        $payload = fn () => [
+            ...$this->payload(), '_embedded' => 1, 'priority_level' => 'NORMAL',
+            'requested_team' => 'IT', 'request_category' => 'COMPUTERS',
+        ];
+
+        $this->post(route('purchase-requests.store'), $payload())
+            ->assertSessionHasNoErrors()->assertHeader('Location', route('workflow.done', [], false))
+            ->assertSessionHas('workflow_submission_notice');
+        $request = PurchaseRequest::query()->sole();
+        $this->assertSame(PurchaseRequestStatus::ForItScreening, $request->status);
+        $this->get(route('workflow.done'))->assertOk()
+            ->assertSee('name="workflow-completed" content="true"', false)
+            ->assertSee($request->request_number);
+
+        $request->update(['status' => PurchaseRequestStatus::Draft]);
+        $this->post(route('purchase-requests.submit', $request), ['_embedded' => 1])
+            ->assertSessionHasErrors('signature_data');
+        $this->assertSame(PurchaseRequestStatus::Draft, $request->fresh()->status);
+        $this->post(route('purchase-requests.submit', $request), [
+            ...$this->workflowSignature($owner), '_embedded' => 1,
+        ])->assertSessionHasNoErrors()->assertHeader('Location', route('workflow.done', [], false));
+        $this->assertSame(PurchaseRequestStatus::ForItScreening, $request->fresh()->status);
+        $this->post(route('purchase-requests.submit', $request), [
+            ...$this->workflowSignature($owner), '_embedded' => 1,
+        ])->assertForbidden();
+
+        $request->update(['status' => PurchaseRequestStatus::Returned]);
+        $this->put(route('purchase-requests.update', $request), $payload())
+            ->assertSessionHasNoErrors()->assertHeader('Location', route('workflow.done', [], false));
+        $this->assertSame(PurchaseRequestStatus::ForItScreening, $request->fresh()->status);
+        Notification::assertSentOnDemandTimes(WorkflowHandoffEmail::class, 6);
+    }
+
     private function owner(): User
     {
         $campaign = Campaign::query()->create(['name' => 'Submission testing', 'is_active' => true]);

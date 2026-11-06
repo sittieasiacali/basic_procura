@@ -44,6 +44,8 @@ class UpdatePurchaseRequestRequest extends FormRequest
             'required_date' => ['required', 'date'],
             'delivery_location' => ['required', 'string', 'max:255'],
             'remarks' => ['nullable', 'string', 'max:5000'],
+            // The requestor rates how urgent the need is; screening may still adjust it.
+            'priority_level' => ['required_if:action,submit', 'nullable', Rule::in(array_keys(PurchaseRequest::PRIORITY_LEVELS))],
             'signature_name' => ['required_if:action,submit', 'nullable', 'string', 'max:255'],
             'signature_data' => ['required_if:action,submit', 'nullable', 'string', 'max:500000'],
             'items' => ['required', 'array', 'min:1'],
@@ -54,18 +56,23 @@ class UpdatePurchaseRequestRequest extends FormRequest
                     ->whereNull('deleted_at')),
             ],
             'items.*.description' => ['required', 'string', 'max:2000'],
-            // Quotation, quantity and the approval email are needed to submit; a draft may leave them blank.
+            // Quantity, a quotation (typed or as a file) and the approval email are needed to
+            // submit; a draft may leave them blank. The item picture is optional.
             'items.*.quantity' => ['required_if:action,submit', 'nullable', 'numeric', 'gt:0', 'max:9999999999.99'],
             'items.*.unit' => ['sometimes', 'nullable', 'string', 'max:50'],
             'items.*.estimated_unit_price' => ['sometimes', 'nullable', 'numeric', 'min:0', 'max:9999999999999.99'],
-            'items.*.brand_specifications' => ['required_if:action,submit', 'nullable', 'string', 'max:5000'],
+            'items.*.brand_specifications' => ['nullable', 'string', 'max:5000'],
             'items.*.reference_url' => ['nullable', 'url', 'max:2048'],
             'items.*.attachment' => ['nullable', File::types(['pdf', 'jpg', 'jpeg', 'png'])->max(5 * 1024)],
             'items.*.picture' => ['nullable', File::types(['jpg', 'jpeg', 'png', 'webp'])->max(5 * 1024)],
+            'items.*.quotation_file' => ['nullable', File::types(PurchaseRequestItem::quotationFileTypes())->max(5 * 1024)],
         ];
     }
 
-    /** An item already holding its approval email or picture may be submitted without uploading another. */
+    /**
+     * An item already holding its approval email (or quotation file) may be submitted
+     * without uploading another. A quotation may be typed, a file, or both.
+     */
     public function withValidator(Validator $validator): void
     {
         $validator->after(function (Validator $validator): void {
@@ -73,22 +80,26 @@ class UpdatePurchaseRequestRequest extends FormRequest
                 return;
             }
 
-            $requiredFiles = [
-                'attachment' => PurchaseRequestItem::ATTACHMENT_EMAIL_APPROVAL,
-                'picture' => PurchaseRequestItem::ATTACHMENT_PICTURE,
-            ];
-            foreach ($requiredFiles as $field => $category) {
-                $itemIdsWithFile = PurchaseRequestItem::query()
+            // One query for every stored file category on this request's items.
+            $storedCategories = \App\Models\Attachment::query()
+                ->where('attachable_type', PurchaseRequestItem::class)
+                ->whereIn('attachable_id', PurchaseRequestItem::query()
                     ->where('purchase_request_id', $this->route('purchaseRequest')->id)
-                    ->whereHas('attachments', fn ($query) => $query->where('category', $category))
-                    ->pluck('id')
-                    ->all();
+                    ->select('id'))
+                ->get(['attachable_id', 'category'])
+                ->groupBy('attachable_id')
+                ->map(fn ($attachments) => $attachments->pluck('category')->all());
+            $hasStored = fn (array $item, string $category): bool => isset($item['id'])
+                && in_array($category, $storedCategories->get((int) $item['id'], []), true);
 
-                foreach ((array) $this->input('items', []) as $index => $item) {
-                    $hasStoredFile = isset($item['id']) && in_array((int) $item['id'], $itemIdsWithFile, true);
-                    if (! $hasStoredFile && ! $this->hasFile("items.$index.$field")) {
-                        $validator->errors()->add("items.$index.$field", PurchaseRequestItem::submissionMessages()["items.*.$field.required"]);
-                    }
+            foreach ((array) $this->input('items', []) as $index => $item) {
+                if (! $hasStored($item, PurchaseRequestItem::ATTACHMENT_EMAIL_APPROVAL) && ! $this->hasFile("items.$index.attachment")) {
+                    $validator->errors()->add("items.$index.attachment", PurchaseRequestItem::submissionMessages()['items.*.attachment.required']);
+                }
+                if (blank($item['brand_specifications'] ?? null)
+                    && ! $this->hasFile("items.$index.quotation_file")
+                    && ! $hasStored($item, PurchaseRequestItem::ATTACHMENT_QUOTATION)) {
+                    $validator->errors()->add("items.$index.brand_specifications", PurchaseRequestItem::submissionMessages()['items.*.brand_specifications.required']);
                 }
             }
         });
@@ -112,6 +123,8 @@ class UpdatePurchaseRequestRequest extends FormRequest
             'items.*.brand_specifications' => 'quotation',
             'items.*.attachment' => 'email approval',
             'items.*.picture' => 'item picture',
+            'items.*.quotation_file' => 'quotation file',
+            'priority_level' => 'priority',
         ];
     }
 

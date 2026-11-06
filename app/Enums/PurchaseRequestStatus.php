@@ -64,7 +64,8 @@ enum PurchaseRequestStatus: string
     public function allowedTransitions(): array
     {
         return match ($this) {
-            self::Draft, self::Returned => [self::ForTeamScreening, self::ForItScreening, self::ForPremisesScreening],
+            // Still in the requestor's hands: a void closes it at once, with no staff acknowledgment.
+            self::Draft, self::Returned => [self::ForTeamScreening, self::ForItScreening, self::ForPremisesScreening, self::Voided],
             self::ForOmApproval => [
                 self::Returned,
                 self::Rejected,

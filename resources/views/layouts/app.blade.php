@@ -242,6 +242,15 @@
             <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Dismiss notification"></button>
         </div>
     @endif
+    @if(session('error'))
+        <div class="alert alert-warning alert-dismissible fade show" role="alert">
+            <div class="d-flex align-items-start gap-2">
+                <x-ui.icon name="warning" size="18" />
+                <div>{{ session('error') }}</div>
+            </div>
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Dismiss notification"></button>
+        </div>
+    @endif
 
     @if($errors->any())
         @php

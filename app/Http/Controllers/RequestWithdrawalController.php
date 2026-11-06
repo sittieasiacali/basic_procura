@@ -21,17 +21,54 @@ class RequestWithdrawalController extends Controller
 {
     public function store(Request $request, PurchaseRequest $purchaseRequest, PurchaseRequestWorkflow $workflow): RedirectResponse
     {
-        $this->authorize('withdraw', $purchaseRequest);
+        // Only the requestor may void. A page opened earlier can be stale (already
+        // voided, or a PO was issued since): explain that instead of a bare 403.
+        abort_unless($request->user()->id === $purchaseRequest->requestor_id || $request->user()->hasRole(RoleSlug::Admin->value), 403);
+        if ($request->user()->cannot('withdraw', $purchaseRequest)) {
+            return redirect()->back(fallback: route('purchase-requests.show', $purchaseRequest))
+                ->with('error', RequestWithdrawal::blockedReason($purchaseRequest) ?? 'This request can no longer be voided.');
+        }
         $validated = $request->validate(['withdrawal_reason' => ['required', 'string', 'min:5', 'max:2000']], [], ['withdrawal_reason' => 'reason']);
 
-        DB::transaction(function () use ($request, $purchaseRequest, $workflow, $validated): void {
+        $voidedNow = DB::transaction(function () use ($request, $purchaseRequest, $workflow, $validated): bool {
             $locked = PurchaseRequest::query()->lockForUpdate()->findOrFail($purchaseRequest->id);
             // Re-check under the lock: a PO may have been created since the page loaded.
             if ($request->user()->cannot('withdraw', $locked)) {
-                throw ValidationException::withMessages(['withdrawal_reason' => 'This request can no longer be withdrawn. A Purchase Order may already exist; contact Purchasing to cancel it.']);
+                throw ValidationException::withMessages(['withdrawal_reason' => RequestWithdrawal::blockedReason($locked) ?? 'This request can no longer be voided.']);
             }
 
             $stage = $locked->status;
+
+            // Nobody else is handling a draft or a returned request, so there is no one to acknowledge.
+            if (RequestWithdrawal::voidsImmediately($locked)) {
+                $locked->forceFill([
+                    'withdrawal_reason' => $validated['withdrawal_reason'],
+                    'withdrawn_by' => $request->user()->id,
+                    'withdrawn_at' => now(),
+                    'withdrawal_stage' => $stage->value,
+                    'withdrawal_role_id' => $locked->current_responsible_role_id,
+                    'withdrawal_acknowledged_by' => $request->user()->id,
+                    'withdrawal_acknowledged_at' => now(),
+                    'withdrawal_acknowledgment_remarks' => 'Voided by the requestor before screening; no staff acknowledgment needed.',
+                    'assigned_user_id' => null,
+                ])->save();
+
+                $workflow->transition(
+                    $locked,
+                    PurchaseRequestStatus::Voided,
+                    $request->user(),
+                    'REQUEST_VOIDED_BY_REQUESTOR',
+                    $validated['withdrawal_reason'],
+                    metadata: [
+                        'stopped_stage' => $stage->value,
+                        'stopped_stage_label' => RequestWithdrawal::stageLabel($stage->value),
+                        'request_owner_name' => $locked->requestor?->name,
+                        'request_owner_email' => $locked->requestor?->email,
+                    ],
+                );
+
+                return true;
+            }
             $locked->forceFill([
                 'withdrawal_reason' => $validated['withdrawal_reason'],
                 'withdrawn_by' => $request->user()->id,
@@ -60,11 +97,15 @@ class RequestWithdrawalController extends Controller
                     'handling_role' => $locked->assignedUser?->role?->name ?? $locked->responsibleRole?->name,
                 ],
             );
+
+            return false;
         });
 
         // Back to where it was started (request page or the requestor's dashboard).
         return redirect()->back(fallback: route('purchase-requests.show', $purchaseRequest))
-            ->with('success', "Void requested for {$purchaseRequest->request_number}. Processing is paused until the handling staff acknowledge it.");
+            ->with('success', $voidedNow
+                ? "{$purchaseRequest->request_number} has been voided."
+                : "Void requested for {$purchaseRequest->request_number}. Processing is paused until the handling staff acknowledge it.");
     }
 
     public function acknowledge(Request $request, PurchaseRequest $purchaseRequest, PurchaseRequestWorkflow $workflow): RedirectResponse

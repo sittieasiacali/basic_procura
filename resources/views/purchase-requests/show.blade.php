@@ -492,12 +492,8 @@
                             @if($item->reference_url)
                                 <div class="request-item-link"><x-ui.icon name="link" size="13" /><a href="{{ $item->reference_url }}" target="_blank" rel="noopener noreferrer">Product reference</a></div>
                             @endif
-                            @foreach($item->attachments as $attachment)
-                                @php ($isPicture = $attachment->category === \App\Models\PurchaseRequestItem::ATTACHMENT_PICTURE); @endphp
-                                <div class="request-item-link"><x-ui.icon name="paperclip" size="13" /><span class="text-muted">{{ $isPicture ? 'Item picture' : 'Email approval' }}:</span> <a href="{{ route('attachments.download', $attachment) }}">{{ $attachment->original_name }}</a></div>
-                                @if($isPicture)
-                                    <a href="{{ route('attachments.download', $attachment) }}"><img class="d-block mt-1 rounded border" src="{{ route('attachments.download', $attachment) }}" alt="Picture of {{ $item->description }}" style="max-width: 120px; max-height: 90px; object-fit: cover;" loading="lazy"></a>
-                                @endif
+                            @foreach($item->attachments->sortBy(fn ($attachment) => [$attachment->category === \App\Models\PurchaseRequestItem::ATTACHMENT_EMAIL_APPROVAL ? 0 : ($attachment->category === \App\Models\PurchaseRequestItem::ATTACHMENT_QUOTATION ? 1 : 2), $attachment->id]) as $attachment)
+                                <div class="request-item-link"><x-attachment-link :attachment="$attachment" :label="\App\Models\PurchaseRequestItem::attachmentLabel($attachment->category)" thumbnail /></div>
                             @endforeach
                         </td>
                         <td>{{ $item->brand_specifications ?: '—' }}</td>
@@ -547,7 +543,7 @@
                     <div><dt>Decision Date</dt><dd>{{ $purchaseRequest->screening->decided_at->format('M d, Y g:i A') }}</dd></div>
                     <div class="screening-fact--wide"><dt>Evidence</dt><dd>{{ $purchaseRequest->screening->evidence ?: 'N/A' }}</dd></div>
                     @foreach($purchaseRequest->screening->attachments as $attachment)
-                        <div class="screening-fact--wide screening-attachment"><dt>Attachment</dt><dd><x-ui.icon name="paperclip" size="14" /><a href="{{ route('attachments.download', $attachment) }}">Download {{ $attachment->original_name }}</a></dd></div>
+                        <div class="screening-fact--wide screening-attachment"><dt>Attachment</dt><dd><x-attachment-link :attachment="$attachment" thumbnail /></dd></div>
                     @endforeach
                 </dl>
                 @if($purchaseRequest->screening->assets->isNotEmpty())

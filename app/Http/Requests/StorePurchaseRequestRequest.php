@@ -8,6 +8,7 @@ use App\Models\PurchaseRequestItem;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Rules\File;
+use Illuminate\Validation\Validator;
 
 class StorePurchaseRequestRequest extends FormRequest
 {
@@ -42,19 +43,39 @@ class StorePurchaseRequestRequest extends FormRequest
             'required_date' => ['required', 'date', 'after_or_equal:today'],
             'delivery_location' => ['required', 'string', 'max:255'],
             'remarks' => ['nullable', 'string', 'max:5000'],
+            // The requestor rates how urgent the need is; screening may still adjust it.
+            'priority_level' => ['required_if:action,submit', 'nullable', Rule::in(array_keys(PurchaseRequest::PRIORITY_LEVELS))],
             'signature_name' => ['required_if:action,submit', 'nullable', 'string', 'max:255'],
             'signature_data' => ['required_if:action,submit', 'nullable', 'string', 'max:500000'],
             'items' => ['required', 'array', 'min:1'],
             'items.*.description' => ['required', 'string', 'max:2000'],
-            // Quotation, quantity and the approval email are needed to submit; a draft may leave them blank.
+            // Quantity, a quotation (typed or as a file) and the approval email are needed to
+            // submit; a draft may leave them blank. The item picture is optional.
             'items.*.quantity' => ['required_if:action,submit', 'nullable', 'numeric', 'gt:0', 'max:9999999999.99'],
             'items.*.unit' => ['sometimes', 'nullable', 'string', 'max:50'],
             'items.*.estimated_unit_price' => ['sometimes', 'nullable', 'numeric', 'min:0', 'max:9999999999999.99'],
-            'items.*.brand_specifications' => ['required_if:action,submit', 'nullable', 'string', 'max:5000'],
+            'items.*.brand_specifications' => ['nullable', 'string', 'max:5000'],
             'items.*.reference_url' => ['nullable', 'url', 'max:2048'],
             'items.*.attachment' => ['required_if:action,submit', 'nullable', File::types(['pdf', 'jpg', 'jpeg', 'png'])->max(5 * 1024)],
-            'items.*.picture' => ['required_if:action,submit', 'nullable', File::types(['jpg', 'jpeg', 'png', 'webp'])->max(5 * 1024)],
+            'items.*.picture' => ['nullable', File::types(['jpg', 'jpeg', 'png', 'webp'])->max(5 * 1024)],
+            'items.*.quotation_file' => ['nullable', File::types(PurchaseRequestItem::quotationFileTypes())->max(5 * 1024)],
         ];
+    }
+
+    /** A quotation may be typed, uploaded as a file, or both. */
+    public function withValidator(Validator $validator): void
+    {
+        $validator->after(function (Validator $validator): void {
+            if ($this->input('action') !== 'submit') {
+                return;
+            }
+
+            foreach ((array) $this->input('items', []) as $index => $item) {
+                if (blank($item['brand_specifications'] ?? null) && ! $this->hasFile("items.$index.quotation_file")) {
+                    $validator->errors()->add("items.$index.brand_specifications", PurchaseRequestItem::submissionMessages()['items.*.brand_specifications.required']);
+                }
+            }
+        });
     }
 
     protected function prepareForValidation(): void
@@ -85,6 +106,8 @@ class StorePurchaseRequestRequest extends FormRequest
             'items.*.reference_url' => 'link or reference',
             'items.*.attachment' => 'email approval',
             'items.*.picture' => 'item picture',
+            'items.*.quotation_file' => 'quotation file',
+            'priority_level' => 'priority',
         ];
     }
 

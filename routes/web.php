@@ -72,6 +72,8 @@ Route::middleware('auth')->group(function () {
         ->name('budget-requests.document');
     Route::get('/attachments/{attachment}/download', [AttachmentController::class, 'download'])
         ->name('attachments.download');
+    Route::get('/attachments/{attachment}/view', [AttachmentController::class, 'view'])
+        ->name('attachments.view');
     Route::get('/delivery-locations', [DeliveryLocationController::class, 'index'])->name('delivery-locations.index');
     Route::post('/delivery-locations', [DeliveryLocationController::class, 'store'])->name('delivery-locations.store');
     Route::patch('/delivery-locations/{deliveryLocation}', [DeliveryLocationController::class, 'update'])->name('delivery-locations.update');

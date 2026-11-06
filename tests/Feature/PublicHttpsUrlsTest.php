@@ -14,7 +14,7 @@ class PublicHttpsUrlsTest extends TestCase
 
         $this->get('http://procura.example/login')->assertOk()
             ->assertSee('action="https://procura.example/login"', false)
-            ->assertSee('https://procura.example/assets/images/asi-procura-logo.png', false)
+            ->assertSee('https://procura.example/assets/images/asi-procura-logo-login.png', false)
             ->assertDontSee('http://procura.example', false);
 
         $this->get('http://procura.example/dashboard')
@@ -29,6 +29,6 @@ class PublicHttpsUrlsTest extends TestCase
 
         $this->get('http://procura.example/login')->assertOk()
             ->assertSee('action="http://procura.example/login"', false)
-            ->assertSee('http://procura.example/assets/images/asi-procura-logo.png', false);
+            ->assertSee('http://procura.example/assets/images/asi-procura-logo-login.png', false);
     }
 }

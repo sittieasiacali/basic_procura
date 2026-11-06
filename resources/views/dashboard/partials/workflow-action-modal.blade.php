@@ -17,7 +17,7 @@
                     <span class="spinner-border spinner-border-sm" aria-hidden="true"></span>
                     Loading form&hellip;
                 </div>
-                <iframe class="workflow-action-frame" title="Workflow action" data-workflow-action-frame></iframe>
+                <iframe class="workflow-action-frame" title="Workflow action" data-workflow-action-frame allow="fullscreen" allowfullscreen></iframe>
             </div>
         </div>
     </div>

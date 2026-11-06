@@ -17,7 +17,11 @@
                 <div class="modal-body">
                     <div class="alert alert-warning small d-flex gap-2" role="note">
                         <x-ui.icon name="warning" size="16" />
-                        <div>This withdraws the <strong>whole request and all its items</strong>. Processing pauses now, and the staff handling it ({{ \App\Support\RequestWithdrawal::stageLabel($purchaseRequest->status->value) }}) must acknowledge it before it is voided. This cannot be undone.</div>
+                        @if(\App\Support\RequestWithdrawal::voidsImmediately($purchaseRequest))
+                            <div>This voids the <strong>whole request and all its items</strong> right away. No staff are handling it yet, so no acknowledgment is needed. This cannot be undone.</div>
+                        @else
+                            <div>This withdraws the <strong>whole request and all its items</strong>. Processing pauses now, and the staff handling it ({{ \App\Support\RequestWithdrawal::stageLabel($purchaseRequest->status->value) }}) must acknowledge it before it is voided. This cannot be undone.</div>
+                        @endif
                     </div>
                     <label class="form-label" for="withdrawal-reason">Reason for withdrawal</label>
                     <textarea class="form-control @error('withdrawal_reason') is-invalid @enderror" id="withdrawal-reason" name="withdrawal_reason" rows="3" minlength="5" maxlength="2000" required placeholder="e.g. No longer needed; the team received equipment from another department.">{{ old('withdrawal_reason') }}</textarea>

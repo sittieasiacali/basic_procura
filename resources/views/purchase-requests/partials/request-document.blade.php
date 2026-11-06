@@ -82,7 +82,14 @@
                 @forelse($purchaseRequest->items as $item)
                     <tr>
                         <td>{{ $loop->iteration }}</td>
-                        <td>{{ $item->description }}</td>
+                        <td>
+                            {{ $item->description }}
+                            @if($item->relationLoaded('attachments'))
+                                @foreach($item->attachments as $attachment)
+                                    <div class="request-document__attachment"><x-attachment-link :attachment="$attachment" :label="\App\Models\PurchaseRequestItem::attachmentLabel($attachment->category)" /></div>
+                                @endforeach
+                            @endif
+                        </td>
                         <td>{{ $item->brand_specifications ?: '—' }}</td>
                         <td class="text-end">{{ $item->quantity !== null ? rtrim(rtrim(number_format((float) $item->quantity, 2, '.', ''), '0'), '.') : '—' }}</td>
                         <td>{{ $item->unit ?: '—' }}</td>

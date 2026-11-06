@@ -7,6 +7,7 @@ use App\Http\Middleware\ResolveWorkspaceRole;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
+use Illuminate\Http\Request;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -15,6 +16,12 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
+        // A tunnel on this server terminates TLS before forwarding to PHP.
+        // Trust its scheme while retaining the incoming Host for generated URLs.
+        $middleware->trustProxies(
+            at: ['127.0.0.1', '::1'],
+            headers: Request::HEADER_X_FORWARDED_PROTO,
+        );
         $middleware->web(append: [ResolveWorkspaceRole::class, EnsurePasswordChanged::class, FlashWorkflowSubmission::class]);
         $middleware->alias([
             'role' => EnsureUserHasRole::class,

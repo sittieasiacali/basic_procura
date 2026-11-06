@@ -204,11 +204,16 @@ class DashboardController extends Controller
         $budgetCreatedCount = $loadsBudgetRegister ? BudgetRequest::query()->count() : null;
         $budgetApprovedCount = $loadsBudgetRegister ? BudgetRequest::query()->finallyApproved()->count() : null;
 
-        $presidentActionsPagination = $isExecutiveQueue
-            ? $myActionsQuery->paginate(12, ['*'], 'approval_page')->withQueryString()
-            : null;
-        $myActions = ($presidentActionsPagination?->getCollection() ?? $myActionsQuery
-            ->latest('updated_at')->limit($isBudgetMaker ? 20 : 6)->get())
+        // Every action queue is paginated. A fixed limit here used to hide the rest of
+        // the queue (e.g. IT / Premises screening beyond the sixth request) while the
+        // counters still included them.
+        if (! $isExecutiveQueue) {
+            $myActionsQuery->latest('updated_at')->latest('id');
+        }
+        $presidentActionsPagination = $myActionsQuery
+            ->paginate($isBudgetMaker ? 20 : 12, ['*'], 'approval_page')
+            ->withQueryString();
+        $myActions = $presidentActionsPagination->getCollection()
             ->map(function (PurchaseRequest $purchaseRequest) use ($user, $isExecutiveQueue): ?array {
                 $details = $this->actionDetails($user, $purchaseRequest);
 

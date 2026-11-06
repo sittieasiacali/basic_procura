@@ -446,18 +446,135 @@ function initializeAppPageBack() {
         });
     });
 }
+/*
+ * Attachment viewer: images and PDFs open in an overlay with a Full screen button,
+ * instead of being downloaded. Works for links rendered later (delegated) and for
+ * files picked in a form but not yet uploaded (blob URLs).
+ */
+const attachmentViewer = (() => {
+    let overlay = null;
+    let lastFocus = null;
+
+    function build() {
+        overlay = document.createElement('div');
+        overlay.className = 'attachment-viewer';
+        overlay.hidden = true;
+        overlay.setAttribute('role', 'dialog');
+        overlay.setAttribute('aria-modal', 'true');
+        overlay.setAttribute('aria-label', 'Attachment preview');
+        overlay.innerHTML = `
+            <div class="attachment-viewer-toolbar">
+                <span class="attachment-viewer-name" data-viewer-name></span>
+                <div class="attachment-viewer-actions">
+                    <button type="button" class="attachment-viewer-button" data-viewer-fullscreen>Full screen</button>
+                    <a class="attachment-viewer-button" data-viewer-open target="_blank" rel="noopener">Open in new tab</a>
+                    <a class="attachment-viewer-button" data-viewer-download>Download</a>
+                    <button type="button" class="attachment-viewer-button attachment-viewer-close" data-viewer-close aria-label="Close preview">&times;</button>
+                </div>
+            </div>
+            <div class="attachment-viewer-stage" data-viewer-stage></div>`;
+        document.body.appendChild(overlay);
+
+        overlay.addEventListener('click', (event) => {
+            if (event.target === overlay || event.target.matches('[data-viewer-stage]') || event.target.closest('[data-viewer-close]')) {
+                close();
+            }
+        });
+        overlay.querySelector('[data-viewer-fullscreen]').addEventListener('click', toggleFullscreen);
+        document.addEventListener('keydown', (event) => {
+            if (event.key === 'Escape' && ! overlay.hidden && ! document.fullscreenElement) close();
+        });
+        document.addEventListener('fullscreenchange', () => {
+            overlay.classList.toggle('is-fullscreen', document.fullscreenElement === overlay);
+            overlay.querySelector('[data-viewer-fullscreen]').textContent = document.fullscreenElement === overlay ? 'Exit full screen' : 'Full screen';
+        });
+    }
+
+    function toggleFullscreen() {
+        if (document.fullscreenElement) {
+            document.exitFullscreen?.();
+            return;
+        }
+        // Inside an embedded preview the browser may refuse; the overlay already fills the view.
+        overlay.requestFullscreen?.().catch(() => overlay.classList.add('is-fullscreen'));
+    }
+
+    function open({ url, kind, name, download }) {
+        if (! overlay) build();
+        lastFocus = document.activeElement;
+        const stage = overlay.querySelector('[data-viewer-stage]');
+        stage.replaceChildren();
+        if (kind === 'pdf') {
+            const frame = document.createElement('iframe');
+            frame.className = 'attachment-viewer-pdf';
+            frame.title = name || 'PDF preview';
+            frame.src = url;
+            stage.appendChild(frame);
+        } else {
+            const image = document.createElement('img');
+            image.className = 'attachment-viewer-image';
+            image.alt = name || 'Attachment preview';
+            image.src = url;
+            // Click the picture to switch between fit-to-screen and actual size.
+            image.addEventListener('click', (event) => {
+                event.stopPropagation();
+                image.classList.toggle('is-zoomed');
+            });
+            stage.appendChild(image);
+        }
+        overlay.querySelector('[data-viewer-name]').textContent = name || '';
+        overlay.querySelector('[data-viewer-open]').href = url;
+        const downloadLink = overlay.querySelector('[data-viewer-download]');
+        downloadLink.href = download || url;
+        if (download) downloadLink.removeAttribute('download'); else downloadLink.setAttribute('download', name || '');
+        overlay.hidden = false;
+        document.documentElement.classList.add('attachment-viewer-open');
+        overlay.querySelector('[data-viewer-close]').focus();
+    }
+
+    function close() {
+        if (! overlay || overlay.hidden) return;
+        if (document.fullscreenElement === overlay) document.exitFullscreen?.();
+        overlay.hidden = true;
+        overlay.classList.remove('is-fullscreen');
+        overlay.querySelector('[data-viewer-stage]').replaceChildren();
+        document.documentElement.classList.remove('attachment-viewer-open');
+        lastFocus?.focus?.();
+    }
+
+    return { open, close };
+})();
+window.openAttachmentViewer = attachmentViewer.open;
+
+document.addEventListener('click', (event) => {
+    const link = event.target.closest?.('[data-attachment-viewer]');
+    if (! link || event.ctrlKey || event.metaKey || event.shiftKey || event.button !== 0) return;
+    event.preventDefault();
+    attachmentViewer.open({
+        url: link.getAttribute('href') || link.dataset.attachmentUrl,
+        kind: link.dataset.attachmentKind,
+        name: link.dataset.attachmentName,
+        download: link.dataset.attachmentDownload,
+    });
+});
+
 function initializeAttachmentPreviews() {
+    // Each file field previews its own pick in the [data-attachment-preview] box beside it.
     document.addEventListener('change', (event) => {
         const input = event.target;
-        if (!(input instanceof HTMLInputElement) || input.type !== 'file' || ! input.name.includes('[attachment]')) {
+        if (!(input instanceof HTMLInputElement) || input.type !== 'file') {
             return;
         }
 
-        const preview = input.closest('[data-item-row]')?.querySelector('[data-attachment-preview]');
+        const preview = (input.closest('[class*="col-"]') ?? input.parentElement)?.querySelector('[data-attachment-preview]');
         if (! preview) {
             return;
         }
 
+        if (input.dataset.previewUrl) {
+            URL.revokeObjectURL(input.dataset.previewUrl);
+            delete input.dataset.previewUrl;
+        }
         preview.replaceChildren();
         const file = input.files?.[0];
         if (! file) {
@@ -467,22 +584,30 @@ function initializeAttachmentPreviews() {
         const details = document.createElement('div');
         details.className = 'border rounded p-2 d-flex flex-wrap align-items-center gap-2';
         const label = document.createElement('span');
-        label.className = 'small';
+        label.className = 'small text-break';
         label.textContent = `${file.name} · ${Math.ceil(file.size / 1024)} KB`;
         details.appendChild(label);
 
-        if (file.type.startsWith('image/')) {
+        const kind = file.type.startsWith('image/') ? 'image' : (file.type === 'application/pdf' ? 'pdf' : 'file');
+        let url = null;
+        if (kind !== 'file') {
+            url = URL.createObjectURL(file);
+            input.dataset.previewUrl = url;
+        }
+
+        if (kind === 'image') {
             const image = document.createElement('img');
             image.className = 'attachment-preview-image';
             image.alt = `Preview of ${file.name}`;
-            image.src = URL.createObjectURL(file);
-            image.onload = () => URL.revokeObjectURL(image.src);
+            image.src = url;
+            image.title = 'View full size';
+            image.addEventListener('click', () => attachmentViewer.open({ url, kind, name: file.name }));
             details.prepend(image);
-        } else if (file.type === 'application/pdf') {
+        } else if (kind === 'pdf') {
             const pdf = document.createElement('embed');
             pdf.className = 'attachment-preview-pdf';
             pdf.type = file.type;
-            pdf.src = URL.createObjectURL(file);
+            pdf.src = url;
             details.prepend(pdf);
         } else {
             const icon = document.createElement('span');
@@ -491,13 +616,23 @@ function initializeAttachmentPreviews() {
             details.prepend(icon);
         }
 
+        if (url) {
+            const view = document.createElement('button');
+            view.className = 'btn btn-sm btn-outline-primary ms-auto';
+            view.type = 'button';
+            view.textContent = 'View';
+            view.addEventListener('click', () => attachmentViewer.open({ url, kind, name: file.name }));
+            details.appendChild(view);
+        }
+
         const remove = document.createElement('button');
-        remove.className = 'btn btn-sm btn-outline-danger ms-auto';
+        remove.className = `btn btn-sm btn-outline-danger${url ? '' : ' ms-auto'}`;
         remove.type = 'button';
         remove.textContent = 'Remove';
         remove.addEventListener('click', () => {
             input.value = '';
-            preview.replaceChildren();
+            // Let the form re-check what is still needed to submit.
+            input.dispatchEvent(new Event('change', { bubbles: true }));
         });
         details.appendChild(remove);
         preview.appendChild(details);

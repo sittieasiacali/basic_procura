@@ -16,7 +16,7 @@ final class AccountRoleCatalog
             RoleSlug::Finance->value => 'FINANCE',
             RoleSlug::Requestor->value => 'TL / REQUESTOR',
             RoleSlug::ItStaff->value => 'IT',
-            RoleSlug::PremisesStaff->value => 'PREMESIS',
+            RoleSlug::PremisesStaff->value => 'PREMISES',
             RoleSlug::PoChecker->value => 'PO CHECKER',
             RoleSlug::PoNoted->value => 'PO NOTED',
             RoleSlug::PoApprover->value => 'PO APPROVER',

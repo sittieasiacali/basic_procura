@@ -4396,6 +4396,165 @@ textarea.form-control {
     border-radius: .25rem;
 }
 
+.attachment-preview-image {
+    cursor: zoom-in;
+}
+
+/* Links to uploaded files (item email approvals, quotations, pictures, screening evidence). */
+.attachment-link {
+    display: inline-flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: .3rem;
+    max-width: 100%;
+    overflow-wrap: anywhere;
+}
+
+.attachment-on-file .attachment-link {
+    margin-inline-end: .5rem;
+}
+
+.attachment-thumbnail {
+    display: block;
+    flex-basis: 100%;
+    cursor: zoom-in;
+}
+
+.attachment-thumbnail img {
+    display: block;
+    max-width: 120px;
+    max-height: 90px;
+    margin-top: .25rem;
+    border: 1px solid var(--bs-border-color);
+    border-radius: .375rem;
+    object-fit: cover;
+    background: #fff;
+}
+
+.request-document__attachment {
+    font-size: .8em;
+}
+
+/* Quantity: − value + */
+.quantity-stepper .btn {
+    min-width: 2.25rem;
+    padding-inline: .5rem;
+    font-weight: 700;
+    line-height: 1;
+}
+
+.quantity-stepper .item-quantity {
+    min-width: 3.5rem;
+    -moz-appearance: textfield;
+    appearance: textfield;
+}
+
+.quantity-stepper .item-quantity::-webkit-outer-spin-button,
+.quantity-stepper .item-quantity::-webkit-inner-spin-button {
+    margin: 0;
+    -webkit-appearance: none;
+}
+
+/* Full-screen attachment viewer (resources/js/app.js). */
+.attachment-viewer-open {
+    overflow: hidden;
+}
+
+.attachment-viewer {
+    position: fixed;
+    inset: 0;
+    z-index: 2000;
+    display: flex;
+    flex-direction: column;
+    background: rgb(8 10 30 / 92%);
+    color: #fff;
+}
+
+.attachment-viewer[hidden] {
+    display: none;
+}
+
+.attachment-viewer-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: .5rem 1rem;
+    padding: .6rem 1rem;
+    background: rgb(0 0 0 / 35%);
+}
+
+.attachment-viewer-name {
+    min-width: 0;
+    font-size: .9rem;
+    font-weight: 600;
+    overflow-wrap: anywhere;
+}
+
+.attachment-viewer-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .4rem;
+}
+
+.attachment-viewer-button {
+    display: inline-flex;
+    align-items: center;
+    padding: .35rem .75rem;
+    border: 1px solid rgb(255 255 255 / 35%);
+    border-radius: .4rem;
+    background: transparent;
+    color: #fff;
+    font-size: .82rem;
+    text-decoration: none;
+}
+
+.attachment-viewer-button:hover,
+.attachment-viewer-button:focus-visible {
+    background: rgb(255 255 255 / 15%);
+    color: #fff;
+}
+
+.attachment-viewer-close {
+    font-size: 1.25rem;
+    line-height: 1;
+}
+
+.attachment-viewer-stage {
+    display: flex;
+    flex: 1 1 auto;
+    min-height: 0;
+    padding: 1rem;
+    overflow: auto;
+}
+
+.attachment-viewer-image {
+    /* margin:auto centres it, yet a zoomed image can still scroll to every edge. */
+    margin: auto;
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain;
+    cursor: zoom-in;
+    background: #fff;
+}
+
+.attachment-viewer-image.is-zoomed {
+    max-width: none;
+    max-height: none;
+    cursor: zoom-out;
+}
+
+.attachment-viewer-pdf {
+    width: 100%;
+    height: 100%;
+    border: 0;
+    background: #fff;
+}
+
+.attachment-viewer.is-fullscreen .attachment-viewer-stage {
+    padding: 0;
+}
+
 .supplier-quotations-disclosure {
     overflow: hidden;
     border: 1px solid #dfe5ec;
@@ -11738,8 +11897,40 @@ body:has(.team-leader-dashboard) .app-page-back-wrap {
 
 .procura-home-profile-menu {
     min-width: 15rem;
+    max-width: min(20rem, calc(100vw - 1.5rem));
     border-color: #d9e6f6;
     box-shadow: 0 .8rem 2rem rgba(18, 58, 112, .12);
+}
+
+/*
+ * The frosted header (backdrop-filter) is its own stacking context. Without a
+ * z-index the account / role-switch dropdown is painted underneath positioned
+ * page content such as the hero banners, so the menus overlap.
+ */
+.procura-home-header {
+    position: relative;
+    z-index: 1030;
+}
+
+/* Role switcher: long role names wrap instead of running into the "Active" tag. */
+.workspace-role-option {
+    white-space: normal;
+    text-align: left;
+}
+
+.workspace-role-option > span:first-child {
+    min-width: 0;
+    overflow-wrap: anywhere;
+}
+
+.workspace-role-option .workspace-role-active {
+    flex: 0 0 auto;
+    padding: .05rem .45rem;
+    border-radius: 999px;
+    background: #e8f1ff;
+    color: #2152a4;
+    font-size: .7rem;
+    font-weight: 700;
 }
 
 .procura-home-main {

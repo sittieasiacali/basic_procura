@@ -46,6 +46,24 @@ class RequestWithdrawal
         };
     }
 
+    /** A request still in the requestor's hands (never submitted, or returned to them) is voided at once. */
+    public static function voidsImmediately(PurchaseRequest $purchaseRequest): bool
+    {
+        return in_array($purchaseRequest->status, [PurchaseRequestStatus::Draft, PurchaseRequestStatus::Returned], true);
+    }
+
+    /** Why the requestor can no longer void this request, or null when they can. */
+    public static function blockedReason(PurchaseRequest $purchaseRequest): ?string
+    {
+        return match (true) {
+            $purchaseRequest->status === PurchaseRequestStatus::WithdrawalPending => 'A void was already requested for this request. It is waiting for the handling staff to acknowledge it.',
+            $purchaseRequest->status === PurchaseRequestStatus::Voided => 'This request is already voided.',
+            $purchaseRequest->purchaseOrder()->exists(),
+            ! in_array($purchaseRequest->status, [PurchaseRequestStatus::Draft, ...PurchaseRequestStatus::withdrawable()], true) => 'This request can no longer be voided because a Purchase Order has been issued or processing is complete. Contact Purchasing to cancel it.',
+            default => null,
+        };
+    }
+
     public static function canAcknowledge(User $user, PurchaseRequest $purchaseRequest): bool
     {
         if ($purchaseRequest->status !== PurchaseRequestStatus::WithdrawalPending || $user->id === $purchaseRequest->requestor_id) {
@@ -68,6 +86,7 @@ class RequestWithdrawal
     public static function stageLabel(?string $stage): string
     {
         return match (PurchaseRequestStatus::tryFrom((string) $stage)) {
+            PurchaseRequestStatus::Draft => 'Draft (not submitted)',
             PurchaseRequestStatus::ForTlApproval => 'Team Leader approval',
             PurchaseRequestStatus::ForOmApproval => 'Operations Manager approval',
             PurchaseRequestStatus::Returned => 'Returned to requestor',
