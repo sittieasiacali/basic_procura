@@ -1,6 +1,6 @@
 <div class="modal fade" id="acknowledge-withdrawal-{{ $purchaseRequest->id }}" tabindex="-1" aria-labelledby="acknowledge-withdrawal-heading-{{ $purchaseRequest->id }}" aria-hidden="true">
     <div class="modal-dialog">
-        <form class="modal-content" method="POST" action="{{ route('purchase-requests.withdrawal.acknowledge', $purchaseRequest) }}">
+        <form class="modal-content" method="POST" action="{{ route('purchase-requests.withdrawal.acknowledge', $purchaseRequest, false) }}">
             @csrf
             <input type="hidden" name="return_to_monitoring" value="1">
             <div class="modal-header">

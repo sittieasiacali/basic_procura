@@ -105,6 +105,16 @@ class RequestWithdrawalTest extends TestCase
         $this->assertFalse($this->user(RoleSlug::ItStaff)->can('acknowledgeWithdrawal', $withoutPo));
     }
 
+    public function test_withdrawal_form_keeps_the_browser_scheme_when_the_origin_uses_http(): void
+    {
+        $owner = $this->user(RoleSlug::TeamLeader);
+        $request = $this->request($owner, PurchaseRequestStatus::ForItScreening, 'IT');
+
+        $this->actingAs($owner)->get(route('purchase-requests.show', $request))->assertOk()
+            ->assertSee('action="'.route('purchase-requests.withdraw', $request, false).'"', false)
+            ->assertDontSee('action="'.route('purchase-requests.withdraw', $request).'"', false);
+    }
+
     public function test_requestor_dashboard_offers_void_only_on_withdrawable_cards(): void
     {
         $requestor = $this->user(RoleSlug::TeamLeader);
@@ -117,14 +127,14 @@ class RequestWithdrawalTest extends TestCase
 
         $this->actingAs($requestor)->get(route('dashboard'))->assertOk()
             ->assertSee('id="void-request-modal"', false)
-            ->assertSee('data-void-url="'.route('purchase-requests.withdraw', $withdrawable).'"', false)
-            ->assertDontSee('data-void-url="'.route('purchase-requests.withdraw', $withPo).'"', false);
+            ->assertSee('data-void-url="'.route('purchase-requests.withdraw', $withdrawable, false).'"', false)
+            ->assertDontSee('data-void-url="'.route('purchase-requests.withdraw', $withPo, false).'"', false);
 
         // Voiding from the dashboard returns there.
         $this->from(route('dashboard'))->post(route('purchase-requests.withdraw', $withdrawable), ['withdrawal_reason' => 'Duplicate request.'])
             ->assertRedirect(route('dashboard'));
         $this->get(route('dashboard'))->assertOk()
-            ->assertDontSee('data-void-url="'.route('purchase-requests.withdraw', $withdrawable).'"', false)
+            ->assertDontSee('data-void-url="'.route('purchase-requests.withdraw', $withdrawable, false).'"', false)
             ->assertSee('Withdrawal Pending Acknowledgment');
         $this->get(route('dashboard', ['request_tab' => 'voided']))->assertOk()
             ->assertViewHas('voidPendingCount', 1)
@@ -275,7 +285,7 @@ class RequestWithdrawalTest extends TestCase
             ->assertSee($owner->email)->assertSee('Handling staff')->assertSee($staff->name)
             ->assertSee($staff->email)->assertSee('Purchasing Team')
             ->assertSee('data-bs-target="#acknowledge-withdrawal-'.$row->id.'"', false)
-            ->assertSee('action="'.route('purchase-requests.withdrawal.acknowledge', $row).'"', false)
+            ->assertSee('action="'.route('purchase-requests.withdrawal.acknowledge', $row, false).'"', false)
             ->assertSee('name="return_to_monitoring" value="1"', false);
 
         $this->post(route('purchase-requests.withdrawal.acknowledge', $row), [

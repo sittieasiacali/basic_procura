@@ -203,7 +203,7 @@ class PurchaseRequestListTest extends TestCase
             ->assertSee('Request Summary')
             ->assertSee('Procurement Workflow')
             ->assertSee('Submit Request')
-            ->assertSee('My Requests')
+            ->assertSee('data-close-purchase-request', false)
             ->assertDontSee('Assigned Requests')
             ->assertDontSee('name="supplier_id"', false)
             ->assertDontSee('svgAdd');

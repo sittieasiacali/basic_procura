@@ -8,7 +8,7 @@
 @can('withdraw', $purchaseRequest)
     <div class="modal fade" id="withdraw-request-modal" tabindex="-1" aria-labelledby="withdraw-request-heading" aria-hidden="true" @error('withdrawal_reason') data-open-on-load @enderror>
         <div class="modal-dialog">
-            <form class="modal-content" method="POST" action="{{ route('purchase-requests.withdraw', $purchaseRequest) }}">
+            <form class="modal-content" method="POST" action="{{ route('purchase-requests.withdraw', $purchaseRequest, false) }}">
                 @csrf
                 <div class="modal-header">
                     <h2 class="modal-title fs-5" id="withdraw-request-heading">Withdraw Request</h2>
@@ -60,7 +60,7 @@
                 @endif
             </dl>
             @can('acknowledgeWithdrawal', $purchaseRequest)
-                <form class="withdrawal-acknowledge" method="POST" action="{{ route('purchase-requests.withdrawal.acknowledge', $purchaseRequest) }}">
+                <form class="withdrawal-acknowledge" method="POST" action="{{ route('purchase-requests.withdrawal.acknowledge', $purchaseRequest, false) }}">
                     @csrf
                     <label class="form-label" for="acknowledgment-remarks">Note <span class="text-muted fw-normal">(optional)</span></label>
                     <textarea class="form-control mb-2" id="acknowledgment-remarks" name="acknowledgment_remarks" rows="2" maxlength="2000" placeholder="e.g. Supplier informed; quotation request cancelled.">{{ old('acknowledgment_remarks') }}</textarea>

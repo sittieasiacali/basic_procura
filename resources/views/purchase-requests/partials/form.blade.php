@@ -84,7 +84,9 @@
                 <input class="form-control @error('required_date') is-invalid @enderror" id="required_date" name="required_date" type="date" value="{{ old('required_date', isset($purchaseRequest) ? $purchaseRequest->required_date->format('Y-m-d') : '') }}" required>
                 @error('required_date')<div class="invalid-feedback">{{ $message }}</div>@enderror
             </div>
-            @php($selectedPriority = old('priority_level', $purchaseRequest->priority_level ?? ''))
+            @php
+                $selectedPriority = old('priority_level', $purchaseRequest->priority_level ?? '');
+            @endphp
             <div class="col-md-4">
                 <label class="form-label" for="priority_level">Priority <span class="text-danger">*</span></label>
                 {{-- Needed to submit; a draft may leave it blank. --}}
@@ -205,7 +207,9 @@
         </div>
         <div class="visually-hidden" id="item-action-announcement" aria-live="assertive"></div>
         @foreach($formItems as $index => $item)
-            @php $existingItem = $editing && isset($item['id']) ? $purchaseRequest->items->firstWhere('id', $item['id']) : null; @endphp
+            @php
+                $existingItem = $editing && isset($item['id']) ? $purchaseRequest->items->firstWhere('id', $item['id']) : null;
+            @endphp
             <article class="item-row" data-item-row>
                 <div class="item-row-header">
                     <div class="item-row-heading"><span class="item-number-chip" data-item-number>{{ $loop->iteration }}</span><strong>Item <span class="visually-hidden" data-item-number-text>{{ $loop->iteration }}</span></strong></div>
@@ -239,7 +243,9 @@
                         </div>
                         <div class="col-6 col-lg-3">
                             <label class="form-label" for="item-{{ $index }}-unit">Unit</label>
-                            @php ($currentUnit = (string) ($item['unit'] ?? '')); @endphp
+                            @php
+                                $currentUnit = (string) ($item['unit'] ?? '');
+                            @endphp
                             <select class="form-select @error("items.$index.unit") is-invalid @enderror" id="item-{{ $index }}-unit" name="items[{{ $index }}][unit]">
                                 <option value="">Select unit</option>
                                 @foreach($units as $unitValue => $unitLabel)
