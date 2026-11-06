@@ -36,6 +36,7 @@
                     @else
                         <span class="small text-muted">View only</span>
                     @endcan
+                    <x-admin-delete-transaction :record="$item" />
                 </td>
             </tr>
         @empty

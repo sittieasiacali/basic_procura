@@ -92,7 +92,7 @@
                         </td>
                         <td class="text-end text-nowrap">{{ $purchaseRequest->total_amount === null ? 'Not estimated' : '₱ '.number_format((float) $purchaseRequest->total_amount, 2) }}</td>
                         <td class="text-nowrap">{{ ($purchaseRequest->submitted_at ?? $purchaseRequest->updated_at)->format('M j, Y') }}</td>
-                        <td class="text-end"><a class="btn btn-sm btn-primary" href="{{ route('purchase-requests.show', ['purchaseRequest' => $purchaseRequest, 'from_stage' => 'supplier-approval']) }}{{ $reviewAnchor }}" data-workflow-action-modal data-workflow-action-title="Supplier review">Review</a></td>
+                        <td class="text-end"><a class="btn btn-sm btn-primary" href="{{ route('purchase-requests.show', ['purchaseRequest' => $purchaseRequest, 'from_stage' => 'supplier-approval']) }}{{ $reviewAnchor }}" data-workflow-action-modal data-workflow-action-title="Supplier review">Review</a><x-admin-delete-transaction :purchase-request="$purchaseRequest" /></td>
                     </tr>
                 @empty
                     <tr><td colspan="7" class="text-center py-5"><x-ui.empty-state icon="flow" title="No requests in this view" description="Requests requiring your action or completed President decisions will appear here." /></td></tr>

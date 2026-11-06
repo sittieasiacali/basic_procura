@@ -457,6 +457,7 @@
                                 @unless($isBudgetMakerDashboard)
                                     <a class="dashboard-request-view-link" href="{{ route('purchase-requests.show', $purchaseRequest) }}" data-workflow-request-preview>View request</a>
                                 @endunless
+                                <x-admin-delete-transaction :purchase-request="$purchaseRequest" />
                             </div>
                         </article>
                     @empty
@@ -588,7 +589,7 @@
                                             <td><span class="badge text-bg-light border text-dark">{{ str($purchaseOrder->status)->replace('_', ' ')->title() }}</span></td>
                                             <td>{{ $purchaseOrder->creator?->name ?? 'Not recorded' }}<div class="small text-muted">{{ $purchaseOrder->created_at?->format('M j, Y g:i A') }}</div></td>
                                             <td class="text-end text-nowrap fw-semibold">&#8369; {{ number_format((float) $purchaseOrder->total_amount, 2) }}</td>
-                                            <td class="text-end text-nowrap"><button class="btn btn-sm btn-outline-primary" type="button" data-po-preview-url="{{ route('purchase-orders.preview', $purchaseOrder) }}">View PO</button></td>
+                                            <td class="text-end text-nowrap"><button class="btn btn-sm btn-outline-primary" type="button" data-po-preview-url="{{ route('purchase-orders.preview', $purchaseOrder) }}">View PO</button><x-admin-delete-transaction :record="$purchaseOrder" /></td>
                                         </tr>
                                     @empty
                                         <tr><td colspan="8"><x-ui.empty-state icon="receipt" title="No Purchase Orders created" description="New Purchase Orders will appear here as soon as they are saved." /></td></tr>
@@ -617,7 +618,7 @@
                                 <tr>
                                     <td class="table-row-number">{{ $processedRequests->firstItem() + $loop->index }}</td>
                                     <td><a class="fw-semibold text-decoration-none" href="{{ route('purchase-requests.show', $purchaseRequest) }}" data-workflow-request-preview>{{ $purchaseRequest->request_number }}</a><div class="small text-muted text-truncate request-title">{{ $purchaseRequest->title }}</div></td>
-                                    <td><x-status-badge :status="$purchaseRequest->status" /></td>
+                                    <td><x-status-badge :status="$purchaseRequest->status" /><x-admin-delete-transaction :purchase-request="$purchaseRequest" /></td>
                                     <td class="text-end small text-muted text-nowrap">{{ $purchaseRequest->updated_at->format('M j, Y g:i A') }}</td>
                                 </tr>
                             @empty
@@ -681,7 +682,7 @@
                                 @php($reviewRequest = $activity->purchaseOrder?->purchaseRequest)
                                 @php($reviewPreviewUrl = $activity->purchaseOrder ? route('purchase-orders.preview', $activity->purchaseOrder) : null)
                                 <tr @if($reviewPreviewUrl) class="po-review-history-row" data-po-preview-row data-po-preview-url="{{ $reviewPreviewUrl }}" tabindex="0" role="button" aria-label="Preview Purchase Order {{ $activity->purchaseOrder->po_number }}" @endif>
-                                    <td class="table-row-number">{{ $purchaseOrderReviewActions->firstItem() + $loop->index }}</td>
+                                    <td class="table-row-number">{{ $purchaseOrderReviewActions->firstItem() + $loop->index }} <x-admin-delete-transaction :purchase-request="$reviewRequest" /></td>
                                     <td class="fw-semibold">@if($reviewPreviewUrl)<button class="btn btn-link p-0 fw-semibold text-decoration-none" type="button" data-po-preview-url="{{ $reviewPreviewUrl }}">{{ $activity->purchaseOrder->po_number }}</button>@else PO not available @endif</td>
                                     <td>@if($reviewRequest)<div class="text-truncate request-title">{{ $reviewRequest->title }}</div>@else <span class="text-muted">Not available</span> @endif</td>
                                     @if($poHistoryIsMine)
@@ -741,7 +742,7 @@
                                     <td>{{ $paymentDetails['method'] }}</td>
                                     <td class="text-end text-nowrap fw-semibold">{{ $paymentDetails['amount'] }}</td>
                                     <td><span class="badge {{ $paymentDetails['status'] === 'Paid' ? 'text-bg-success' : 'text-bg-secondary' }}">{{ $paymentDetails['status'] }}</span></td>
-                                    <td class="text-end small text-muted text-nowrap">{{ $paymentDetails['paid_at'] }}</td>
+                                    <td class="text-end small text-muted text-nowrap">{{ $paymentDetails['paid_at'] }} <x-admin-delete-transaction :record="$payment" /></td>
                                 </tr>
                             @empty
                                 <tr><td colspan="7"><x-ui.empty-state icon="check-circle" title="No processed payments found" description="Payments you record will appear here. Adjust the search or filters if you expected results." /></td></tr>
@@ -770,7 +771,7 @@
                             <tr>
                                 <td><a class="fw-semibold text-decoration-none" href="{{ route('purchase-requests.show', $purchaseRequest) }}" data-workflow-request-preview>{{ $purchaseRequest->request_number }}</a><div class="small text-muted text-truncate request-title">{{ $purchaseRequest->title }}</div></td>
                                 <td><div>{{ $purchaseRequest->requestor->name }}</div><div class="small text-muted">{{ $purchaseRequest->department_campaign }}</div></td>
-                                <td><x-status-badge :status="$purchaseRequest->status" /></td>
+                                <td><x-status-badge :status="$purchaseRequest->status" /><x-admin-delete-transaction :purchase-request="$purchaseRequest" /></td>
                                     <td class="text-end small text-muted text-nowrap" title="{{ $purchaseRequest->updated_at->format('M j, Y g:i A') }}">{{ $purchaseRequest->updated_at->format('M j, Y g:i A') }}</td>
                             </tr>
                         @empty

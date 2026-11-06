@@ -131,6 +131,7 @@
                         </div>
                         
                         <div class="flow-request-card-footer">
+                            <x-admin-delete-transaction :purchase-request="$purchaseRequest" />
                             <a class="btn btn-sm btn-outline-primary" href="{{ route('purchase-requests.show', $purchaseRequest) }}" data-workflow-request-preview>View request <x-ui.icon name="chevron-right" size="15" /></a>
                         </div>
                     </article>

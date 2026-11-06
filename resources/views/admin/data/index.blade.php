@@ -11,7 +11,7 @@
         <div class="alert alert-danger" role="alert"><strong>Record was not deleted.</strong><ul class="mb-0">@foreach($errors->all() as $error)<li>{{ $error }}</li>@endforeach</ul></div>
     @endif
     <div class="alert alert-warning">
-        Every deletion requires a reason and is recorded in the audit history. Request-related deletions notify the requestor's assigned OM.
+        Every deletion requires a reason and is recorded in the audit history. Request-related deletions notify the requestor and their assigned OM and SMT.
         Delete or reassign linked records first. Your signed-in account cannot be deleted.
     </div>
     <div class="card mb-3"><div class="card-body">
@@ -32,6 +32,9 @@
                         <td>{{ $record->getRawOriginal('status') ?? ($record->getRawOriginal('is_active') === null ? '—' : ($record->is_active ? 'Active' : 'Inactive')) }}</td>
                         <td>{{ $record->getRawOriginal('updated_at') ?? $record->getRawOriginal('created_at') ?? '—' }}</td>
                         <td>
+                            @if($record instanceof \App\Models\PurchaseRequest)
+                                <x-admin-delete-transaction :purchase-request="$record" />
+                            @else
                             <details><summary class="text-danger">Delete record</summary>
                                 <form method="POST" action="{{ route('admin.data.destroy', ['type' => $type, 'id' => $record->getKey()], false) }}" class="mt-2" style="min-width: 250px;">
                                     @csrf
@@ -42,6 +45,7 @@
                                     <button class="btn btn-sm btn-danger" type="submit">Confirm deletion</button>
                                 </form>
                             </details>
+                            @endif
                         </td>
                     </tr>
                 @empty

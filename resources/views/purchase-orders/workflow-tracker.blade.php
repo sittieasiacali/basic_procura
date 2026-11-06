@@ -82,7 +82,7 @@
                                 <div class="tracker-row-progress" title="{{ $doneCount }} of {{ $stepCount }} steps done"><span class="tracker-row-progress-bar"><span style="width: {{ round($doneCount / max($stepCount, 1) * 100) }}%"></span></span><span class="tracker-row-progress-text">{{ $doneCount }}/{{ $stepCount }}</span></div>
                             </td>
                             <td><span class="tracker-po-status tracker-po-status--{{ str($order->status)->lower()->slug() }}">{{ str($order->status)->replace('_', ' ')->title() }}</span></td>
-                            <td class="text-end text-nowrap"><a class="btn btn-sm btn-outline-primary d-inline-flex align-items-center gap-1" href="{{ route('workflow-tracker.show', ['purchaseOrder' => $order, ...request()->only(['search', 'stage', 'page'])]) }}">View timeline<x-ui.icon name="chevron-right" size="14" /></a></td>
+                            <td class="text-end text-nowrap"><a class="btn btn-sm btn-outline-primary d-inline-flex align-items-center gap-1" href="{{ route('workflow-tracker.show', ['purchaseOrder' => $order, ...request()->only(['search', 'stage', 'page'])]) }}">View timeline<x-ui.icon name="chevron-right" size="14" /></a><x-admin-delete-transaction :record="$order" /></td>
                         </tr>
                     @empty
                         <tr><td colspan="7"><x-ui.empty-state icon="search" title="No Purchase Orders found" description="No Purchase Orders match this stage and search. Try another tab or search term." /></td></tr>

@@ -78,7 +78,7 @@
                 @endphp
                 <tr>
                     <td class="text-nowrap">
-                        <a class="budget-preparation-code" href="{{ route('budget-requests.document', $preparedBudget) }}" data-br-preview-url="{{ route('budget-requests.document', $preparedBudget) }}" title="Preview {{ $preparedBudget->displayNumber() }}"><x-ui.icon name="receipt" size="14" />{{ $preparedBudget->displayNumber() }}</a>
+                        <a class="budget-preparation-code" href="{{ route('budget-requests.document', $preparedBudget) }}" data-br-preview-url="{{ route('budget-requests.document', $preparedBudget) }}" title="Preview {{ $preparedBudget->displayNumber() }}"><x-ui.icon name="receipt" size="14" />{{ $preparedBudget->displayNumber() }}</a><div class="mt-2"><x-admin-delete-transaction :record="$preparedBudget" /></div>
                         <div class="budget-preparation-br-meta">{{ $lineData->count() }} {{ $lineData->count() === 1 ? 'PO' : 'POs' }}</div>
                         <div class="budget-preparation-br-suppliers">{{ $preparedBudget->lines->map(fn ($line) => $line->purchaseOrder?->supplier?->name)->filter()->unique()->join(' · ') }}</div>
                     </td>

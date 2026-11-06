@@ -63,6 +63,6 @@ class DataManagementController extends Controller
         }
 
         return redirect()->route('admin.data.index', ['type' => $type])
-            ->with('success', $result['label'].' deleted.'.($result['email_count'] ? ' Deletion email queued for the assigned OM.' : ''));
+            ->with('success', $result['label'].' deleted.'.($result['email_count'] ? ' Deletion notifications queued for the requestor and assigned OM/SMT.' : ''));
     }
 }

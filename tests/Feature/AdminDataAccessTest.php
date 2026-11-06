@@ -56,7 +56,7 @@ class AdminDataAccessTest extends TestCase
         Notification::assertNothingSent();
     }
 
-    public function test_request_deletion_is_audited_and_notifies_only_its_owners_om(): void
+    public function test_request_deletion_is_audited_and_notifies_the_requestor_and_assigned_management(): void
     {
         $admin = $this->user(RoleSlug::Admin);
         $admin->update(['om_notification_email' => 'admin-om@example.test']);
@@ -70,12 +70,12 @@ class AdminDataAccessTest extends TestCase
         $this->assertSame($admin->id, $audit->user_id);
         $this->assertSame($this->confirmation()['reason'], $audit->remarks);
         $this->assertSame([$owner->om_notification_email], $audit->metadata['om_recipients']);
-        Notification::assertSentOnDemandTimes(AdminRecordDeleted::class, 1);
+        Notification::assertSentOnDemandTimes(AdminRecordDeleted::class, 3);
         Notification::assertSentOnDemand(AdminRecordDeleted::class, fn ($notification, $channels, $notifiable) => $notifiable->routes['mail'] === $owner->om_notification_email
             && $notification->details['request_number'] === $request->request_number
             && $notification->afterCommit === true);
         $this->delete(route('admin.data.destroy', ['type' => 'purchase-requests', 'id' => $request->id]), $this->confirmation())->assertNotFound();
-        Notification::assertSentOnDemandTimes(AdminRecordDeleted::class, 1);
+        Notification::assertSentOnDemandTimes(AdminRecordDeleted::class, 3);
     }
 
     public function test_admin_can_delete_unreferenced_accounts_and_setup_records(): void
@@ -140,7 +140,7 @@ class AdminDataAccessTest extends TestCase
             ->assertSessionHasNoErrors();
         $this->assertSoftDeleted($item);
         $this->assertNull($request->fresh()->deleted_at);
-        Notification::assertSentOnDemandTimes(AdminRecordDeleted::class, 1);
+        Notification::assertSentOnDemandTimes(AdminRecordDeleted::class, 3);
         Notification::assertSentOnDemand(AdminRecordDeleted::class, fn ($notification, $channels, $notifiable) => $notifiable->routes['mail'] === $owner->om_notification_email
             && $notification->details['request_number'] === $request->request_number);
     }

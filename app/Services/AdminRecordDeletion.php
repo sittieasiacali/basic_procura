@@ -25,34 +25,53 @@ use Illuminate\Validation\ValidationException;
 
 final class AdminRecordDeletion
 {
-    public function delete(Model $record, User $actor, string $reason): array
+    public function delete(Model $record, User $actor, string $reason, bool $wholeTransaction = false, ?string $expectedPlanToken = null): array
     {
         abort_unless($actor->isAdministrator(), 403);
 
-        return DB::transaction(function () use ($record, $actor, $reason): array {
+        return DB::transaction(function () use ($record, $actor, $reason, $wholeTransaction, $expectedPlanToken): array {
             $record = $record->newQuery()->lockForUpdate()->findOrFail($record->getKey());
             if ($record instanceof User && $record->is($actor)) {
                 throw ValidationException::withMessages(['record' => 'You cannot delete your signed-in account.']);
             }
 
-            $this->assertNoDependents($record);
+            $transactionRecords = collect();
+            $stockRestorations = collect();
+            if ($wholeTransaction) {
+                abort_unless($record instanceof PurchaseRequest, 422);
+                $transactions = app(AdminTransactionRecords::class);
+                $transactionRecords = $transactions->collect($record, true);
+                if ($expectedPlanToken !== null && ! hash_equals($transactions->token($transactionRecords), $expectedPlanToken)) {
+                    throw ValidationException::withMessages(['record' => 'This transaction changed after the deletion review. Open Delete again to review the current records.']);
+                }
+                $stockRestorations = $transactions->stockRestorations($transactionRecords);
+            } else {
+                $this->assertNoDependents($record);
+            }
             $requests = $this->relatedRequests($record);
             $label = AdminRecordCatalog::label($record);
             $recipients = [];
+            $recipientGroups = ['requestor' => [], 'om' => [], 'smt' => []];
             foreach ($requests as $purchaseRequest) {
                 $owner = $purchaseRequest->requestor;
-                $email = strtolower(trim((string) $owner?->om_notification_email));
-                if (! filter_var($email, FILTER_VALIDATE_EMAIL)) {
-                    throw ValidationException::withMessages(['record' => 'Assign a valid OM notification email to '.$purchaseRequest->request_number.'\'s requestor before deleting this record.']);
-                }
-                $recipients[] = [$email, [
+                $details = [
                     'request_number' => $purchaseRequest->request_number,
-                    'requestor' => $owner->name,
+                    'requestor' => $owner?->name ?? 'Requestor unavailable',
                     'record' => $label,
                     'actor' => $actor->name,
                     'reason' => $reason,
                     'deleted_at' => now()->toDateTimeString(),
-                ]];
+                    'whole_transaction' => $wholeTransaction,
+                    'record_count' => $wholeTransaction ? $transactionRecords->count() : 1,
+                ];
+                foreach (['requestor' => $owner?->email, 'om' => $owner?->om_notification_email, 'smt' => $owner?->smt_notification_email] as $group => $address) {
+                    $email = strtolower(trim((string) $address));
+                    if (! filter_var($email, FILTER_VALIDATE_EMAIL)) {
+                        throw ValidationException::withMessages(['record' => 'Assign a valid '.strtoupper($group).' email for '.$purchaseRequest->request_number.' before deleting this record.']);
+                    }
+                    $recipientGroups[$group][] = $email;
+                    $recipients[$purchaseRequest->id.'|'.$email] = [$email, $details];
+                }
             }
 
             $snapshot = collect($record->getAttributes())->reject(fn ($value, $key) => preg_match('/password|token|secret|signature_data/i', $key))->all();
@@ -61,7 +80,7 @@ final class AdminRecordDeletion
                 'user_id' => $actor->id,
                 'auditable_type' => $record->getMorphClass(),
                 'auditable_id' => is_numeric($record->getKey()) ? $record->getKey() : null,
-                'action' => 'ADMIN_RECORD_DELETED',
+                'action' => $wholeTransaction ? 'ADMIN_TRANSACTION_DELETED' : 'ADMIN_RECORD_DELETED',
                 'remarks' => $reason,
                 'ip_address' => request()->ip(),
                 'user_agent' => request()->userAgent(),
@@ -69,12 +88,36 @@ final class AdminRecordDeletion
                     'record_type' => $record::class, 'record_id' => (string) $record->getKey(),
                     'record_label' => $label, 'snapshot' => $snapshot,
                     'request_ids' => $requests->modelKeys(),
-                    'om_recipients' => array_values(array_unique(array_column($recipients, 0))),
+                    'om_recipients' => array_values(array_unique($recipientGroups['om'])),
+                    'smt_recipients' => array_values(array_unique($recipientGroups['smt'])),
+                    'requestor_recipients' => array_values(array_unique($recipientGroups['requestor'])),
+                    'deleted_records' => $transactionRecords->map(fn (Model $entry) => [
+                        'model' => $entry::class, 'id' => $entry->getKey(), 'attributes' => $entry->getAttributes(),
+                    ])->all(),
+                    'stock_restorations' => $stockRestorations->all(),
                 ],
             ])->save();
+            foreach ($transactionRecords as $entry) {
+                if (! $entry->is($record)) {
+                    // Soft-deleted child rows still enforce foreign keys. Archive
+                    // their full snapshots above, then remove the linked rows.
+                    if (in_array(SoftDeletes::class, class_uses_recursive($entry), true)) {
+                        $entry->forceDelete();
+                    } else {
+                        $entry->delete();
+                    }
+                }
+            }
             $record->delete();
+            if ($wholeTransaction) {
+                $transactions->restoreStock($stockRestorations, $actor);
+            }
             foreach ($recipients as [$email, $details]) {
                 Notification::route('mail', $email)->notify(new AdminRecordDeleted($details));
+                // Management addresses can be external mailboxes. Add a bell
+                // notification wherever a matching active account exists.
+                User::query()->where('is_active', true)->whereRaw('LOWER(email) = ?', [$email])
+                    ->each(fn (User $user) => $user->notify(new AdminRecordDeleted($details)));
             }
 
             return ['label' => $label, 'email_count' => count($recipients)];
@@ -111,7 +154,7 @@ final class AdminRecordDeletion
         }
     }
 
-    private function relatedRequests(Model $record, int $depth = 0): Collection
+    public function relatedRequests(Model $record, int $depth = 0): Collection
     {
         if ($depth > 5) {
             return (new PurchaseRequest)->newCollection();

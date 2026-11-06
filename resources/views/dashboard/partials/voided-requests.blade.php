@@ -33,7 +33,7 @@
                         <div class="text-muted">{{ $purchaseRequest->withdrawal_acknowledged_at?->format('M j, Y g:i A') }}</div>
                     @endif
                 </td>
-                <td class="text-end text-nowrap"><a class="btn btn-sm btn-outline-primary" href="{{ route('purchase-requests.show', $purchaseRequest) }}#withdrawal-status" data-workflow-request-preview>View request <x-ui.icon name="chevron-right" size="15" /></a></td>
+                <td class="text-end text-nowrap"><a class="btn btn-sm btn-outline-primary" href="{{ route('purchase-requests.show', $purchaseRequest) }}#withdrawal-status" data-workflow-request-preview>View request <x-ui.icon name="chevron-right" size="15" /></a><x-admin-delete-transaction :purchase-request="$purchaseRequest" /></td>
             </tr>
         @empty
             <tr><td colspan="8"><x-ui.empty-state icon="x-circle" title="No voided requests" description="Requests you void appear here, first waiting for staff acknowledgment, then as voided." /></td></tr>

@@ -19,7 +19,7 @@
                         <td>{{ $recommended?->supplier?->name ?? ($record->quotations->isEmpty() ? 'Submitted without quotation' : 'President to review') }}</td>
                         <td><x-status-badge :status="$record->status" /></td>
                         <td class="text-end small text-muted text-nowrap">{{ $record->updated_at->format('M j, Y g:i A') }}</td>
-                        <td class="text-end"><a class="btn btn-sm btn-outline-primary" href="{{ route('purchase-requests.show', $record) }}" data-workflow-request-preview>View request</a></td>
+                        <td class="text-end"><a class="btn btn-sm btn-outline-primary" href="{{ route('purchase-requests.show', $record) }}" data-workflow-request-preview>View request</a><x-admin-delete-transaction :purchase-request="$record" /></td>
                     </tr>
                 @empty
                     <tr><td colspan="7"><x-ui.empty-state icon="receipt" title="No canvassing records found" description="Requests you personally submit from Canvassing will appear here." /></td></tr>
@@ -51,7 +51,7 @@
                         <td><span class="badge text-bg-light border text-dark">{{ str($purchaseOrder->status)->replace('_', ' ')->title() }}</span></td>
                         <td>{{ $purchaseOrder->creator?->name ?? 'Not recorded' }}<div class="small text-muted">{{ $purchaseOrder->created_at?->format('M j, Y g:i A') }}</div></td>
                         <td class="text-end text-nowrap fw-semibold">&#8369; {{ number_format((float) $purchaseOrder->total_amount, 2) }}</td>
-                        <td class="text-end text-nowrap"><button class="btn btn-sm btn-outline-primary" type="button" data-po-preview-url="{{ route('purchase-orders.preview', $purchaseOrder) }}">View PO</button></td>
+                        <td class="text-end text-nowrap"><button class="btn btn-sm btn-outline-primary" type="button" data-po-preview-url="{{ route('purchase-orders.preview', $purchaseOrder) }}">View PO</button><x-admin-delete-transaction :record="$purchaseOrder" /></td>
                     </tr>
                 @empty
                     <tr><td colspan="8"><x-ui.empty-state icon="receipt" title="No Purchase Orders found" description="Purchase Orders will appear here after they are created." /></td></tr>

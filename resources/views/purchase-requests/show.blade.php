@@ -247,7 +247,7 @@
                 <span aria-hidden="true">/</span>
                 <span aria-current="page">{{ $purchaseRequest->request_number }}</span>
                 @if(auth()->user()->isAdministrator())
-                    <a class="text-danger" href="{{ route('admin.data.index', ['type' => 'purchase-requests', 'search' => $purchaseRequest->id]) }}">Manage deletion</a>
+                    <x-admin-delete-transaction :purchase-request="$purchaseRequest" />
                 @endif
             </nav>
             <div class="purchase-request-title-row">
