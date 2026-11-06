@@ -2,11 +2,14 @@
 
 namespace App\Providers;
 
+use App\Enums\RoleSlug;
 use App\Models\Campaign;
+use App\Models\User;
 use App\Support\AccountCampaignCatalog;
 use App\Support\AccountRoleCatalog;
 use App\Support\WorkflowRemarks;
 use Illuminate\Pagination\Paginator;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Facades\View;
 use Illuminate\Support\ServiceProvider;
@@ -26,6 +29,8 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        Gate::before(fn (User $user) => $user->hasAssignedRole(RoleSlug::Admin->value) ? (bool) $user->is_active : null);
+
         // TLS may terminate at the tunnel while PHP receives plain HTTP.
         // Keep forms, assets, and redirects on the configured public scheme.
         if (parse_url((string) config('app.url'), PHP_URL_SCHEME) === 'https') {

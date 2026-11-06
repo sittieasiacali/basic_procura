@@ -1,6 +1,6 @@
 @php
     $editing = isset($purchaseRequest);
-    $blankItem = ['description' => '', 'brand_specifications' => '', 'reference_url' => ''];
+    $blankItem = ['description' => '', 'reference_url' => ''];
     $formItems = old('items');
     if ($formItems === null) {
         $formItems = $editing
@@ -83,21 +83,6 @@
                 <label class="form-label" for="required_date">Required date <span class="text-danger">*</span></label>
                 <input class="form-control @error('required_date') is-invalid @enderror" id="required_date" name="required_date" type="date" value="{{ old('required_date', isset($purchaseRequest) ? $purchaseRequest->required_date->format('Y-m-d') : '') }}" required>
                 @error('required_date')<div class="invalid-feedback">{{ $message }}</div>@enderror
-            </div>
-            @php
-                $selectedPriority = old('priority_level', $purchaseRequest->priority_level ?? '');
-            @endphp
-            <div class="col-md-4">
-                <label class="form-label" for="priority_level">Priority <span class="text-danger">*</span></label>
-                {{-- Needed to submit; a draft may leave it blank. --}}
-                <select class="form-select @error('priority_level') is-invalid @enderror" id="priority_level" name="priority_level" data-priority-field aria-describedby="priority-level-help">
-                    <option value="" @selected($selectedPriority === '')>Select priority</option>
-                    @foreach(\App\Models\PurchaseRequest::PRIORITY_LEVELS as $priorityValue => $priorityLabel)
-                        <option value="{{ $priorityValue }}" @selected($selectedPriority === $priorityValue)>{{ $priorityLabel }}</option>
-                    @endforeach
-                </select>
-                <div class="form-text" id="priority-level-help">How urgently is this needed? Screening may adjust it.</div>
-                @error('priority_level')<div class="invalid-feedback">{{ $message }}</div>@enderror
             </div>
             @if($editing || ! auth()->user()->hasAnyRole([\App\Enums\RoleSlug::Requestor->value, \App\Enums\RoleSlug::TeamLeader->value]))
             <div class="col-md-4">
@@ -258,13 +243,7 @@
                             @error("items.$index.unit")<div class="invalid-feedback">{{ $message }}</div>@enderror
                         </div>
                         <div class="col-12">
-                            <label class="form-label" for="item-{{ $index }}-specifications">Quotation <span class="text-danger">*</span></label>
-                            <input class="form-control @error("items.$index.brand_specifications") is-invalid @enderror" id="item-{{ $index }}-specifications" name="items[{{ $index }}][brand_specifications]" value="{{ $item['brand_specifications'] ?? '' }}" maxlength="5000" placeholder="Quoted brand, model, price, or specifications" data-quotation-text>
-                            <div class="form-text">Type the quotation, attach the quotation file below, or both.</div>
-                            @error("items.$index.brand_specifications")<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
-                        </div>
-                        <div class="col-12">
-                            <label class="form-label d-flex align-items-center gap-1" for="item-{{ $index }}-quotation-file"><x-ui.icon name="paperclip" size="16" />Quotation file <span class="text-muted">(optional if typed above)</span></label>
+                            <label class="form-label d-flex align-items-center gap-1" for="item-{{ $index }}-quotation-file"><x-ui.icon name="paperclip" size="16" />Quotation file <span class="text-danger">*</span></label>
                             <input class="form-control form-control-sm @error("items.$index.quotation_file") is-invalid @enderror" id="item-{{ $index }}-quotation-file" name="items[{{ $index }}][quotation_file]" type="file" accept=".pdf,.jpg,.jpeg,.png,.webp,.doc,.docx,.xls,.xlsx" data-quotation-file data-file-label="quotation file" @if($quotationFiles->isNotEmpty()) data-on-file="1" @endif>
                             <div class="form-text">Supplier quotation. PDF, image, Word or Excel, up to 5 MB.</div>
                             <div class="attachment-preview mt-2" data-attachment-preview aria-live="polite"></div>
@@ -411,8 +390,7 @@
             <div class="col-lg-6"><label class="form-label" for="item-__INDEX__-description">Item description <span class="text-danger">*</span></label><input class="form-control" id="item-__INDEX__-description" name="items[__INDEX__][description]" maxlength="2000" placeholder="e.g. Wireless presentation speaker" required></div>
             <div class="col-6 col-lg-3"><label class="form-label" for="item-__INDEX__-quantity">Quantity <span class="text-danger">*</span></label><div class="input-group quantity-stepper"><button class="btn btn-outline-secondary" type="button" data-quantity-step="-1" aria-label="Decrease quantity" tabindex="-1">&minus;</button><input class="form-control item-quantity text-center" id="item-__INDEX__-quantity" name="items[__INDEX__][quantity]" type="number" min="0.01" step="any" inputmode="decimal" value="1" placeholder="0" data-submit-required><button class="btn btn-outline-secondary" type="button" data-quantity-step="1" aria-label="Increase quantity" tabindex="-1">+</button></div></div>
             <div class="col-6 col-lg-3"><label class="form-label" for="item-__INDEX__-unit">Unit</label><select class="form-select" id="item-__INDEX__-unit" name="items[__INDEX__][unit]"><option value="">Select unit</option>@foreach($units as $unitValue => $unitLabel)<option value="{{ $unitValue }}">{{ $unitLabel }}</option>@endforeach</select></div>
-            <div class="col-12"><label class="form-label" for="item-__INDEX__-specifications">Quotation <span class="text-danger">*</span></label><input class="form-control" id="item-__INDEX__-specifications" name="items[__INDEX__][brand_specifications]" maxlength="5000" placeholder="Quoted brand, model, price, or specifications" data-quotation-text><div class="form-text">Type the quotation, attach the quotation file below, or both.</div></div>
-            <div class="col-12"><label class="form-label d-flex align-items-center gap-1" for="item-__INDEX__-quotation-file"><x-ui.icon name="paperclip" size="16" />Quotation file <span class="text-muted">(optional if typed above)</span></label><input class="form-control form-control-sm" id="item-__INDEX__-quotation-file" name="items[__INDEX__][quotation_file]" type="file" accept=".pdf,.jpg,.jpeg,.png,.webp,.doc,.docx,.xls,.xlsx" data-quotation-file data-file-label="quotation file"><div class="form-text">Supplier quotation. PDF, image, Word or Excel, up to 5 MB.</div><div class="attachment-preview mt-2" data-attachment-preview aria-live="polite"></div></div>
+            <div class="col-12"><label class="form-label d-flex align-items-center gap-1" for="item-__INDEX__-quotation-file"><x-ui.icon name="paperclip" size="16" />Quotation file <span class="text-danger">*</span></label><input class="form-control form-control-sm" id="item-__INDEX__-quotation-file" name="items[__INDEX__][quotation_file]" type="file" accept=".pdf,.jpg,.jpeg,.png,.webp,.doc,.docx,.xls,.xlsx" data-quotation-file data-file-label="quotation file"><div class="form-text">Supplier quotation. PDF, image, Word or Excel, up to 5 MB.</div><div class="attachment-preview mt-2" data-attachment-preview aria-live="polite"></div></div>
             <div class="col-md-6"><label class="form-label d-flex align-items-center gap-1" for="item-__INDEX__-attachment"><x-ui.icon name="paperclip" size="16" />Email approval <span class="text-danger">*</span></label><input class="form-control form-control-sm" id="item-__INDEX__-attachment" name="items[__INDEX__][attachment]" type="file" accept=".pdf,.jpg,.jpeg,.png" data-submit-required><div class="form-text">Screenshot or PDF of the approved email. PDF/JPG/PNG, up to 5 MB.</div><div class="attachment-preview mt-2" data-attachment-preview aria-live="polite"></div></div>
             <div class="col-md-6"><label class="form-label d-flex align-items-center gap-1" for="item-__INDEX__-picture"><x-ui.icon name="paperclip" size="16" />Item picture <span class="text-muted">(optional)</span></label><input class="form-control form-control-sm" id="item-__INDEX__-picture" name="items[__INDEX__][picture]" type="file" accept=".jpg,.jpeg,.png,.webp" data-file-label="item picture"><div class="form-text">Photo of the item. JPG/PNG/WEBP, up to 5 MB.</div><div class="attachment-preview mt-2" data-attachment-preview aria-live="polite"></div></div>
             @if($editing)
@@ -484,18 +462,15 @@
             return [...container.querySelectorAll('[data-item-row]')];
         }
 
-        const priorityField = form.querySelector('[data-priority-field]');
-
         // Fields a draft may leave blank but a submission needs (quantity, email approval).
         function submitFieldIsFilled(field) {
             return field.type === 'file' ? field.files.length > 0 : field.value.trim() !== '' && (field.type !== 'number' || Number(field.value) > 0);
         }
 
-        // A quotation may be typed, attached as a file (new or already on file), or both.
+        // A quotation file may be uploaded now or already saved on this item.
         function quotationIsProvided(row) {
-            const text = row.querySelector('[data-quotation-text]');
             const file = row.querySelector('[data-quotation-file]');
-            return (text?.value.trim() ?? '') !== '' || (file?.files.length ?? 0) > 0 || file?.dataset.onFile === '1';
+            return (file?.files.length ?? 0) > 0 || file?.dataset.onFile === '1';
         }
 
         function itemIsComplete(row) {
@@ -505,15 +480,11 @@
                 && [...row.querySelectorAll('[data-submit-required]')].every(submitFieldIsFilled);
         }
 
-        function priorityIsChosen() {
-            return ! priorityField || priorityField.value !== '';
-        }
-
         function updateSubmissionState(currentRows) {
             const hasItems = currentRows.length > 0;
             const completeItems = currentRows.every(itemIsComplete);
             const itemsReady = hasItems && completeItems;
-            const canSubmit = itemsReady && priorityIsChosen();
+            const canSubmit = itemsReady;
 
             requirementLabel.classList.toggle('is-ready', itemsReady);
             requirementLabel.classList.toggle('is-warning', ! itemsReady);
@@ -523,10 +494,8 @@
                 itemsFeedback.querySelector('span').textContent = 'Add an item to submit this purchase request.';
                 readiness.textContent = 'Add an item to submit, or save your progress as a draft.';
             } else if (! completeItems) {
-                itemsFeedback.querySelector('span').textContent = 'Give every item a description, quantity, quotation (typed or as a file), and email approval to enable submission. The item picture is optional. You can still save a draft.';
+                itemsFeedback.querySelector('span').textContent = 'Give every item a description, quantity, quotation file, and email approval to enable submission. The item picture is optional. You can still save a draft.';
                 readiness.textContent = 'Complete each item\'s description, quantity, quotation, and email approval to enable submission.';
-            } else if (! priorityIsChosen()) {
-                readiness.textContent = 'Choose a priority in Request details to enable submission.';
             } else {
                 readiness.textContent = 'Your item list is ready. Submit it to IT / Premises screening or save it as a draft.';
             }
@@ -635,24 +604,14 @@
                     }
                 });
                 currentRows.forEach((row) => {
-                    const text = row.querySelector('[data-quotation-text]');
-                    if (! text) return;
-                    clearClientError(text);
+                    const file = row.querySelector('[data-quotation-file]');
+                    if (! file) return;
+                    clearClientError(file);
                     if (! quotationIsProvided(row)) {
-                        text.setCustomValidity('Type the quotation or attach a quotation file.');
-                        showClientError(text);
+                        file.setCustomValidity('Attach the quotation file.');
+                        showClientError(file);
                     }
                 });
-                if (priorityField) {
-                    clearClientError(priorityField);
-                    if (! priorityIsChosen()) {
-                        priorityField.setCustomValidity('Choose a priority before submitting.');
-                        showClientError(priorityField);
-                        priorityField.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                        priorityField.focus({ preventScroll: true });
-                        return false;
-                    }
-                }
             }
             if (action === 'submit' && (currentRows.length < 1 || ! currentRows.every(itemIsComplete))) {
                 itemsFeedback.classList.remove('d-none');
@@ -681,18 +640,10 @@
         });
         container.addEventListener('change', (event) => {
             clearClientError(event.target);
-            if (event.target.matches('[data-quotation-file]')) {
-                const text = event.target.closest('[data-item-row]')?.querySelector('[data-quotation-text]');
-                if (text) clearClientError(text);
-            }
             recalculate();
         });
         form.addEventListener('input', (event) => {
             if (! event.target.closest('[data-item-row]')) clearClientError(event.target);
-        });
-        priorityField?.addEventListener('change', () => {
-            clearClientError(priorityField);
-            recalculate();
         });
 
         // Quantity stepper: − / + change the amount by one; typing still allows decimals (e.g. 2.5 kg).

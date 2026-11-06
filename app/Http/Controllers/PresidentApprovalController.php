@@ -18,7 +18,7 @@ class PresidentApprovalController extends Controller
 {
     public function index(Request $request): View
     {
-        abort_unless($request->user()?->hasAnyRole([RoleSlug::President->value, RoleSlug::Admin->value]), 403);
+        abort_unless($request->user()?->isAdministrator() || $request->user()?->hasRole(RoleSlug::President->value), 403);
 
         $validated = $request->validate([
             'tab' => ['nullable', Rule::in(['all', 'pending', 'approved', 'acknowledged', 'rejected'])],

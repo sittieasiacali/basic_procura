@@ -115,7 +115,7 @@ class DirectScreeningSubmissionTest extends TestCase
         $owner = $this->owner();
         $this->actingAs($owner);
         $payload = fn () => [
-            ...$this->payload(), '_embedded' => 1, 'priority_level' => 'NORMAL',
+            ...$this->payload(), '_embedded' => 1,
             'requested_team' => 'IT', 'request_category' => 'COMPUTERS',
         ];
 
@@ -169,6 +169,7 @@ class DirectScreeningSubmissionTest extends TestCase
             'required_date' => now()->addWeek()->toDateString(), 'delivery_location' => 'Main Office',
             'items' => [[
                 'description' => 'Office chair', 'quantity' => 1, 'unit' => 'pc', 'brand_specifications' => 'Ergonomic, PHP 6,500',
+                'quotation_file' => UploadedFile::fake()->create('quotation.pdf', 20, 'application/pdf'),
                 'attachment' => UploadedFile::fake()->create('approval.pdf', 20, 'application/pdf'), 'picture' => UploadedFile::fake()->image('item.jpg'),
             ]],
             ...$this->workflowSignature(auth()->user()),

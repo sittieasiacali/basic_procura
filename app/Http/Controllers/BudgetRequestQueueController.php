@@ -107,7 +107,7 @@ class BudgetRequestQueueController extends Controller
             if ($screeningTeam) {
                 $this->authorize('setScreeningPriority', $lockedRequest);
             } else {
-                abort_unless($request->user()->hasAnyRole([RoleSlug::BudgetMaker->value, RoleSlug::Admin->value]), 403);
+                abort_unless($request->user()->isAdministrator() || $request->user()->hasRole(RoleSlug::BudgetMaker->value), 403);
 
                 if ($lockedRequest->status !== PurchaseRequestStatus::ForBudgetProcessing
                     || ! $lockedRequest->readyForBudgetRequest()->whereKey($lockedRequest->id)->exists()) {

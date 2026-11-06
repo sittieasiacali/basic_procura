@@ -12,11 +12,15 @@
                 <dt class="col-sm-4">Requestor / TL</dt><dd class="col-sm-8">{{ $purchaseRequest->requestor?->name ?: 'Not recorded' }} / {{ $purchaseRequest->teamLeader?->name ?: 'Not recorded' }}</dd>
                 <dt class="col-sm-4">Recommendation</dt><dd class="col-sm-8">{{ $quotation->recommendationStatus() }}</dd>
                 <dt class="col-sm-4">Remarks</dt><dd class="col-sm-8">{{ $quotation->remarks ?: 'N/A' }}</dd>
+                @if($quotation->attachments->isNotEmpty())
+                    <dt class="col-sm-4">Quotation attachments</dt>
+                    <dd class="col-sm-8">@foreach($quotation->attachments as $attachment)<div><x-attachment-link :attachment="$attachment" /></div>@endforeach</dd>
+                @endif
             </dl><div class="row g-3 border-top pt-3"><div class="col-md-6"><strong>Created By / Requestor</strong><div class="border-bottom my-4"></div><div>{{ $quotation->creator?->name ?: 'Not recorded' }}</div><small>{{ $quotation->creator?->role?->name ?: '' }} · {{ $quotation->quoted_at?->format('M d, Y') ?: 'Date not recorded' }}</small></div><div class="col-md-6"><strong>Approved By / Approver</strong><div class="border-bottom my-4"></div>@if($quotation->is_approved)<div>{{ $quotation->approver?->name ?: 'Not recorded' }}</div><small>{{ $quotation->approver?->role?->name ?: '' }} · {{ $quotation->approved_at?->format('M d, Y') }}</small>@else<div class="text-muted">Not approved</div>@endif</div></div></div>
             <div class="modal-footer"><button class="btn btn-outline-secondary" type="button" data-bs-dismiss="modal">Close</button></div>
         </div></div>
     </div>
-    @if(auth()->id() === $quotation->created_by && ! $quotation->is_approved)
+    @if((auth()->id() === $quotation->created_by || auth()->user()->isAdministrator()) && ! $quotation->is_approved)
         <div class="modal fade" id="quotation-edit-{{ $quotation->id }}" tabindex="-1" aria-labelledby="quotation-edit-title-{{ $quotation->id }}" aria-hidden="true">
             <div class="modal-dialog">
                 <form class="modal-content" method="POST" action="{{ route('canvassing.quotations.update', [$purchaseRequest, $quotation]) }}" data-unsaved-changes>

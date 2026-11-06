@@ -52,6 +52,9 @@ class RequestFlowController extends Controller
                 [$requestType, $screeningStatus] = match ($request->user()->activeRole()?->slug) {
                     RoleSlug::ItStaff->value => ['IT', PurchaseRequestStatus::ForItScreening],
                     RoleSlug::PremisesStaff->value => ['PREMISES', PurchaseRequestStatus::ForPremisesScreening],
+                    RoleSlug::Admin->value => $lockedRequest->requested_team === 'PREMISES' || $lockedRequest->request_type === 'PREMISES'
+                        ? ['PREMISES', PurchaseRequestStatus::ForPremisesScreening]
+                        : ['IT', PurchaseRequestStatus::ForItScreening],
                     default => abort(403),
                 };
 

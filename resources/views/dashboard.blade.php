@@ -69,6 +69,9 @@
                 <p class="dashboard-greeting">{{ $greeting }}, {{ $user->name }}.</p>
             </div>
             <div class="dashboard-header-actions page-actions d-flex flex-wrap gap-2">
+                @if($user->isAdministrator())
+                    <a class="btn btn-outline-danger" href="{{ route('admin.data.index') }}">Manage Data</a>
+                @endif
                 @if($user->hasRole(\App\Enums\RoleSlug::PurchasingTeam->value))
                     <a class="btn btn-outline-primary d-inline-flex align-items-center gap-2" href="{{ route('workflow-tracker.index') }}"><x-ui.icon name="flow" size="16" />Workflow Tracker</a>
                     <a class="btn btn-outline-danger d-inline-flex align-items-center gap-2" href="{{ route('voided-monitoring.index') }}"><x-ui.icon name="x-circle" size="16" />Voided Monitoring</a>

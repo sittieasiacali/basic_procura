@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Admin\AccountController;
 use App\Http\Controllers\Admin\CampaignController;
+use App\Http\Controllers\Admin\DataManagementController;
 use App\Http\Controllers\Admin\PurchaseOrderWorkflowAssignmentController;
 use App\Http\Controllers\Admin\SystemHealthController;
 use App\Http\Controllers\AttachmentController;
@@ -205,6 +206,8 @@ Route::prefix('purchase-orders')
         ->name('admin.')
         ->middleware('role:admin')
         ->group(function () {
+            Route::get('/data', [DataManagementController::class, 'index'])->name('data.index');
+            Route::delete('/data/{type}/{id}', [DataManagementController::class, 'destroy'])->name('data.destroy');
             Route::resource('accounts', AccountController::class)->except(['destroy']);
             Route::patch('/accounts/{account}/status', [AccountController::class, 'status'])
                 ->name('accounts.status');

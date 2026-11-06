@@ -8,11 +8,11 @@ use App\Models\PurchaseRequest;
 use App\Models\Supplier;
 use App\Models\SupplierQuotation;
 use App\Services\PurchaseRequestWorkflow;
-use App\Support\WorkflowSignature;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\Rules\File;
 use Illuminate\Validation\ValidationException;
 
 class CanvassingController extends Controller
@@ -62,10 +62,12 @@ class CanvassingController extends Controller
         // The Add quotation button may leave an unused empty row in the form.
         // Ignore only rows with no quotation data; partially completed rows remain
         // subject to the normal validation rules below.
+        // Preserve row keys so each supplier stays paired with its uploaded file.
         $request->merge([
-            'quotations' => collect($request->input('quotations', []))
+            'quotations' => collect($request->all('quotations')['quotations'] ?? [])
                 ->filter(function (array $quotation): bool {
                     return filled($quotation['supplier_name'] ?? null)
+                        || isset($quotation['attachment'])
                         || filled($quotation['quoted_amount'] ?? null)
                         || filled($quotation['delivery_lead_time'] ?? null)
                         || filled($quotation['warranty'] ?? null)
@@ -78,7 +80,6 @@ class CanvassingController extends Controller
                             || (filled($item['quantity'] ?? null) && (string) $item['quantity'] !== '1')
                             || (filled($item['unit_price'] ?? null) && (string) $item['unit_price'] !== '0'));
                 })
-                ->values()
                 ->all(),
         ]);
 
@@ -101,6 +102,7 @@ class CanvassingController extends Controller
             'quotations.*.delivery_location' => ['required', 'string', Rule::in(SupplierQuotation::DELIVERY_LOCATIONS)],
             'quotations.*.warranty' => ['required', 'string', 'max:255'],
             'quotations.*.quotation_url' => ['required', 'url', 'max:500'],
+            'quotations.*.attachment' => ['required', File::types(['pdf', 'jpg', 'jpeg', 'png', 'webp', 'doc', 'docx', 'xls', 'xlsx'])->max(5 * 1024)],
             'quotations.*.bank_details' => ['required', 'string', 'max:2000'],
             'quotations.*.remarks' => ['nullable', 'string', 'max:2000'],
             'quotations.*.recommended' => ['nullable', Rule::in(['0', '1', true, false, 'true', 'false'])],
@@ -116,6 +118,7 @@ class CanvassingController extends Controller
             'quotations.*.delivery_location' => 'delivery location',
             'quotations.*.warranty' => 'warranty',
             'quotations.*.quotation_url' => 'quotation URL',
+            'quotations.*.attachment' => 'quotation attachment',
             'quotations.*.bank_details' => 'supplier bank details',
             'quotations.*.remarks' => 'remarks',
             'quotations.*.items' => 'quoted items',
@@ -129,6 +132,10 @@ class CanvassingController extends Controller
 
             $isScreeningQuotation = $request->user()->hasAnyRole([RoleSlug::ItStaff->value, RoleSlug::PremisesStaff->value])
                 && $request->user()->can('recommendScreeningQuotation', $lockedRequest);
+            if ($request->user()->isAdministrator()) {
+                $isScreeningQuotation = $lockedRequest->status === PurchaseRequestStatus::ForProcurement
+                    && $lockedRequest->screening?->decision === 'UNAVAILABLE';
+            }
 
             if (! in_array($lockedRequest->status, [
                 PurchaseRequestStatus::ForProcurement,
@@ -140,6 +147,7 @@ class CanvassingController extends Controller
 
             if ($lockedRequest->status === PurchaseRequestStatus::ForProcurement
                 && ! $isScreeningQuotation
+                && ! $request->user()->isAdministrator()
                 && ! $request->user()->hasRole(RoleSlug::PurchasingTeam->value)) {
                 throw ValidationException::withMessages(['status' => 'Only the assigned screener or Purchasing Team may record quotations for this request.']);
             }
@@ -200,6 +208,17 @@ class CanvassingController extends Controller
                     $recommendedSupplierId = $supplier->id;
                 }
 
+                $file = $quote['attachment'];
+                $attachmentData = [
+                    'uploaded_by' => $request->user()->id,
+                    'category' => 'supplier_quotation',
+                    'original_name' => $file->getClientOriginalName(),
+                    'disk' => 'local',
+                    'path' => $file->store("purchase-requests/{$lockedRequest->id}/quotations", 'local'),
+                    'mime_type' => $file->getMimeType(),
+                    'size' => $file->getSize(),
+                ];
+
                 $common = [
                     'supplier_id' => $supplier->id,
                     'created_by' => $request->user()->id,
@@ -243,6 +262,7 @@ class CanvassingController extends Controller
                             ...$totals,
                         ])->save();
                         $savedQuotationIds[] = $quotation->id;
+                        $quotation->attachments()->create($attachmentData);
                     }
                 } else {
                     if (! array_key_exists('quoted_amount', $quote) || $quote['quoted_amount'] === null) {
@@ -258,6 +278,7 @@ class CanvassingController extends Controller
                         ...$this->vatTotals($amount, $quote['vat_treatment'] ?? 'EXCLUSIVE'),
                     ])->save();
                     $savedQuotationIds[] = $quotation->id;
+                    $quotation->attachments()->create($attachmentData);
                 }
             }
 
@@ -325,7 +346,7 @@ class CanvassingController extends Controller
     public function updateQuotation(Request $request, PurchaseRequest $purchaseRequest, SupplierQuotation $quotation): RedirectResponse
     {
         abort_unless($quotation->purchase_request_id === $purchaseRequest->id, 404);
-        abort_unless($quotation->created_by === $request->user()->id, 403);
+        abort_unless($quotation->created_by === $request->user()->id || $request->user()->isAdministrator(), 403);
         abort_if($quotation->is_approved || ! in_array($purchaseRequest->status, [
             PurchaseRequestStatus::ForItScreening,
             PurchaseRequestStatus::ForPremisesScreening,
@@ -373,6 +394,7 @@ class CanvassingController extends Controller
 
         return back()->withFragment('supplier-quotations')->with('success', "Quotation {$reference} was updated. The saved quotation count is unchanged.");
     }
+
     /** @return array{vat_treatment: string, base_amount: float, vat_rate: float, vat_amount: float, total_amount: float} */
     private function vatTotals(float $amount, string $treatment): array
     {
@@ -394,6 +416,7 @@ class CanvassingController extends Controller
 
         return ['vat_treatment' => 'EXCLUSIVE', 'base_amount' => $amount, 'vat_rate' => SupplierQuotation::VAT_RATE, 'vat_amount' => $vat, 'total_amount' => round($amount + $vat, 2)];
     }
+
     public function recommendQuotation(
         Request $request,
         PurchaseRequest $purchaseRequest,
@@ -404,6 +427,7 @@ class CanvassingController extends Controller
         // IT / Premises contribute quotations only.
         abort_if(
             $request->user()->hasAnyRole([RoleSlug::ItStaff->value, RoleSlug::PremisesStaff->value])
+                && ! $request->user()->isAdministrator()
                 && ! $request->user()->hasAnyRole([RoleSlug::CanvassingStaff->value, RoleSlug::Purchasing->value, RoleSlug::PurchasingTeam->value, RoleSlug::ProcurementStaff->value, RoleSlug::Admin->value]),
             403,
             'The Purchasing team handles the supplier recommendation. You can add quotations only.',
@@ -414,7 +438,7 @@ class CanvassingController extends Controller
             $quote = $lockedRequest->quotations()->whereKey($quotation->id)->with('supplier')->firstOrFail();
 
             $this->authorize('manageCanvassing', $lockedRequest);
-            if (! $request->user()->hasAnyRole([RoleSlug::CanvassingStaff->value, RoleSlug::Purchasing->value, RoleSlug::PurchasingTeam->value, RoleSlug::ProcurementStaff->value, RoleSlug::Admin->value])
+            if ((! $request->user()->isAdministrator() && ! $request->user()->hasAnyRole([RoleSlug::CanvassingStaff->value, RoleSlug::Purchasing->value, RoleSlug::PurchasingTeam->value, RoleSlug::ProcurementStaff->value, RoleSlug::Admin->value]))
                 || ! in_array($lockedRequest->status, [PurchaseRequestStatus::ForProcurement, PurchaseRequestStatus::ForCanvassing], true)) {
                 abort(403);
             }
@@ -441,7 +465,7 @@ class CanvassingController extends Controller
     ): RedirectResponse {
         // Kept as a backwards-compatible route, but supplier approval belongs to
         // the President. Purchasing may only submit a recommendation.
-        abort_unless($request->user()?->hasAnyRole([RoleSlug::President->value, RoleSlug::Admin->value]), 403);
+        abort_unless($request->user()?->isAdministrator() || $request->user()?->hasRole(RoleSlug::President->value), 403);
 
         $validated = $request->validate([
             'quotation_id' => ['required', 'integer'],

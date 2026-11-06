@@ -23,7 +23,7 @@ class RequestWithdrawalController extends Controller
     {
         // Only the requestor may void. A page opened earlier can be stale (already
         // voided, or a PO was issued since): explain that instead of a bare 403.
-        abort_unless($request->user()->id === $purchaseRequest->requestor_id || $request->user()->hasRole(RoleSlug::Admin->value), 403);
+        abort_unless($request->user()->id === $purchaseRequest->requestor_id || $request->user()->isAdministrator(), 403);
         if ($request->user()->cannot('withdraw', $purchaseRequest)) {
             return redirect()->back(fallback: route('purchase-requests.show', $purchaseRequest))
                 ->with('error', RequestWithdrawal::blockedReason($purchaseRequest) ?? 'This request can no longer be voided.');

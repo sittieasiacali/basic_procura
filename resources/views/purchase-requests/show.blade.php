@@ -246,6 +246,9 @@
                 <a href="{{ route('purchase-requests.index') }}">Requests</a>
                 <span aria-hidden="true">/</span>
                 <span aria-current="page">{{ $purchaseRequest->request_number }}</span>
+                @if(auth()->user()->isAdministrator())
+                    <a class="text-danger" href="{{ route('admin.data.index', ['type' => 'purchase-requests', 'search' => $purchaseRequest->id]) }}">Manage deletion</a>
+                @endif
             </nav>
             <div class="purchase-request-title-row">
                 <h1 class="mb-0">{{ $purchaseRequest->title ?: $purchaseRequest->request_number }}</h1>
@@ -1610,6 +1613,7 @@
 
             const rows = [...container.querySelectorAll('[data-quotation-row]')];
             const activeRows = rows.filter((row) => row.querySelector('[name$="[supplier_name]"]')?.value.trim()
+                || row.querySelector('input[type="file"]')?.files.length
                 || row.querySelector('[name$="[quoted_amount]"]')?.value.trim()
                 || row.querySelector('[name$="[delivery_lead_time]"]')?.value.trim()
                 || row.querySelector('[name$="[warranty]"]')?.value.trim()

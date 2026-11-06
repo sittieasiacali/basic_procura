@@ -7,6 +7,7 @@
         <x-slot:actions><div class="d-flex gap-2">
             <a class="btn btn-outline-secondary" href="{{ route('admin.accounts.index') }}">Manage Accounts</a>
             <a class="btn btn-primary" href="{{ route('admin.accounts.edit', $account) }}">Edit Account</a>
+            <a class="btn btn-outline-danger" href="{{ route('admin.data.index', ['type' => 'accounts', 'search' => $account->id]) }}">Delete Account</a>
         </div></x-slot:actions>
     </x-ui.page-header>
 

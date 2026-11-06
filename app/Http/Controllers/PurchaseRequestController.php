@@ -273,6 +273,7 @@ class PurchaseRequestController extends Controller
             'approvals.user',
             'auditLogs.user',
             'quotations.supplier',
+            'quotations.attachments',
             'quotations.creator.role',
             'quotations.item',
             'screening.screener',
@@ -386,6 +387,7 @@ class PurchaseRequestController extends Controller
         $this->authorize('submit', $purchaseRequest);
         $validated = $request->validate([
             'submission_remarks' => ['nullable', 'string', 'max:5000'],
+            'priority_level' => ['missing'],
             ...WorkflowSignature::rules(),
         ]);
         WorkflowSignature::assertValid($request, $validated);
@@ -393,12 +395,6 @@ class PurchaseRequestController extends Controller
         DB::transaction(function () use ($request, $purchaseRequest, $workflow, $validated) {
             $lockedRequest = PurchaseRequest::query()->lockForUpdate()->findOrFail($purchaseRequest->id);
             $this->authorize('submit', $lockedRequest);
-
-            if (blank($lockedRequest->priority_level)) {
-                throw ValidationException::withMessages([
-                    'priority_level' => 'Edit the request and choose a priority before submitting.',
-                ]);
-            }
 
             $items = $lockedRequest->items()->with('attachments')->get();
             if ($items->isEmpty()) {

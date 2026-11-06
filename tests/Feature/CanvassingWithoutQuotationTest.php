@@ -11,6 +11,8 @@ use App\Models\SupplierQuotation;
 use App\Models\User;
 use Database\Seeders\RoleSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
 class CanvassingWithoutQuotationTest extends TestCase
@@ -21,6 +23,7 @@ class CanvassingWithoutQuotationTest extends TestCase
     {
         parent::setUp();
         $this->seed(RoleSeeder::class);
+        Storage::fake('local');
     }
 
     public function test_multi_role_purchasing_can_submit_without_quotation_and_president_sees_it(): void
@@ -157,6 +160,7 @@ class CanvassingWithoutQuotationTest extends TestCase
                     'supplier_name' => 'Quoted supplier', 'quoted_amount' => 800, 'vat_treatment' => 'EXEMPT',
                     'delivery_lead_time' => '3 days', 'delivery_location' => SupplierQuotation::DELIVERY_LOCATIONS[0],
                     'warranty' => '1 year', 'quotation_url' => 'https://example.test/quotation',
+                    'attachment' => UploadedFile::fake()->create('quotation.pdf', 20, 'application/pdf'),
                     'bank_details' => 'Supplier payment details', 'recommended' => 1,
                 ]],
             ])->assertRedirect(route('workflow.done'))->assertHeader('Location', route('workflow.done', [], false))->assertSessionHasNoErrors()->assertSessionHas('success');

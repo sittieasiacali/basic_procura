@@ -33,7 +33,7 @@
                         </form>
                     </div>
                 @endif
-                <form method="POST" action="{{ route('canvassing.quotations.store', $purchaseRequest) }}" class="row g-3" data-validation-context="canvassing" data-quotation-form data-request-code="{{ $purchaseRequest->request_number }}" data-next-stage="{{ $screeningQuotationEntry ? 'Canvassing' : 'President review' }}" novalidate>
+                <form method="POST" action="{{ route('canvassing.quotations.store', $purchaseRequest) }}" enctype="multipart/form-data" class="row g-3" data-validation-context="canvassing" data-quotation-form data-request-code="{{ $purchaseRequest->request_number }}" data-next-stage="{{ $screeningQuotationEntry ? 'Canvassing' : 'President review' }}" novalidate>
                     @csrf
                     <input type="hidden" name="_validation_context" value="canvassing">
                     <input type="hidden" name="confirmed_without_quotation" value="0" data-confirm-without-quotation>
@@ -64,6 +64,7 @@
                                     <div class="col-md-2"><label class="form-label">Lead Time <span class="text-danger">*</span></label><input class="form-control" type="text" name="quotations[0][delivery_lead_time]" required></div><div class="col-md-3"><label class="form-label">Delivery Location <span class="text-danger">*</span></label><select class="form-select" name="quotations[0][delivery_location]" required><option value="">Select delivery location</option>@foreach(\App\Models\SupplierQuotation::DELIVERY_LOCATIONS as $location)<option value="{{ $location }}" @selected($purchaseRequest->delivery_location === $location)>{{ $location }}</option>@endforeach</select></div>
                                     <div class="col-md-2"><label class="form-label">Warranty <span class="text-danger">*</span></label><input class="form-control" type="text" name="quotations[0][warranty]" required></div>
                                     <div class="col-md-3"><label class="form-label">Quotation URL <span class="text-danger">*</span></label><input class="form-control" type="url" name="quotations[0][quotation_url]" required></div>
+                                    <div class="col-md-6"><label class="form-label">Quotation attachment <span class="text-danger">*</span></label><input class="form-control" type="file" name="quotations[0][attachment]" accept=".pdf,.jpg,.jpeg,.png,.webp,.doc,.docx,.xls,.xlsx" required><div class="form-text">PDF, image, Word or Excel, up to 5 MB.</div></div>
                                     <div class="col-md-6"><label class="form-label">Supplier Bank Details <span class="text-danger">*</span></label><textarea class="form-control quotation-compact-textarea" rows="2" maxlength="2000" name="quotations[0][bank_details]" required placeholder="Bank name, account name, account number, and payment instructions"></textarea></div>
                                     <div class="col-md-6"><label class="form-label">Remarks <span class="text-muted fw-normal">(optional)</span></label><textarea class="form-control quotation-compact-textarea" rows="2" name="quotations[0][remarks]" placeholder="Quotation notes"></textarea></div>
                                     <div class="col-12 quote-bulk-fields d-none">

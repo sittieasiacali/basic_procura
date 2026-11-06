@@ -43,13 +43,13 @@ class StorePurchaseRequestRequest extends FormRequest
             'required_date' => ['required', 'date', 'after_or_equal:today'],
             'delivery_location' => ['required', 'string', 'max:255'],
             'remarks' => ['nullable', 'string', 'max:5000'],
-            // The requestor rates how urgent the need is; screening may still adjust it.
-            'priority_level' => ['required_if:action,submit', 'nullable', Rule::in(array_keys(PurchaseRequest::PRIORITY_LEVELS))],
+            // Priority is assigned by IT / Premises during screening.
+            'priority_level' => ['missing'],
             'signature_name' => ['required_if:action,submit', 'nullable', 'string', 'max:255'],
             'signature_data' => ['required_if:action,submit', 'nullable', 'string', 'max:500000'],
             'items' => ['required', 'array', 'min:1'],
             'items.*.description' => ['required', 'string', 'max:2000'],
-            // Quantity, a quotation (typed or as a file) and the approval email are needed to
+            // Quantity, a quotation file and the approval email are needed to
             // submit; a draft may leave them blank. The item picture is optional.
             'items.*.quantity' => ['required_if:action,submit', 'nullable', 'numeric', 'gt:0', 'max:9999999999.99'],
             'items.*.unit' => ['sometimes', 'nullable', 'string', 'max:50'],
@@ -62,7 +62,7 @@ class StorePurchaseRequestRequest extends FormRequest
         ];
     }
 
-    /** A quotation may be typed, uploaded as a file, or both. */
+    /** A quotation file is required when submitting. */
     public function withValidator(Validator $validator): void
     {
         $validator->after(function (Validator $validator): void {
@@ -71,8 +71,8 @@ class StorePurchaseRequestRequest extends FormRequest
             }
 
             foreach ((array) $this->input('items', []) as $index => $item) {
-                if (blank($item['brand_specifications'] ?? null) && ! $this->hasFile("items.$index.quotation_file")) {
-                    $validator->errors()->add("items.$index.brand_specifications", PurchaseRequestItem::submissionMessages()['items.*.brand_specifications.required']);
+                if (! $this->hasFile("items.$index.quotation_file")) {
+                    $validator->errors()->add("items.$index.quotation_file", PurchaseRequestItem::submissionMessages()['items.*.quotation_file.required']);
                 }
             }
         });
@@ -117,6 +117,7 @@ class StorePurchaseRequestRequest extends FormRequest
         return [
             ...PurchaseRequestItem::submissionMessages(),
             'items.min' => 'Add at least one item to the purchase request.',
+            'priority_level.missing' => 'Priority is assigned by IT / Premises during screening.',
             'department_campaign.in' => 'Use the campaign assigned to your account.',
             'department_campaign.required' => 'Your account must have an assigned Campaign before submitting a purchase request.',
         ];

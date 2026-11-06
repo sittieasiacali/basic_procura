@@ -30,7 +30,7 @@
 @php
     $currentUser = auth()->user()->loadMissing(['role', 'campaign']);
     $roleSlug = $currentUser->activeRole()?->slug;
-    $isAdmin = $roleSlug === \App\Enums\RoleSlug::Admin->value;
+    $isAdmin = $currentUser->isAdministrator();
     $ownerRoles = [
         \App\Enums\RoleSlug::Requestor->value,
         \App\Enums\RoleSlug::TeamLeader->value,
@@ -117,6 +117,12 @@
     }
 
     if ($isAdmin) {
+        $primaryNavigation[] = [
+            'label' => 'Manage Data',
+            'url' => route('admin.data.index'),
+            'active' => request()->routeIs('admin.data.*'),
+            'icon' => 'file-text',
+        ];
         $primaryNavigation[] = [
             'label' => 'Users',
             'url' => route('admin.accounts.index'),

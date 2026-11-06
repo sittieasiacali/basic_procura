@@ -7,6 +7,7 @@ use App\Models\Payment;
 use App\Models\PurchaseRequest;
 use App\Models\PurchaseRequestItem;
 use App\Models\RequestScreening;
+use App\Models\SupplierQuotation;
 use Illuminate\Support\Facades\Storage;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
@@ -46,6 +47,7 @@ class AttachmentController extends Controller
             $attachment->attachable instanceof PurchaseRequest => $attachment->attachable,
             $attachment->attachable instanceof PurchaseRequestItem => $attachment->attachable->purchaseRequest,
             $attachment->attachable instanceof RequestScreening => $attachment->attachable->purchaseRequest,
+            $attachment->attachable instanceof SupplierQuotation => $attachment->attachable->purchaseRequest,
             $attachment->attachable instanceof Payment => $attachment->attachable->purchaseRequest,
             default => null,
         };

@@ -12,7 +12,7 @@ class WorkspaceRoleController extends Controller
     {
         abort_unless($request->user()->is_active, 403);
         $validated = $request->validate(['role_id' => ['required', 'integer']]);
-        $role = $request->user()->assignedRoles()->firstWhere('id', (int) $validated['role_id']);
+        $role = $request->user()->availableWorkspaceRoles()->firstWhere('id', (int) $validated['role_id']);
 
         if (! $role) {
             throw ValidationException::withMessages(['role_id' => 'Choose one of your assigned roles.']);

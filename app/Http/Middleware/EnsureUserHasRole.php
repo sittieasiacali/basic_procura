@@ -12,7 +12,7 @@ class EnsureUserHasRole
     {
         $user = $request->user();
 
-        abort_unless($user?->is_active && $user->hasAnyRole($roles), 403);
+        abort_unless($user?->is_active && ($user->isAdministrator() || $user->hasAnyRole($roles)), 403);
 
         return $next($request);
     }

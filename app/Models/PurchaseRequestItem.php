@@ -18,7 +18,7 @@ class PurchaseRequestItem extends Model
     /** Optional photo of the requested item. */
     public const ATTACHMENT_PICTURE = 'item_picture';
 
-    /** Quotation document from the supplier; it can stand in for the typed quotation. */
+    /** Quotation document from the supplier. */
     public const ATTACHMENT_QUOTATION = 'item_quotation';
 
     /** Readable name for each item attachment category. */
@@ -55,15 +55,14 @@ class PurchaseRequestItem extends Model
     public static function submissionMessages(): array
     {
         return [
-            'items.*.brand_specifications.required' => 'Enter the quotation or attach a quotation file for every item before submitting.',
+            'items.*.quotation_file.required' => 'Attach a quotation file for every item before submitting.',
             'items.*.quantity.required_if' => 'Enter the quantity for every item before submitting.',
             'items.*.attachment.required_if' => 'Attach the email approval for every item before submitting.',
             'items.*.attachment.required' => 'Attach the email approval for every item before submitting.',
-            'priority_level.required_if' => 'Choose a priority before submitting the request.',
         ];
     }
 
-    /** File rules for the optional quotation document. */
+    /** File rules for the quotation document. */
     public static function quotationFileTypes(): array
     {
         return ['pdf', 'jpg', 'jpeg', 'png', 'webp', 'doc', 'docx', 'xls', 'xlsx'];
@@ -88,7 +87,7 @@ class PurchaseRequestItem extends Model
     public function missingSubmissionDetails(): array
     {
         return array_keys(array_filter([
-            'quotation' => blank($this->brand_specifications) && ! $this->hasQuotationFile(),
+            'quotation file' => ! $this->hasQuotationFile(),
             'quantity' => $this->quantity === null || (float) $this->quantity <= 0,
             'email approval' => ! $this->hasEmailApproval(),
         ]));

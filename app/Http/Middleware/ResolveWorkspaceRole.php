@@ -12,7 +12,7 @@ class ResolveWorkspaceRole
     {
         if ($user = $request->user()) {
             $user->load(['role', 'roles']);
-            $role = $user->assignedRoles()->firstWhere('id', $request->session()->get('workspace_role_id'));
+            $role = $user->availableWorkspaceRoles()->firstWhere('id', $request->session()->get('workspace_role_id'));
             $user->useWorkspaceRole($role);
             // Revalidate on every request so removed roles lose access immediately.
             if (! $role) {

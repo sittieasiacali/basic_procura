@@ -106,6 +106,16 @@ class User extends Authenticatable
         return $this->assignedRoles()->contains('slug', $slug);
     }
 
+    public function isAdministrator(): bool
+    {
+        return $this->is_active && $this->hasAssignedRole(RoleSlug::Admin->value);
+    }
+
+    public function availableWorkspaceRoles(): Collection
+    {
+        return $this->isAdministrator() ? Role::query()->orderBy('name')->get() : $this->assignedRoles();
+    }
+
     public function scopeWithAssignedRole(Builder $query, int $roleId): Builder
     {
         return $query->where(fn (Builder $roles) => $roles->where('role_id', $roleId)
@@ -164,6 +174,10 @@ class User extends Authenticatable
     /** Priority level is a Budget Request and payment concern; other roles never see it. */
     public function canViewPriority(): bool
     {
+        if ($this->isAdministrator()) {
+            return true;
+        }
+
         return $this->hasAnyRole([
             RoleSlug::ItStaff->value,
             RoleSlug::PremisesStaff->value,

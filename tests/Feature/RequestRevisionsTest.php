@@ -30,7 +30,7 @@ class RequestRevisionsTest extends TestCase
         Storage::fake('local');
     }
 
-    public function test_submitting_needs_quotation_quantity_email_approval_and_picture_but_a_draft_does_not(): void
+    public function test_submitting_needs_a_quotation_file_quantity_and_email_approval_but_a_draft_does_not(): void
     {
         $requestor = $this->user(RoleSlug::Requestor);
         $bareItem = ['description' => 'Business laptop'];
@@ -39,7 +39,8 @@ class RequestRevisionsTest extends TestCase
             ->assertSessionHasNoErrors();
 
         $this->post(route('purchase-requests.store'), [...$this->payload(['items' => [$bareItem]]), 'action' => 'submit', ...$this->workflowSignature($requestor)])
-            ->assertSessionHasErrors(['items.0.brand_specifications', 'items.0.quantity', 'items.0.attachment', 'items.0.picture']);
+            ->assertSessionHasErrors(['items.0.quotation_file', 'items.0.quantity', 'items.0.attachment'])
+            ->assertSessionDoesntHaveErrors('items.0.picture');
         $this->assertSame(1, PurchaseRequest::query()->count());
     }
 
@@ -55,7 +56,7 @@ class RequestRevisionsTest extends TestCase
         $this->assertSame('Dell Latitude 5440, PHP 52,000', $stored->brand_specifications);
         $this->assertSame('2.00', $stored->quantity);
         $this->assertEqualsCanonicalizing(
-            [PurchaseRequestItem::ATTACHMENT_EMAIL_APPROVAL, PurchaseRequestItem::ATTACHMENT_PICTURE],
+            [PurchaseRequestItem::ATTACHMENT_EMAIL_APPROVAL, PurchaseRequestItem::ATTACHMENT_PICTURE, PurchaseRequestItem::ATTACHMENT_QUOTATION],
             $stored->attachments->pluck('category')->all(),
         );
         $this->assertNotSame(PurchaseRequestStatus::Draft, $stored->purchaseRequest->status);
@@ -68,10 +69,13 @@ class RequestRevisionsTest extends TestCase
         $request = PurchaseRequest::query()->sole();
         $item = $request->items()->sole();
         $this->get(route('purchase-requests.create'))->assertOk()->assertSee('Email approval')->assertSee('Item picture')->assertSee('Quotation')->assertSee('name="items[0][unit]"', false)->assertSee('Piece (pc)');
-        $this->get(route('purchase-requests.edit', $request))->assertOk()->assertSee('On file: approval.pdf');
+        $this->get(route('purchase-requests.edit', $request))->assertOk()
+            ->assertSee('approval.pdf')->assertSee('quotation.pdf')
+            ->assertDontSee('data-quotation-text', false)
+            ->assertDontSee('name="items[0][brand_specifications]"', false);
 
         $resubmission = [
-            ...$this->payload(['items' => [['id' => $item->id, ...$this->completeItem(), 'attachment' => null, 'picture' => null]]]),
+            ...$this->payload(['items' => [['id' => $item->id, ...$this->completeItem(), 'attachment' => null, 'picture' => null, 'quotation_file' => null]]]),
             'department_campaign' => $requestor->campaign->name, 'action' => 'submit', ...$this->workflowSignature($requestor),
         ];
         $this->put(route('purchase-requests.update', $request), $resubmission)->assertSessionHasNoErrors();
@@ -88,6 +92,40 @@ class RequestRevisionsTest extends TestCase
         $this->assertSame(PurchaseRequestStatus::Draft, $request->fresh()->status);
     }
 
+    public function test_quotation_text_cannot_replace_the_required_file_on_any_submission_path(): void
+    {
+        $owner = $this->user(RoleSlug::Requestor);
+        $this->actingAs($owner);
+        $item = [...$this->completeItem(), 'quotation_file' => null];
+        $payload = [...$this->payload(['items' => [$item]]), ...$this->workflowSignature($owner)];
+        $this->post(route('purchase-requests.store'), [...$payload, 'action' => 'submit'])
+            ->assertSessionHasErrors('items.0.quotation_file');
+        $this->assertSame(0, PurchaseRequest::query()->count());
+
+        $this->post(route('purchase-requests.store'), $payload)->assertSessionHasNoErrors();
+        $request = PurchaseRequest::query()->sole();
+        $this->post(route('purchase-requests.submit', $request), $this->workflowSignature($owner))
+            ->assertSessionHasErrors('items');
+        $this->put(route('purchase-requests.update', $request), [
+            ...$payload, 'action' => 'submit', 'department_campaign' => $owner->campaign->name,
+        ])->assertSessionHasErrors('items.0.quotation_file');
+        $this->assertSame(PurchaseRequestStatus::Draft, $request->fresh()->status);
+    }
+
+    public function test_a_quotation_file_without_quotation_text_is_enough_to_submit(): void
+    {
+        $owner = $this->user(RoleSlug::Requestor);
+        $item = $this->completeItem();
+        unset($item['brand_specifications'], $item['picture']);
+        $this->actingAs($owner)->post(route('purchase-requests.store'), [
+            ...$this->payload(['items' => [$item]]), 'action' => 'submit', ...$this->workflowSignature($owner),
+        ])->assertSessionHasNoErrors();
+        $stored = PurchaseRequestItem::query()->sole();
+        $this->assertNull($stored->brand_specifications);
+        $this->assertTrue($stored->hasQuotationFile());
+        $this->assertNotSame(PurchaseRequestStatus::Draft, $stored->purchaseRequest->status);
+    }
+
     public function test_it_staff_set_the_priority_while_screening_and_requestors_cannot(): void
     {
         $request = $this->requestAt(PurchaseRequestStatus::ForItScreening, ['request_type' => 'IT']);
@@ -99,6 +137,81 @@ class RequestRevisionsTest extends TestCase
         $this->assertSame('URGENT', $request->fresh()->priority_level);
 
         $this->actingAs($request->requestor)->patch(route('request-flow.priority.update', $request), ['priority_level' => 'LOW'])->assertForbidden();
+        $this->assertSame('URGENT', $request->fresh()->priority_level);
+    }
+
+    public function test_requestors_and_team_leaders_submit_without_setting_priority(): void
+    {
+        foreach ([RoleSlug::Requestor, RoleSlug::TeamLeader] as $role) {
+            $owner = $this->user($role);
+            $this->actingAs($owner)->get(route('purchase-requests.create'))->assertOk()
+                ->assertDontSee('name="priority_level"', false)
+                ->assertDontSee('data-priority-field', false);
+
+            $payload = [
+                ...$this->payload(['items' => [$this->completeItem()]]),
+                'action' => 'submit', 'requested_team' => 'IT', 'request_category' => 'COMPUTERS',
+                ...$this->workflowSignature($owner),
+            ];
+            $before = PurchaseRequest::query()->count();
+            foreach (['save_draft', 'submit'] as $action) {
+                $this->post(route('purchase-requests.store'), [...$payload, 'action' => $action, 'priority_level' => 'URGENT'])
+                    ->assertSessionHasErrors('priority_level');
+                $this->assertSame($before, PurchaseRequest::query()->count());
+            }
+
+            $this->post(route('purchase-requests.store'), $payload)->assertSessionHasNoErrors();
+            $request = PurchaseRequest::query()->latest('id')->firstOrFail();
+            $this->assertNull($request->priority_level);
+            $this->assertSame(PurchaseRequestStatus::ForItScreening, $request->status);
+        }
+    }
+
+    public function test_requestor_edits_preserve_screening_priority_and_drafts_submit_without_priority(): void
+    {
+        $owner = $this->user(RoleSlug::Requestor);
+        $this->actingAs($owner);
+        $request = $this->requestAt(PurchaseRequestStatus::Returned, [
+            'requestor_id' => $owner->id, 'priority_level' => 'URGENT', 'requested_team' => 'IT',
+        ]);
+        $this->get(route('purchase-requests.edit', $request))->assertOk()
+            ->assertDontSee('name="priority_level"', false);
+        $payload = [
+            ...$this->payload(['items' => [$this->completeItem()]]),
+            'department_campaign' => $owner->campaign->name,
+            'requested_team' => 'IT', 'request_category' => 'COMPUTERS',
+        ];
+        foreach (['LOW', null] as $priority) {
+            $this->put(route('purchase-requests.update', $request), [...$payload, 'priority_level' => $priority])
+                ->assertSessionHasErrors('priority_level');
+            $this->assertSame('URGENT', $request->fresh()->priority_level);
+        }
+        $this->put(route('purchase-requests.update', $request), $payload)->assertSessionHasNoErrors();
+        $this->assertSame('URGENT', $request->fresh()->priority_level);
+
+        $request->update(['status' => PurchaseRequestStatus::Draft, 'priority_level' => null]);
+        $signature = $this->workflowSignature($owner);
+        $this->post(route('purchase-requests.submit', $request), [...$signature, 'priority_level' => 'LOW'])
+            ->assertSessionHasErrors('priority_level');
+        $this->assertNull($request->fresh()->priority_level);
+        $this->post(route('purchase-requests.submit', $request), $signature)->assertSessionHasNoErrors();
+        $this->assertSame(PurchaseRequestStatus::ForItScreening, $request->fresh()->status);
+        $this->assertNull($request->fresh()->priority_level);
+    }
+
+    public function test_premises_staff_set_priority_for_their_screening_requests(): void
+    {
+        $request = $this->requestAt(PurchaseRequestStatus::ForPremisesScreening, ['request_type' => 'PREMISES']);
+        $staff = $this->user(RoleSlug::PremisesStaff);
+        $this->actingAs($staff)->post(route('request-flow.claim', $request))->assertSessionHasNoErrors();
+        $this->get(route('purchase-requests.show', $request))->assertOk()
+            ->assertSee('screening-priority-level', false);
+        $this->patch(route('request-flow.priority.update', $request), ['priority_level' => 'URGENT'])
+            ->assertSessionHasNoErrors();
+        $this->assertSame('URGENT', $request->fresh()->priority_level);
+        $this->assertTrue($request->auditLogs()->where('action', 'PRIORITY_LEVEL_UPDATED')->exists());
+        $this->actingAs($this->user(RoleSlug::ItStaff))
+            ->patch(route('request-flow.priority.update', $request), ['priority_level' => 'LOW'])->assertForbidden();
         $this->assertSame('URGENT', $request->fresh()->priority_level);
     }
 
@@ -186,6 +299,7 @@ class RequestRevisionsTest extends TestCase
             'description' => 'Business laptop',
             'quantity' => 2,
             'brand_specifications' => 'Dell Latitude 5440, PHP 52,000',
+            'quotation_file' => UploadedFile::fake()->create('quotation.pdf', 40, 'application/pdf'),
             'attachment' => UploadedFile::fake()->create('approval.pdf', 40, 'application/pdf'), 'picture' => UploadedFile::fake()->image('item.jpg'),
         ];
     }

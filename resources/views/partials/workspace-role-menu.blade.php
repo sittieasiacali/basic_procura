@@ -1,6 +1,11 @@
-@php($workspaceRoles = auth()->user()->assignedRoles())
+@php($workspaceRoles = auth()->user()->availableWorkspaceRoles())
+@if(auth()->user()->isAdministrator())
+    <a class="dropdown-item" href="{{ route('admin.data.index') }}">Manage Data</a>
+    <div class="dropdown-divider"></div>
+@endif
 @if($workspaceRoles->count() > 1)
     <div class="dropdown-header">Switch role</div>
+    <div class="overflow-auto" style="max-height: 50vh;" role="group" aria-label="Available workspaces">
     @foreach($workspaceRoles as $workspaceRole)
         @php($isActiveWorkspaceRole = auth()->user()->activeRole()?->id === $workspaceRole->id)
         <form method="POST" action="{{ route('workspace-role.update') }}" class="m-0">
@@ -12,5 +17,6 @@
             </button>
         </form>
     @endforeach
+    </div>
     <div class="dropdown-divider"></div>
 @endif
