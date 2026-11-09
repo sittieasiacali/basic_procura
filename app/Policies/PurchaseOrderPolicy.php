@@ -9,6 +9,8 @@ use App\Models\User;
 
 class PurchaseOrderPolicy
 {
+    public const CHECKER_WORKFLOW_VERSION = 'self-check-v1';
+
     public function prepare(User $user): bool
     {
         return $user->hasPoRole(PurchaseOrderApprovalStage::PreparedBy);

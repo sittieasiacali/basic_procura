@@ -20,6 +20,7 @@ class DiagnosePurchaseOrder extends Command
 
     public function handle(): int
     {
+        $this->line('Application fingerprint: '.substr(hash('sha256', base_path()), 0, 12).'; PHP '.PHP_VERSION.' ('.PHP_SAPI.').');
         $assignments = PoRoleAssignment::query()->pluck('user_id', 'stage');
         $missing = false;
 

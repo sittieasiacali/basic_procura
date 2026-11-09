@@ -151,7 +151,10 @@ class PurchaseOrderCheckerFlowTest extends TestCase
     public function test_preparer_can_check_own_po_in_assigned_checker_workspace_with_a_separate_signature(): void
     {
         $checkerRoleId = $this->checker->role_id;
-        $this->preparer->roles()->sync([$checkerRoleId]);
+        $this->preparer->roles()->sync(Role::whereIn('slug', [
+            RoleSlug::Requestor->value, RoleSlug::ItStaff->value, RoleSlug::Finance->value,
+            RoleSlug::PurchasingTeam->value, RoleSlug::PoChecker->value, RoleSlug::PoNoted->value, RoleSlug::PoApprover->value,
+        ])->pluck('id'));
         PoRoleAssignment::where('stage', PurchaseOrderApprovalStage::CheckedBy->value)->update(['user_id' => $this->preparer->id]);
         $order = $this->createOrder();
         $preparedBefore = $order->approvalFor(PurchaseOrderApprovalStage::PreparedBy)->toArray();
@@ -164,6 +167,16 @@ class PurchaseOrderCheckerFlowTest extends TestCase
             ));
         $this->get(route('purchase-requests.show', $order->purchaseRequest))->assertOk()
             ->assertSee('Checker remarks')->assertSee('Checked By signature');
+        $this->get(route('dashboard'))->assertOk()->assertSee('Check purchase order')
+            ->assertDontSee('No requests require your action');
+        $this->get(route('dashboard', ['po_diagnostics' => 1]))->assertOk()
+            ->assertJsonPath('checker_policy_version', 'self-check-v1')
+            ->assertJsonPath('account_id', $this->preparer->id)
+            ->assertJsonPath('workspace', 'po-checker')
+            ->assertJsonPath('queued_count', 1)->assertJsonPath('action_row_count', 1)
+            ->assertJsonPath('orders.0.loaded_can_check', true)
+            ->assertJsonPath('orders.0.fresh_can_check', true)
+            ->assertJsonPath('orders.0.fresh_can_sign', true);
         $this->post(route('purchase-orders.check', $order->purchaseRequest), ['remarks' => 'No signature'])
             ->assertSessionHasErrors('signature_data');
         $embeddedUrl = route('purchase-requests.show', [$order->purchaseRequest, '_embedded' => 1]);

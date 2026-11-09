@@ -21,6 +21,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Pagination\LengthAwarePaginator as LengthAwarePaginatorConcrete;
 use Illuminate\Http\Request;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\View\View;
 
@@ -28,7 +29,7 @@ class DashboardController extends Controller
 {
     public const PAYMENT_METHODS = ['ONLINE', 'CASH', 'CHECK', 'COD'];
 
-    public function __invoke(Request $request): View
+    public function __invoke(Request $request): View|JsonResponse
     {
         $user = $request->user()->loadMissing(['role', 'campaign']);
 
@@ -231,6 +232,12 @@ class DashboardController extends Controller
             })
             ->filter()
             ->values();
+
+        if ($request->boolean('po_diagnostics')) {
+            abort_if($purchaseOrderQueue === null, 403);
+
+            return $this->purchaseOrderDiagnostics($user, $presidentActionsPagination, $myActions);
+        }
 
         $recentRequests = (clone $visibleRequests)
             ->with([
@@ -978,6 +985,46 @@ class DashboardController extends Controller
         return $quotations->isNotEmpty()
             ? $quotations->sum(fn ($quotation) => $quotation->vatBreakdown()['total'])
             : (float) $purchaseRequest->total_amount;
+    }
+
+    private function purchaseOrderDiagnostics(User $user, LengthAwarePaginator $page, \Illuminate\Support\Collection $actions): JsonResponse
+    {
+        $policyVersion = \App\Policies\PurchaseOrderPolicy::class.'::CHECKER_WORKFLOW_VERSION';
+        $rows = $page->getCollection()->map(function (PurchaseRequest $purchaseRequest) use ($user, $actions): array {
+            $order = $purchaseRequest->purchaseOrder;
+            $fresh = $order?->fresh(['approvals']);
+            $prepared = $fresh?->approvalFor(PurchaseOrderApprovalStage::PreparedBy);
+
+            return [
+                'po_number' => $order?->po_number,
+                'request_id' => $purchaseRequest->id,
+                'request_status' => $purchaseRequest->status->value,
+                'po_status' => $order?->status,
+                'action_row_present' => $actions->contains(fn ($action) => $action['request']->is($purchaseRequest)),
+                'loaded_can_check' => $order && Gate::forUser($user)->allows('check', $order),
+                'fresh_can_check' => $fresh && Gate::forUser($user)->allows('check', $fresh),
+                'fresh_can_sign' => $fresh && Gate::forUser($user)->allows('sign', [$fresh, PurchaseOrderApprovalStage::CheckedBy]),
+                'prepared_status' => $prepared?->status,
+                'prepared_signature_valid' => $prepared?->hasValidSignature() ?? false,
+                'prepared_signed_at' => $prepared?->signed_at?->toIso8601String(),
+                'prepared_acted_at' => $prepared?->acted_at?->toIso8601String(),
+                'checker_id' => $fresh?->approvalFor(PurchaseOrderApprovalStage::CheckedBy)?->assigned_user_id,
+                'open_request_url' => route('purchase-requests.show', $purchaseRequest).'#purchase-order-check-actions',
+            ];
+        });
+
+        return response()->json([
+            'diagnostic_version' => 'po-dashboard-v1',
+            'application_fingerprint' => substr(hash('sha256', base_path()), 0, 12),
+            'php_version' => PHP_VERSION,
+            'php_runtime' => PHP_SAPI,
+            'checker_policy_version' => defined($policyVersion) ? constant($policyVersion) : 'older-policy-loaded',
+            'account_id' => $user->id,
+            'workspace' => $user->activeRole()?->slug,
+            'queued_count' => $page->total(),
+            'action_row_count' => $actions->count(),
+            'orders' => $rows,
+        ])->header('Cache-Control', 'private, no-store');
     }
 
     /** @return array{label: string, url: string}|null */
