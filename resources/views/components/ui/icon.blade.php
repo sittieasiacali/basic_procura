@@ -2,6 +2,11 @@
 
 @php
     $paths = [
+        'tag' => '<path d="M20 13 11 22 2 13V3h10l8 8z"/><circle cx="7" cy="8" r="1"/>',
+        'map-pin' => '<path d="M20 10c0 6-8 12-8 12S4 16 4 10a8 8 0 1 1 16 0Z"/><circle cx="12" cy="10" r="3"/>',
+        'edit' => '<path d="M12 4H4v16h16v-8M10 14l1-5L19 1l4 4-8 8z"/>',
+        'send' => '<path d="m22 2-7 20-4-9-9-4 20-7ZM11 13 22 2"/>',
+        'info' => '<circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7h.01"/>',
         'save' => '<path d="M5 3h12l4 4v14H3V3z"/><path d="M7 3v6h10V3M7 21v-8h10v8"/>',
         'dashboard' => '<rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/>',
         'flow' => '<circle cx="6" cy="5" r="2"/><circle cx="18" cy="12" r="2"/><circle cx="6" cy="19" r="2"/><path d="M8 5h3a4 4 0 0 1 4 4v1M8 19h3a4 4 0 0 0 4-4v-1"/>',

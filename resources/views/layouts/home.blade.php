@@ -18,7 +18,7 @@
     </script>
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>
-<body class="procura-home-body">
+<body class="procura-home-body @yield('body-class')">
     @php($homeUser = $user ?? auth()->user()->loadMissing('role'))
     <header class="procura-home-header">
         <a class="procura-home-brand" href="{{ route('dashboard') }}" aria-label="ASI Procura home">

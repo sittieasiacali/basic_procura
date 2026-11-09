@@ -17,23 +17,23 @@
 @endphp
 
 <div class="card builder-section-card request-details-card mb-4">
+    <div class="builder-identity-row" aria-label="Request ownership">
+        <div class="request-identity-label"><x-ui.icon name="shield-check" size="22" /><strong>Request Identity</strong></div>
+        <div><x-ui.icon name="user" size="21" /><span>Requestor</span><strong>{{ $requestorName }}</strong></div>
+        @if(! $editing && auth()->user()->hasAnyRole([\App\Enums\RoleSlug::Requestor->value, \App\Enums\RoleSlug::TeamLeader->value]))
+            <div><x-ui.icon name="campaign" size="21" /><span>Campaign</span><strong>{{ $selectedCampaign ?: 'Not assigned' }}</strong></div>
+        @endif
+    </div>
     <div class="card-header">
         <div class="d-flex align-items-start gap-3">
             <span class="builder-section-number" aria-hidden="true">1</span>
             <div>
-                <div class="section-kicker">Request Details</div>
-                <h2 class="section-title d-flex align-items-center gap-2"><x-ui.icon name="request" size="19" />Request details</h2>
+                <h2 class="section-title d-flex align-items-center gap-2" id="request-details-heading" tabindex="-1">Request Details</h2>
                 <div class="small text-muted mt-1">What do you need, why, and when?</div>
             </div>
         </div>
     </div>
     <div class="card-body">
-        <div class="builder-identity-row" aria-label="Request ownership">
-            <div><span>Requestor</span><strong>{{ $requestorName }}</strong></div>
-            @if(! $editing && auth()->user()->hasAnyRole([\App\Enums\RoleSlug::Requestor->value, \App\Enums\RoleSlug::TeamLeader->value]))
-                <div><span>Campaign</span><strong>{{ $selectedCampaign ?: 'Not assigned' }}</strong></div>
-            @endif
-        </div>
         <div class="row g-3">
             @php
                 $selectedTeam = old('requested_team', $purchaseRequest->requested_team ?? '');
@@ -46,6 +46,7 @@
                 <div class="request-classifier @if($errors->hasAny(['requested_team', 'request_category', 'title'])) has-error @endif" data-request-classifier>
                     <div class="request-classifier-steps">
                         <div class="request-classifier-step">
+                            <span class="request-field-icon" aria-hidden="true"><x-ui.icon name="users" size="25" /></span>
                             <label class="request-classifier-label" for="requested_team"><span class="request-classifier-number">1</span>Screening team<span class="request-classifier-required" aria-hidden="true">*</span></label>
                             <select class="form-select @error('requested_team') is-invalid @enderror" id="requested_team" name="requested_team" data-requested-team required>
                                 <option value="" @selected($selectedTeam === '')>Select team</option>
@@ -56,6 +57,7 @@
                             @error('requested_team')<div class="invalid-feedback">{{ $message }}</div>@enderror
                         </div>
                         <div class="request-classifier-step">
+                            <span class="request-field-icon" aria-hidden="true"><x-ui.icon name="tag" size="25" /></span>
                             <label class="request-classifier-label" for="request_category"><span class="request-classifier-number">2</span>Request title category<span class="request-classifier-required" aria-hidden="true">*</span></label>
                             <select class="form-select @error('request_category') is-invalid @enderror @error('title') is-invalid @enderror" id="request_category" name="request_category" data-request-category required>
                                 <option value="">{{ $selectedTeam === '' ? 'Select a screening team first' : 'Select category' }}</option>
@@ -79,13 +81,15 @@
                     @endif
                 </div>
             </div>
-            <div class="col-md-4">
+            <div class="col-md-6 request-detail-field">
+                <span class="request-field-icon" aria-hidden="true"><x-ui.icon name="calendar" size="25" /></span>
                 <label class="form-label" for="required_date">Required date <span class="text-danger">*</span></label>
                 <input class="form-control @error('required_date') is-invalid @enderror" id="required_date" name="required_date" type="date" value="{{ old('required_date', isset($purchaseRequest) ? $purchaseRequest->required_date->format('Y-m-d') : '') }}" required>
                 @error('required_date')<div class="invalid-feedback">{{ $message }}</div>@enderror
             </div>
             @if($editing || ! auth()->user()->hasAnyRole([\App\Enums\RoleSlug::Requestor->value, \App\Enums\RoleSlug::TeamLeader->value]))
-            <div class="col-md-4">
+            <div class="col-md-6 request-detail-field">
+                <span class="request-field-icon" aria-hidden="true"><x-ui.icon name="campaign" size="25" /></span>
                 <label class="form-label" for="department_campaign">Campaign <span class="text-danger">*</span></label>
                     <select class="form-select @error('department_campaign') is-invalid @enderror" id="department_campaign" name="department_campaign" required>
                         <option value="">Select campaign</option>
@@ -99,7 +103,8 @@
                 @error('department_campaign')<div class="invalid-feedback">{{ $message }}</div>@enderror
             </div>
             @endif
-            <div class="col-md">
+            <div class="col-md-6 request-detail-field">
+                <span class="request-field-icon" aria-hidden="true"><x-ui.icon name="map-pin" size="25" /></span>
                 <div class="d-flex justify-content-between align-items-baseline gap-2">
                     <label class="form-label" for="delivery_location">Delivery location <span class="text-danger">*</span></label>
                     @can('viewAny', \App\Models\DeliveryLocation::class)
@@ -117,9 +122,10 @@
                 </select>
                 @error('delivery_location')<div class="invalid-feedback">{{ $message }}</div>@enderror
             </div>
-            <div class="col-12">
+            <div class="col-12 request-detail-field">
+                <span class="request-field-icon" aria-hidden="true"><x-ui.icon name="edit" size="25" /></span>
                 <label class="form-label" for="purpose">Purpose or reason <span class="text-danger">*</span></label>
-                <textarea class="form-control @error('purpose') is-invalid @enderror" id="purpose" name="purpose" rows="2" maxlength="5000" required placeholder="Explain the business need and intended use.">{{ old('purpose', $purchaseRequest->purpose ?? '') }}</textarea>
+                <textarea class="form-control @error('purpose') is-invalid @enderror" id="purpose" name="purpose" rows="2" maxlength="5000" required placeholder="Briefly state the purpose or reason for this request…">{{ old('purpose', $purchaseRequest->purpose ?? '') }}</textarea>
                 @error('purpose')<div class="invalid-feedback">{{ $message }}</div>@enderror
             </div>
             <div class="col-12">
@@ -176,7 +182,7 @@
             <div>
                 <span class="section-kicker d-block">Purchase contents</span>
                 <div class="d-flex flex-wrap align-items-center gap-2">
-                    <h2 class="section-title d-flex align-items-center gap-2" id="requested-items-heading"><x-ui.icon name="cart" size="19" />Requested Items</h2>
+                    <h2 class="section-title d-flex align-items-center gap-2" id="requested-items-heading" tabindex="-1"><x-ui.icon name="cart" size="19" />Requested Items</h2>
                     <span class="item-requirement-badge" id="item-count-label"><strong id="item-count">{{ count($formItems) }}</strong>&nbsp;<span id="item-count-noun">{{ count($formItems) === 1 ? 'item' : 'items' }}</span></span>
                 </div>
                 <div class="small text-muted mt-1">Describe each item. Specifications and supporting files can be added when helpful.</div>
@@ -348,7 +354,7 @@
                 <span class="builder-section-number" aria-hidden="true">3</span>
                 <div>
                     <span class="section-kicker d-block">Confirmation</span>
-                    <h2 class="section-title d-flex align-items-center gap-2" id="request-submission-signature-heading"><x-ui.icon name="clipboard-check" size="19" />Sign to submit</h2>
+                    <h2 class="section-title d-flex align-items-center gap-2" id="request-submission-signature-heading" tabindex="-1"><x-ui.icon name="clipboard-check" size="19" />Sign to submit</h2>
                     <div class="small text-muted mt-1">Your signature confirms the request is accurate and approved.</div>
                 </div>
             </div>
@@ -366,15 +372,16 @@
 
 <div class="builder-action-bar">
     <div class="builder-action-bar-inner d-flex flex-wrap justify-content-between align-items-center gap-3">
-        <div>
+        <div class="builder-readiness-copy">
+            <span class="builder-readiness-icon" aria-hidden="true"><x-ui.icon name="info" size="25" /></span>
             <div class="fw-semibold">{{ $omReviewEdit ? 'Ready to save your review?' : 'Ready to continue?' }}</div>
             <div class="small text-muted" id="submission-readiness">{{ $omReviewEdit ? 'Changes remain at the current review stage.' : 'Add item descriptions to submit, or save your progress as a draft.' }}</div>
         </div>
         <div class="builder-actions d-flex flex-wrap justify-content-end gap-2">
             <a class="btn btn-outline-secondary" href="{{ $editing ? route('purchase-requests.show', $purchaseRequest) : route('purchase-requests.index') }}">Cancel</a>
-            <button class="btn {{ $omReviewEdit ? 'btn-primary' : 'btn-outline-primary' }}" type="submit" name="action" value="save_draft" data-submit-action>{{ $omReviewEdit ? 'Save Review Changes' : 'Save Draft' }}</button>
+            <button class="btn {{ $omReviewEdit ? 'btn-primary' : 'btn-outline-primary' }}" type="submit" name="action" value="save_draft" data-submit-action><x-ui.icon name="save" size="19" />{{ $omReviewEdit ? 'Save Review Changes' : 'Save Draft' }}</button>
             @unless($omReviewEdit)
-                <button class="btn btn-primary" type="submit" name="action" value="submit" data-submit-action aria-describedby="submission-readiness">Submit Request</button>
+                <button class="btn btn-primary" type="submit" name="action" value="submit" data-submit-action aria-describedby="submission-readiness"><x-ui.icon name="send" size="20" />Submit Request</button>
             @endunless
         </div>
     </div>

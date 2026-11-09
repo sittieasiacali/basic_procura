@@ -46,6 +46,21 @@ class AdminTransactionDeletionTest extends TestCase
         $this->assertNull($request->fresh()->deleted_at);
     }
 
+    public function test_admin_sees_delete_on_the_procurement_action_card_when_using_the_purchasing_workspace(): void
+    {
+        $admin = $this->user(RoleSlug::Admin);
+        $request = $this->request($this->user(RoleSlug::Requestor));
+        $request->update(['status' => PurchaseRequestStatus::ForProcurement, 'assigned_user_id' => $admin->id]);
+        $purchasingRole = Models\Role::where('slug', RoleSlug::Purchasing->value)->firstOrFail();
+
+        $this->actingAs($admin)->withSession(['workspace_role_id' => $purchasingRole->id])
+            ->get(route('dashboard'))->assertOk()
+            ->assertSee('Procurement actions')
+            ->assertSee($request->request_number)
+            ->assertSee('data-admin-delete-transaction="'.$request->id.'"', false)
+            ->assertSee('Delete entire transaction '.$request->request_number, false);
+    }
+
     public function test_admin_deletes_the_entire_workflow_and_notifies_only_the_correct_people(): void
     {
         $admin = $this->user(RoleSlug::Admin);

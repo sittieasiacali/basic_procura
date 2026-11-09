@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="640" height="220" viewBox="0 0 640 220" fill="none">
+  <defs>
+    <linearGradient id="glass" x1="200" y1="0" x2="480" y2="220" gradientUnits="userSpaceOnUse"><stop stop-color="#b6e7ff"/><stop offset=".5" stop-color="#2499ea"/><stop offset="1" stop-color="#003e91"/></linearGradient>
+    <pattern id="windows" width="24" height="27" patternUnits="userSpaceOnUse" patternTransform="skewY(-28)"><path d="M0 0H24V27" stroke="#073f83" stroke-width="1"/></pattern>
+    <linearGradient id="wave"><stop stop-color="#fff0d4"/><stop offset="1" stop-color="#ff8700"/></linearGradient>
+  </defs>
+  <path d="M0 207C180 198 258 2 640 0V220H0Z" fill="#38acff" opacity=".35"/>
+  <path d="m252 220V114l70-43 52 30v119zm120 0V59l100-58 55 33v186zm153 0V17l62-36 53 31v208z" fill="url(#glass)"/>
+  <path d="m252 220V114l70-43 52 30v119zm120 0V59l100-58 55 33v186zm153 0V17l62-36 53 31v208z" fill="url(#windows)"/>
+  <path d="M322 71v149M472 1v219M587 0v220" stroke="#0b3770" stroke-width="2"/>
+  <path d="M85 220C298 210 360 131 640 71v149Z" fill="url(#wave)"/>
+  <path d="M0 220C243 217 372 154 640 102v118Z" fill="#ff8a00"/>
+</svg>
