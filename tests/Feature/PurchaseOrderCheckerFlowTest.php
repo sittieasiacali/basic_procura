@@ -322,6 +322,22 @@ class PurchaseOrderCheckerFlowTest extends TestCase
             ->assertForbidden();
     }
 
+    public function test_browser_diagnostics_require_login_and_only_include_the_users_own_queue(): void
+    {
+        $this->get(route('dashboard', ['po_diagnostics' => 1]))->assertRedirect(route('login'));
+        $order = $this->createOrder();
+        $this->get(route('dashboard', ['po_diagnostics' => 1]))->assertForbidden();
+        $this->actingAs($this->checker)->get(route('dashboard', ['po_diagnostics' => 1]))->assertOk()
+            ->assertHeader('Cache-Control', 'no-store, private')
+            ->assertJsonPath('orders.0.po_number', $order->po_number)
+            ->assertJsonPath('orders.0.action_row_present', true)
+            ->assertJsonMissingPath('orders.0.signature_data')
+            ->assertDontSee($this->signatureImage(), false);
+        $otherChecker = $this->user(RoleSlug::PoChecker);
+        $this->actingAs($otherChecker)->get(route('dashboard', ['po_diagnostics' => 1]))->assertOk()
+            ->assertJsonPath('orders', [])->assertJsonPath('queued_count', 0);
+    }
+
     private function user(RoleSlug $role): User
     {
         return User::factory()->create(['role_id' => Role::where('slug', $role->value)->value('id')]);

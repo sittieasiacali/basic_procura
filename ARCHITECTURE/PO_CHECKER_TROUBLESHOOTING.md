@@ -14,6 +14,17 @@ current workflow routing, signature validity, preparer handoff, and the assigned
 checker's queue and permissions in each available workspace. It does not print
 signature images, credentials, or payment information.
 
+If the browser shows a nonzero queue count but no action rows, sign into the
+affected PO workspace and open `/dashboard?po_diagnostics=1`. This read-only
+JSON report uses the website's own PHP process and database. It reports only
+the signed-in user's queued requests, comparing action rows and permissions
+on dashboard-loaded and freshly loaded orders. It includes a policy version,
+PHP runtime, and an application-path fingerprint (not the path itself). The
+CLI diagnosis prints the same fingerprint so different checkouts can be
+distinguished. The response is private and must not be cached. It excludes
+signature images and credentials. If it returns the ordinary dashboard rather
+than JSON, the web process is not running the updated dashboard controller.
+
 A new PO records its preparer's signature and completed handoff during creation.
 Its checker is copied from **Administration → PO Workflow Assignments** into the
 PO approval record. The assigned checker can sign and submit remarks, advancing

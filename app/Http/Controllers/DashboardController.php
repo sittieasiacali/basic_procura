@@ -22,6 +22,7 @@ use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Pagination\LengthAwarePaginator as LengthAwarePaginatorConcrete;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\View\View;
 
@@ -987,7 +988,7 @@ class DashboardController extends Controller
             : (float) $purchaseRequest->total_amount;
     }
 
-    private function purchaseOrderDiagnostics(User $user, LengthAwarePaginator $page, \Illuminate\Support\Collection $actions): JsonResponse
+    private function purchaseOrderDiagnostics(User $user, LengthAwarePaginator $page, Collection $actions): JsonResponse
     {
         $policyVersion = \App\Policies\PurchaseOrderPolicy::class.'::CHECKER_WORKFLOW_VERSION';
         $rows = $page->getCollection()->map(function (PurchaseRequest $purchaseRequest) use ($user, $actions): array {
