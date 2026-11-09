@@ -148,6 +148,167 @@ class PurchaseOrderCheckerFlowTest extends TestCase
         $this->assertSame('FOR_ACKNOWLEDGEMENT', $order->fresh()->status);
     }
 
+    public function test_preparer_can_check_own_po_in_assigned_checker_workspace_with_a_separate_signature(): void
+    {
+        $checkerRoleId = $this->checker->role_id;
+        $this->preparer->roles()->sync([$checkerRoleId]);
+        PoRoleAssignment::where('stage', PurchaseOrderApprovalStage::CheckedBy->value)->update(['user_id' => $this->preparer->id]);
+        $order = $this->createOrder();
+        $preparedBefore = $order->approvalFor(PurchaseOrderApprovalStage::PreparedBy)->toArray();
+
+        $this->post(route('purchase-orders.check', $order->purchaseRequest), $this->workflowSignature($this->preparer))
+            ->assertForbidden();
+        $this->withSession(['workspace_role_id' => $checkerRoleId])->get(route('dashboard'))->assertOk()
+            ->assertViewHas('myActions', fn ($actions) => $actions->contains(
+                fn ($action) => $action['request']->is($order->purchaseRequest) && $action['label'] === 'Check purchase order'
+            ));
+        $this->get(route('purchase-requests.show', $order->purchaseRequest))->assertOk()
+            ->assertSee('Checker remarks')->assertSee('Checked By signature');
+        $this->post(route('purchase-orders.check', $order->purchaseRequest), ['remarks' => 'No signature'])
+            ->assertSessionHasErrors('signature_data');
+        $embeddedUrl = route('purchase-requests.show', [$order->purchaseRequest, '_embedded' => 1]);
+        $this->from($embeddedUrl)->post(route('purchase-orders.check', $order->purchaseRequest), [
+            ...$this->workflowSignature($this->preparer), 'remarks' => 'Prepared and checked by the assigned user.', '_embedded' => 1,
+        ])->assertSessionHasNoErrors()->assertRedirect($embeddedUrl)
+            ->assertSessionHas('workflow_submission_notice', fn ($notice) => $notice['user_id'] === $this->preparer->id
+                && $notice['stage'] === 'Next: Purchase Order notation');
+        $order->refresh();
+        $checked = $order->approvalFor(PurchaseOrderApprovalStage::CheckedBy);
+        $this->assertSame('FOR_ACKNOWLEDGEMENT', $order->status);
+        $this->assertTrue($checked->hasValidSignature());
+        $this->assertSame($this->preparer->id, $checked->acted_by);
+        $this->assertSame('Prepared and checked by the assigned user.', $checked->remarks);
+        $this->assertSame($preparedBefore, $order->approvalFor(PurchaseOrderApprovalStage::PreparedBy)->toArray());
+        $this->post(route('purchase-orders.check', $order->purchaseRequest), $this->workflowSignature($this->preparer))
+            ->assertForbidden();
+
+        $this->withSession(['workspace_role_id' => null])->actingAs($this->noter)->get(route('dashboard'))->assertOk()
+            ->assertViewHas('myActions', fn ($actions) => $actions->contains(fn ($action) => $action['request']->is($order->purchaseRequest)));
+    }
+
+    public function test_transfer_previews_then_audits_only_unsigned_checker_and_optionally_future_routing(): void
+    {
+        $order = $this->createOrder();
+        $this->preparer->roles()->sync([$this->checker->role_id]);
+        $before = $order->approvals()->orderBy('id')->get()->toArray();
+        $arguments = ['numbers' => [$order->po_number], '--user' => $this->preparer->id,
+            '--from-user' => $this->checker->id, '--update-routing' => true];
+        $this->artisan('po:assign-checker', $arguments)->expectsOutputToContain('Preview only.')->assertSuccessful();
+        $this->assertSame($before, $order->approvals()->orderBy('id')->get()->toArray());
+        $this->assertSame($this->checker->id, (int) PoRoleAssignment::where('stage', PurchaseOrderApprovalStage::CheckedBy->value)->value('user_id'));
+
+        $this->artisan('po:assign-checker', [...$arguments, '--apply' => true])->assertSuccessful();
+        $order->refresh();
+        $this->assertSame($this->preparer->id, (int) $order->approvalFor(PurchaseOrderApprovalStage::CheckedBy)->assigned_user_id);
+        $this->assertSame($this->preparer->id, (int) PoRoleAssignment::where('stage', PurchaseOrderApprovalStage::CheckedBy->value)->value('user_id'));
+        $this->assertSame($before[0], $order->approvals()->orderBy('id')->first()->toArray());
+        $this->assertSame('FOR_CHECKING', $order->status);
+        $logs = $order->purchaseRequest->auditLogs()->where('action', 'PURCHASE_ORDER_CHECKER_REASSIGNED');
+        $this->assertSame(1, (clone $logs)->count());
+        $this->assertSame($this->checker->id, (clone $logs)->first()->metadata['from_user_id']);
+        $this->assertSame($this->preparer->id, (clone $logs)->first()->metadata['to_user_id']);
+        $this->artisan('po:assign-checker', [...$arguments, '--apply' => true])->assertSuccessful();
+        $this->assertSame(1, (clone $logs)->count());
+
+        $this->actingAs($this->preparer)->withSession(['workspace_role_id' => $this->checker->role_id])
+            ->get(route('dashboard'))->assertOk()
+            ->assertViewHas('myActions', fn ($actions) => $actions->contains(fn ($action) => $action['request']->is($order->purchaseRequest)));
+        $this->post(route('purchase-orders.check', $order->purchaseRequest), [
+            ...$this->workflowSignature($this->preparer), 'remarks' => 'Checked after transfer.',
+        ])->assertSessionHasNoErrors();
+        $this->assertSame('FOR_ACKNOWLEDGEMENT', $order->fresh()->status);
+    }
+
+    public function test_transfer_refuses_signed_checks_and_leaves_every_requested_po_and_routing_unchanged(): void
+    {
+        $order = $this->createOrder();
+        $newChecker = $this->user(RoleSlug::PoChecker);
+        $otherRequest = $order->purchaseRequest->replicate();
+        $otherRequest->request_number = 'CHECKER-FLOW-SECOND';
+        $otherRequest->save();
+        $other = $order->replicate();
+        $other->po_number = 'CHECKER-FLOW-SECOND';
+        $other->purchase_request_id = $otherRequest->id;
+        $other->save();
+        $other->approvals()->create([
+            'stage' => PurchaseOrderApprovalStage::CheckedBy, 'assigned_user_id' => $this->checker->id,
+            'status' => 'PENDING', 'signature_data' => $this->signatureImage(),
+        ]);
+        $this->artisan('po:assign-checker', ['numbers' => [$order->po_number, $other->po_number],
+            '--user' => $newChecker->id, '--from-user' => $this->checker->id,
+            '--update-routing' => true, '--apply' => true])
+            ->expectsOutputToContain('only pending, unsigned checking steps')->assertFailed();
+        $this->assertSame($this->checker->id, (int) $order->fresh()->approvalFor(PurchaseOrderApprovalStage::CheckedBy)->assigned_user_id);
+        $this->assertSame($this->checker->id, (int) PoRoleAssignment::where('stage', PurchaseOrderApprovalStage::CheckedBy->value)->value('user_id'));
+        $this->assertDatabaseMissing('audit_logs', ['action' => 'PURCHASE_ORDER_CHECKER_REASSIGNED']);
+    }
+
+    public function test_transfer_refuses_missing_numbers_unexpected_assignees_and_invalid_receiving_accounts(): void
+    {
+        $order = $this->createOrder();
+        $newChecker = $this->user(RoleSlug::PoChecker);
+        $arguments = ['numbers' => [$order->po_number], '--user' => $newChecker->id,
+            '--from-user' => $this->checker->id, '--apply' => true];
+        $this->artisan('po:assign-checker', [...$arguments, 'numbers' => [$order->po_number, 'MISSING']])->assertFailed();
+        $this->artisan('po:assign-checker', [...$arguments, '--from-user' => $this->noter->id])->assertFailed();
+        $this->artisan('po:assign-checker', [...$arguments, '--user' => $this->noter->id])->assertFailed();
+        $newChecker->update(['is_active' => false]);
+        $this->artisan('po:assign-checker', $arguments)->assertFailed();
+        $this->assertSame($this->checker->id, (int) $order->fresh()->approvalFor(PurchaseOrderApprovalStage::CheckedBy)->assigned_user_id);
+        $this->assertDatabaseMissing('audit_logs', ['action' => 'PURCHASE_ORDER_CHECKER_REASSIGNED']);
+    }
+
+    public function test_admin_can_share_preparer_and_checker_but_other_stages_stay_separate(): void
+    {
+        $this->actingAs($this->user(RoleSlug::Admin));
+        $assignments = [
+            PurchaseOrderApprovalStage::PreparedBy->value => $this->preparer->id,
+            PurchaseOrderApprovalStage::CheckedBy->value => $this->preparer->id,
+            PurchaseOrderApprovalStage::NotedBy->value => $this->noter->id,
+            PurchaseOrderApprovalStage::ApprovedBy->value => $this->approver->id,
+        ];
+        $this->put(route('admin.po-workflow-assignments.update'), ['assignments' => $assignments])
+            ->assertSessionHasNoErrors();
+        $this->assertSame($this->preparer->id, (int) PoRoleAssignment::where('stage', PurchaseOrderApprovalStage::CheckedBy->value)->value('user_id'));
+        $this->put(route('admin.po-workflow-assignments.update'), ['assignments' => [
+            ...$assignments, PurchaseOrderApprovalStage::NotedBy->value => $this->preparer->id,
+        ]])->assertSessionHasErrors('assignments.'.PurchaseOrderApprovalStage::NotedBy->value);
+        $this->put(route('admin.po-workflow-assignments.update'), ['assignments' => [
+            ...$assignments, PurchaseOrderApprovalStage::ApprovedBy->value => $this->noter->id,
+        ]])->assertSessionHasErrors();
+        $this->noter->update(['is_active' => false]);
+        $this->put(route('admin.po-workflow-assignments.update'), ['assignments' => $assignments])
+            ->assertSessionHasErrors('assignments.'.PurchaseOrderApprovalStage::NotedBy->value);
+    }
+
+    public function test_creator_still_cannot_note_or_approve_own_po(): void
+    {
+        $order = $this->createOrder();
+        $this->actingAs($this->checker)->post(route('purchase-orders.check', $order->purchaseRequest), $this->workflowSignature($this->checker))
+            ->assertSessionHasNoErrors();
+        $this->preparer->roles()->sync([$this->noter->role_id, $this->approver->role_id]);
+        $order->approvals()->where('stage', PurchaseOrderApprovalStage::NotedBy->value)->update(['assigned_user_id' => $this->preparer->id]);
+        $this->actingAs($this->preparer)->withSession(['workspace_role_id' => $this->noter->role_id])
+            ->post(route('purchase-orders.acknowledge', $order->purchaseRequest), $this->workflowSignature($this->preparer))
+            ->assertForbidden();
+        $this->post(route('purchase-orders.signature', [$order->purchaseRequest, PurchaseOrderApprovalStage::NotedBy->value]), $this->workflowSignature($this->preparer))
+            ->assertForbidden();
+
+        $order->approvals()->where('stage', PurchaseOrderApprovalStage::NotedBy->value)->update([
+            'status' => 'APPROVED', 'acted_by' => $this->preparer->id,
+            'signature_name' => $this->preparer->name, 'signature_data' => $this->signatureImage(),
+            'signed_at' => now(), 'acted_at' => now(),
+        ]);
+        $order->approvals()->where('stage', PurchaseOrderApprovalStage::ApprovedBy->value)->update(['assigned_user_id' => $this->preparer->id]);
+        $order->update(['status' => 'FOR_APPROVAL']);
+        $this->withSession(['workspace_role_id' => $this->approver->role_id])
+            ->post(route('purchase-orders.approve', $order->purchaseRequest), [
+                ...$this->workflowSignature($this->preparer), 'decision' => 'APPROVE',
+            ])->assertForbidden();
+        $this->post(route('purchase-orders.signature', [$order->purchaseRequest, PurchaseOrderApprovalStage::ApprovedBy->value]), $this->workflowSignature($this->preparer))
+            ->assertForbidden();
+    }
+
     private function user(RoleSlug $role): User
     {
         return User::factory()->create(['role_id' => Role::where('slug', $role->value)->value('id')]);

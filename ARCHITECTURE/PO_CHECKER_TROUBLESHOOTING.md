@@ -26,7 +26,10 @@ Check these conditions when a PO does not appear:
 - Updating PO Workflow Assignments changes routing for new POs. It does not
   reassign pending POs that already contain approval records.
 - A multi-role account must switch into its PO Checker workspace.
-- The checker must be active and cannot be the person who created the PO.
+- The checker must be active. The same person may prepare and check a PO when
+  assigned to both stages, using the PO Checker workspace and a separate
+  checking signature and remarks. Noting and final approval retain their
+  existing creator restrictions.
 - The preparer's signature and handoff must be complete. Older records with a
   missing signature or unconfirmed handoff require the preparer's action.
 - A PO which has already been checked moves to the next stage and leaves the
@@ -35,6 +38,24 @@ Check these conditions when a PO does not appear:
 Do not infer a live PO's problem from another server's database. Review the
 diagnostic output before changing assignments or existing approval records;
 preserve completed signatures and the audit history.
+
+To transfer the two pending POs from legacy checker 24 to account 30 and route
+future POs to account 30, first deploy this code on the live server, then run:
+
+```sh
+php artisan po:assign-checker ASI004636 ASI004635 --user=30 --from-user=24 --update-routing --apply
+php artisan po:diagnose ASI004636 ASI004635
+```
+
+Omit `--apply` for a preview. The command validates every requested PO before
+changing any record and performs the batch in one transaction. It refuses
+signed, acted-on, completed, or unexpectedly assigned checking steps and
+inactive accounts or accounts without the PO Checker role. It changes only
+the pending checker assignment and, with `--update-routing`, future checker
+routing. Each change is recorded in the linked request's audit history with
+the console as its source; signatures and statuses stay intact. Repeating the
+same completed transfer creates no duplicate audit entry. No email is sent by
+the transfer command.
 
 Local regression checks:
 

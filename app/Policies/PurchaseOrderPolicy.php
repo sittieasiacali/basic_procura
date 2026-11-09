@@ -14,7 +14,6 @@ class PurchaseOrderPolicy
         return $user->hasPoRole(PurchaseOrderApprovalStage::PreparedBy);
     }
 
-
     public function view(User $user, PurchaseOrder $purchaseOrder): bool
     {
         // The Purchasing Team prepares every PO as a team, so it may view any of them (read-only).
@@ -58,12 +57,12 @@ class PurchaseOrderPolicy
             && ($prepared?->hasValidSignature() ?? false)
             && ($prepared?->acted_at === null || $prepared->acted_at->lt($prepared->signed_at));
     }
+
     public function check(User $user, PurchaseOrder $purchaseOrder): bool
     {
         return $purchaseOrder->status === 'FOR_CHECKING'
             && $this->stageCompleted($purchaseOrder, PurchaseOrderApprovalStage::PreparedBy)
-            && $this->isAssignedActor($user, $purchaseOrder, PurchaseOrderApprovalStage::CheckedBy)
-            && $purchaseOrder->created_by !== $user->id;
+            && $this->isAssignedActor($user, $purchaseOrder, PurchaseOrderApprovalStage::CheckedBy);
     }
 
     public function note(User $user, PurchaseOrder $purchaseOrder): bool
@@ -105,7 +104,8 @@ class PurchaseOrderPolicy
             return false;
         }
 
-        if ($stage !== PurchaseOrderApprovalStage::PreparedBy && $purchaseOrder->created_by === $user->id) {
+        if (! in_array($stage, [PurchaseOrderApprovalStage::PreparedBy, PurchaseOrderApprovalStage::CheckedBy], true)
+            && $purchaseOrder->created_by === $user->id) {
             return false;
         }
 
@@ -152,6 +152,7 @@ class PurchaseOrderPolicy
     {
         return $purchaseOrder->approvalFor($stage)?->status === 'APPROVED';
     }
+
     private function previousStagesCompleted(PurchaseOrder $purchaseOrder, PurchaseOrderApprovalStage $stage): bool
     {
         foreach (PurchaseOrderApprovalStage::cases() as $candidate) {

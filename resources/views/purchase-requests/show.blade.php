@@ -167,6 +167,7 @@
         $handoffPreparedApproval = $handoffPurchaseOrder?->approvalFor(\App\Enums\PurchaseOrderApprovalStage::PreparedBy);
         $handoffCheckedApproval = $handoffPurchaseOrder?->approvalFor(\App\Enums\PurchaseOrderApprovalStage::CheckedBy);
         $showPreparedHandoffReceipt = $handoffPurchaseOrder?->status === 'FOR_CHECKING'
+            && ! auth()->user()->can('check', $handoffPurchaseOrder)
             && (int) $handoffPreparedApproval?->assigned_user_id === (int) auth()->id()
             && $handoffPreparedApproval?->status === 'APPROVED'
             && ($handoffPreparedApproval?->hasValidSignature() ?? false)
@@ -851,7 +852,7 @@
                     @error('signature_data')
                         <div class="alert alert-danger" role="alert">{{ $message }}</div>
                     @enderror
-                    @if($viewingAsPreparedAssignee && $preparedHandoffComplete)
+                    @if($viewingAsPreparedAssignee && $preparedHandoffComplete && ! auth()->user()->can('check', $po))
                         <div class="alert alert-success" role="status" data-po-handoff-confirmation>
                             <strong>Submitted to Checker.</strong>
                             You submitted this Purchase Order to {{ $checkedStageApproval?->assignedUser?->name ?? 'the assigned Checker' }} on {{ $preparedStageApproval->acted_at->format('M d, Y g:i A') }}. Your preparation stage is closed and no further action is required from you unless the Purchase Order is returned.

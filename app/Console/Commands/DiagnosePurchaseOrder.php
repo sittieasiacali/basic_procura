@@ -59,7 +59,7 @@ class DiagnosePurchaseOrder extends Command
                     $this->warn('The assigned checker account is inactive.');
                 }
                 if ((int) $order->created_by === (int) $checker->id) {
-                    $this->warn('The checker created this PO; self-checking is blocked.');
+                    $this->line('The checker also prepared this PO; checking is allowed in their checker workspace.');
                 }
 
                 $rows = [];

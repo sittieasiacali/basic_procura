@@ -10,6 +10,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 
 class PurchaseOrderWorkflowAssignmentController extends Controller
@@ -27,11 +28,22 @@ class PurchaseOrderWorkflowAssignmentController extends Controller
         $stages = PurchaseOrderApprovalStage::cases();
         $validated = $request->validate([
             'assignments' => ['required', 'array'],
-            'assignments.*' => ['required', 'integer', 'distinct', Rule::exists('users', 'id')],
+            'assignments.*' => ['required', 'integer', Rule::exists('users', 'id')->where('is_active', true)],
         ]);
 
         foreach ($stages as $stage) {
             abort_unless(array_key_exists($stage->value, $validated['assignments']), 422);
+        }
+
+        foreach ([PurchaseOrderApprovalStage::NotedBy, PurchaseOrderApprovalStage::ApprovedBy] as $stage) {
+            foreach ($stages as $otherStage) {
+                if ($stage !== $otherStage
+                    && (int) $validated['assignments'][$stage->value] === (int) $validated['assignments'][$otherStage->value]) {
+                    throw ValidationException::withMessages([
+                        'assignments.'.$stage->value => 'The Noter and Approver must each use a separate account. Only the Preparer and Checker may share an account.',
+                    ]);
+                }
+            }
         }
 
         DB::transaction(function () use ($validated, $stages): void {
