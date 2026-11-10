@@ -18,7 +18,13 @@ class PurchaseOrderPolicy
 
     public function view(User $user, PurchaseOrder $purchaseOrder): bool
     {
-        if ($purchaseOrder->status === 'FOR_ACKNOWLEDGEMENT' && $user->hasPoRole(PurchaseOrderApprovalStage::NotedBy)) {
+        $activeStage = match ($purchaseOrder->status) {
+            'FOR_CHECKING' => PurchaseOrderApprovalStage::CheckedBy,
+            'FOR_ACKNOWLEDGEMENT' => PurchaseOrderApprovalStage::NotedBy,
+            'FOR_APPROVAL' => PurchaseOrderApprovalStage::ApprovedBy,
+            default => null,
+        };
+        if ($activeStage && $user->hasPoRole($activeStage)) {
             return true;
         }
         // The Purchasing Team prepares every PO as a team, so it may view any of them (read-only).
@@ -81,8 +87,7 @@ class PurchaseOrderPolicy
     {
         return $purchaseOrder->status === 'FOR_APPROVAL'
             && $this->stageActionRecorded($purchaseOrder, PurchaseOrderApprovalStage::NotedBy)
-            && $this->isAssignedActor($user, $purchaseOrder, PurchaseOrderApprovalStage::ApprovedBy)
-            && $purchaseOrder->created_by !== $user->id;
+            && $this->isAssignedActor($user, $purchaseOrder, PurchaseOrderApprovalStage::ApprovedBy);
     }
 
     /**
@@ -105,11 +110,6 @@ class PurchaseOrderPolicy
         $approval = $purchaseOrder->approvalFor($stage);
 
         if (! $approval || $approval->hasValidSignature() || ! $this->isAssignedActor($user, $purchaseOrder, $stage)) {
-            return false;
-        }
-
-        if ($stage === PurchaseOrderApprovalStage::ApprovedBy
-            && $purchaseOrder->created_by === $user->id) {
             return false;
         }
 
@@ -148,7 +148,7 @@ class PurchaseOrderPolicy
 
     private function isAssignedActor(User $user, PurchaseOrder $purchaseOrder, PurchaseOrderApprovalStage $stage): bool
     {
-        if ($stage === PurchaseOrderApprovalStage::NotedBy) {
+        if ($stage !== PurchaseOrderApprovalStage::PreparedBy) {
             $approval = $purchaseOrder->approvalFor($stage);
 
             return $user->hasPoRole($stage) && $approval !== null

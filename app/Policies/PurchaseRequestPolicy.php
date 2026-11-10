@@ -44,8 +44,12 @@ class PurchaseRequestPolicy
             || $purchaseRequest->team_leader_id === $user->id
             || $purchaseRequest->current_responsible_role_id === $user->activeRole()?->id
             || $purchaseRequest->screening?->screened_by === $user->id
-            || ($user->hasPoRole(PurchaseOrderApprovalStage::NotedBy)
-                && $purchaseRequest->purchaseOrder?->status === 'FOR_ACKNOWLEDGEMENT')
+            || ($purchaseRequest->purchaseOrder && match ($purchaseRequest->purchaseOrder->status) {
+                'FOR_CHECKING' => $user->hasPoRole(PurchaseOrderApprovalStage::CheckedBy),
+                'FOR_ACKNOWLEDGEMENT' => $user->hasPoRole(PurchaseOrderApprovalStage::NotedBy),
+                'FOR_APPROVAL' => $user->hasPoRole(PurchaseOrderApprovalStage::ApprovedBy),
+                default => false,
+            })
             || ($purchaseRequest->purchaseOrder && $purchaseRequest->purchaseOrder->approvals()
                 ->where(fn ($approval) => $approval->where('assigned_user_id', $user->id)->orWhere('acted_by', $user->id))
                 ->exists())

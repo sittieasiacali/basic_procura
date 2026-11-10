@@ -2,26 +2,27 @@
 
 namespace App\Http\Controllers;
 
-use App\Enums\PurchaseRequestStatus;
 use App\Enums\PurchaseOrderApprovalStage;
+use App\Enums\PurchaseRequestStatus;
 use App\Enums\RoleSlug;
 use App\Models\AuditLog;
 use App\Models\BudgetRequest;
 use App\Models\InventoryItem;
 use App\Models\InventoryRelease;
 use App\Models\Payment;
-use App\Models\PurchaseRequest;
 use App\Models\PurchaseOrder;
 use App\Models\PurchaseOrderApproval;
+use App\Models\PurchaseRequest;
 use App\Models\User;
+use App\Policies\PurchaseOrderPolicy;
 use App\Support\AccountMonitoring;
 use App\Support\PurchaseOrderActionQueue;
 use App\Support\RequestWithdrawal;
-use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
-use Illuminate\Pagination\LengthAwarePaginator as LengthAwarePaginatorConcrete;
-use Illuminate\Http\Request;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
+use Illuminate\Pagination\LengthAwarePaginator as LengthAwarePaginatorConcrete;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\View\View;
@@ -950,7 +951,6 @@ class DashboardController extends Controller
         return $query->whereRaw('1 = 0');
     }
 
-
     /**
      * Shared unclaimed requests and the current screener's unfinished work.
      */
@@ -990,11 +990,17 @@ class DashboardController extends Controller
 
     private function purchaseOrderDiagnostics(User $user, LengthAwarePaginator $page, Collection $actions): JsonResponse
     {
-        $policyVersion = \App\Policies\PurchaseOrderPolicy::class.'::CHECKER_WORKFLOW_VERSION';
+        $policyVersion = PurchaseOrderPolicy::class.'::CHECKER_WORKFLOW_VERSION';
         $rows = $page->getCollection()->map(function (PurchaseRequest $purchaseRequest) use ($user, $actions): array {
             $order = $purchaseRequest->purchaseOrder;
             $fresh = $order?->fresh(['approvals']);
             $prepared = $fresh?->approvalFor(PurchaseOrderApprovalStage::PreparedBy);
+            [$ability, $stage] = match ($fresh?->status) {
+                'FOR_CHECKING' => ['check', PurchaseOrderApprovalStage::CheckedBy],
+                'FOR_ACKNOWLEDGEMENT' => ['note', PurchaseOrderApprovalStage::NotedBy],
+                'FOR_APPROVAL' => ['approve', PurchaseOrderApprovalStage::ApprovedBy],
+                default => [null, null],
+            };
 
             return [
                 'po_number' => $order?->po_number,
@@ -1002,6 +1008,9 @@ class DashboardController extends Controller
                 'request_status' => $purchaseRequest->status->value,
                 'po_status' => $order?->status,
                 'action_row_present' => $actions->contains(fn ($action) => $action['request']->is($purchaseRequest)),
+                'current_action' => $ability,
+                'can_perform_current_action' => $fresh && $ability && Gate::forUser($user)->allows($ability, $fresh),
+                'can_sign_current_stage' => $fresh && $stage && Gate::forUser($user)->allows('sign', [$fresh, $stage]),
                 'loaded_can_check' => $order && Gate::forUser($user)->allows('check', $order),
                 'fresh_can_check' => $fresh && Gate::forUser($user)->allows('check', $fresh),
                 'fresh_can_sign' => $fresh && Gate::forUser($user)->allows('sign', [$fresh, PurchaseOrderApprovalStage::CheckedBy]),

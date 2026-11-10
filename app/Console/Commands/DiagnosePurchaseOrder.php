@@ -94,7 +94,7 @@ class DiagnosePurchaseOrder extends Command
                 $others = User::query()->where('is_active', true)->withAssignedRole((int) $checkerRoleId)
                     ->when($checker, fn ($query) => $query->whereKeyNot($checker->id))->pluck('id');
                 if ($others->isNotEmpty()) {
-                    $this->line('Other PO Checker role account IDs: '.$others->implode(', ').'. They are not assigned to this PO.');
+                    $this->line('Other PO Checker role account IDs: '.$others->implode(', ').'. Their role may allow access even if they are not the default assignee.');
                 }
             }
 

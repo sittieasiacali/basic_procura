@@ -9,7 +9,7 @@
         @csrf @method('PUT')
         <div class="card-header"><div class="section-kicker">Separate PO process</div><h2 class="section-title">Required stage assignees</h2></div>
         <div class="card-body">
-            <p class="text-muted small">The Preparer and Checker may share an account. The Noter and Approver must each use a separate account. Choose active accounts with access to the required workspace. No account is created and no Request Process role is changed here.</p>
+            <p class="text-muted small">These are default stage assignments. Users with the corresponding active workspace role may check, note, or approve a pending PO. The account that signs is recorded on the PO. No Request Process role is changed here.</p>
             @foreach(\App\Enums\PurchaseOrderApprovalStage::cases() as $stage)
                 @php($assignment = $assignments->get($stage->value))
                 <div class="row align-items-center g-2 mb-3">

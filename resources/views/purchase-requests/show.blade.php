@@ -181,7 +181,7 @@
         if ($showPreparedHandoffReceipt) {
             $handoffReceipt = [
                 'title' => 'Submitted to Checker.',
-                'message' => 'You submitted this Purchase Order to '.($handoffCheckedApproval?->assignedUser?->name ?? 'the assigned Checker').' on '.$handoffPreparedApproval->acted_at->format('M d, Y g:i A').'. Your preparation stage is closed and no further action is required from you unless the Purchase Order is returned.',
+                'message' => 'You submitted this Purchase Order to the Checker workspace on '.$handoffPreparedApproval->acted_at->format('M d, Y g:i A').'. Your preparation stage is closed and no further action is required from you unless the Purchase Order is returned.',
             ];
         } elseif ($handoffPurchaseOrder
             && ! auth()->user()->can('check', $handoffPurchaseOrder)
@@ -196,12 +196,12 @@
             if ($handoffPurchaseOrder->status === 'FOR_ACKNOWLEDGEMENT' && $completedByMe($handoffCheckedApproval, ['APPROVED'])) {
                 $handoffReceipt = [
                     'title' => 'Submitted to Noter.',
-                    'message' => 'You checked this Purchase Order and submitted it to '.($handoffNotedApproval?->assignedUser?->name ?? 'the assigned Noter').' on '.$handoffCheckedApproval->acted_at->format('M d, Y g:i A').'. Your checking stage is closed and no further action is required from you unless the Purchase Order is returned.',
+                    'message' => 'You checked this Purchase Order and submitted it to the Noter workspace on '.$handoffCheckedApproval->acted_at->format('M d, Y g:i A').'. Your checking stage is closed and no further action is required from you unless the Purchase Order is returned.',
                 ];
             } elseif ($handoffPurchaseOrder->status === 'FOR_APPROVAL' && $completedByMe($handoffNotedApproval, ['APPROVED'])) {
                 $handoffReceipt = [
                     'title' => 'Submitted to Approver.',
-                    'message' => 'You noted this Purchase Order and submitted it to '.($handoffApprovedApproval?->assignedUser?->name ?? 'the assigned Approver').' on '.$handoffNotedApproval->acted_at->format('M d, Y g:i A').'. Your noting stage is closed and no further action is required from you unless the Purchase Order is returned.',
+                    'message' => 'You noted this Purchase Order and submitted it to the Approver workspace on '.$handoffNotedApproval->acted_at->format('M d, Y g:i A').'. Your noting stage is closed and no further action is required from you unless the Purchase Order is returned.',
                 ];
             } elseif (in_array($handoffPurchaseOrder->status, ['APPROVED', 'REJECTED'], true)
                 && $purchaseRequest->status === \App\Enums\PurchaseRequestStatus::ForBudgetProcessing

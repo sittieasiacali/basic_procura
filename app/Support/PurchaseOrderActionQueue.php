@@ -11,8 +11,8 @@ use Illuminate\Database\Eloquent\Builder;
 final class PurchaseOrderActionQueue
 {
     /**
-     * Return the Purchase Requests which are actionable by this user's assigned
-     * PO stage. A null result means that the user has no PO workflow assignment.
+     * Return the Purchase Requests actionable in the user's active PO workspace.
+     * A null result means the user has no PO workflow workspace.
      */
     public static function for(User $user): ?Builder
     {
@@ -57,12 +57,15 @@ final class PurchaseOrderActionQueue
         );
 
         $request->whereHas('purchaseOrder', function (Builder $order) use ($stage, $userId, $previousStages): void {
-            $order->whereNotIn('status', ['APPROVED', 'REJECTED', 'CANCELLED'])
+            $order->where('status', match ($stage) {
+                PurchaseOrderApprovalStage::CheckedBy => 'FOR_CHECKING',
+                PurchaseOrderApprovalStage::NotedBy => 'FOR_ACKNOWLEDGEMENT',
+                PurchaseOrderApprovalStage::ApprovedBy => 'FOR_APPROVAL',
+                default => null,
+            })
                 ->whereHas('approvals', fn (Builder $approval) => $approval
                     ->where('stage', $stage->value)
-                    ->when($stage !== PurchaseOrderApprovalStage::NotedBy, fn (Builder $assigned) => $assigned->where('assigned_user_id', $userId))
-                    ->when($stage === PurchaseOrderApprovalStage::NotedBy, fn (Builder $noted) => $noted->where(fn (Builder $available) => $available
-                        ->whereNull('signed_at')->orWhere('acted_by', $userId)))
+                    ->where(fn (Builder $available) => $available->whereNull('signed_at')->orWhere('acted_by', $userId))
                     ->where(fn (Builder $incomplete) => self::whereIncompleteStage($incomplete)));
 
             foreach ($previousStages as $previousStage) {
@@ -86,7 +89,7 @@ final class PurchaseOrderActionQueue
             ->whereNotNull('acted_at')
             ->whereColumn('acted_at', '>=', 'signed_at')
             ->whereNotNull('acted_by')
-            ->where(fn (Builder $actor) => $actor->where('stage', PurchaseOrderApprovalStage::NotedBy->value)
+            ->where(fn (Builder $actor) => $actor->where('stage', '!=', PurchaseOrderApprovalStage::PreparedBy->value)
                 ->orWhereColumn('acted_by', 'assigned_user_id'));
     }
 
@@ -105,7 +108,7 @@ final class PurchaseOrderActionQueue
                 ->orWhereColumn('acted_at', '<', 'signed_at')
                 ->orWhereNull('acted_by')
                 ->orWhere(fn (Builder $wrongActor) => $wrongActor
-                    ->where('stage', '!=', PurchaseOrderApprovalStage::NotedBy->value)
+                    ->where('stage', PurchaseOrderApprovalStage::PreparedBy->value)
                     ->whereColumn('acted_by', '!=', 'assigned_user_id'));
         });
     }

@@ -29,7 +29,7 @@ class PurchaseOrderApproval extends Model
             return false;
         }
 
-        if ($this->acted_by === null || ($this->stage !== PurchaseOrderApprovalStage::NotedBy && (int) $this->acted_by !== (int) $this->assigned_user_id)) {
+        if ($this->acted_by === null || ($this->stage === PurchaseOrderApprovalStage::PreparedBy && (int) $this->acted_by !== (int) $this->assigned_user_id)) {
             return false;
         }
 
