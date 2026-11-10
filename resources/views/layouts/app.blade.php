@@ -208,9 +208,9 @@
                 </div>
 
                 <div class="dropdown">
-                    <button class="user-menu-button dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                    <button class="user-menu-button dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Account menu: {{ $currentUser->name }}, {{ $currentUser->activeRole()?->name ?? 'Unassigned role' }}">
                         <span class="user-avatar">{{ $initials ?: 'U' }}</span>
-                        <span class="d-none d-sm-block">
+                        <span class="user-menu-details d-none d-sm-block">
                             <span class="user-menu-name">{{ $currentUser->name }}</span>
                             <span class="user-menu-role">{{ $currentUser->activeRole()?->name ?? 'Unassigned role' }}</span>
                         </span>

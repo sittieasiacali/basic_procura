@@ -77,6 +77,7 @@
     display: flex !important;
     flex-basis: auto;
     flex-grow: 1;
+    min-width: 0;
     justify-content: flex-end;
 }
 
@@ -135,6 +136,7 @@
 
 .app-navbar.app-navbar--workspace .user-menu-button {
     color: #24207e;
+    max-width: 17rem;
 }
 
 .app-navbar.app-navbar--workspace .user-menu-button:hover,
@@ -157,6 +159,16 @@
 .app-navbar.app-navbar--workspace .user-menu-role {
     color: #4e5d76;
     font-size: .7rem;
+}
+
+@media (max-width: 575.98px) {
+    .app-navbar.app-navbar--workspace .app-brand {
+        min-width: 0;
+    }
+
+    .app-navbar.app-navbar--workspace .app-brand-logo {
+        width: min(10rem, 45vw);
+    }
 }
 
 @media (max-width: 1199.98px) {
@@ -385,6 +397,15 @@ a:hover {
     background: rgba(64, 148, 217, .22);
 }
 
+.user-menu-details {
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+.user-menu-button::after {
+    flex: 0 0 auto;
+}
+
 .user-avatar {
     display: grid;
     width: 2rem;
@@ -401,9 +422,9 @@ a:hover {
 .user-menu-name,
 .user-menu-role {
     display: block;
-    max-width: 9.5rem;
+    max-width: 100%;
     overflow: hidden;
-    line-height: 1.15;
+    line-height: 1.3;
     text-overflow: ellipsis;
     white-space: nowrap;
 }
@@ -414,7 +435,7 @@ a:hover {
 }
 
 .user-menu-role {
-    margin-top: .15rem;
+    margin-top: .2rem;
     color: rgba(255, 255, 250, .64);
     font-size: .62rem;
 }
@@ -7695,6 +7716,19 @@ textarea.form-control {
 }
 
 @media (max-width: 1199.98px) {
+    .app-navbar.app-navbar--workspace .navbar-collapse {
+        max-height: none;
+        padding: 0;
+        overflow: visible;
+    }
+
+    .app-navbar.app-navbar--workspace .navbar-tools {
+        justify-content: flex-end;
+        margin-top: 0;
+        padding-top: 0;
+        border-top: 0;
+    }
+
     .app-navbar .navbar-collapse {
         max-height: calc(100vh - 4.5rem);
         padding: .75rem 0 1rem;
