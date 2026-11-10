@@ -1,0 +1,43 @@
+name: Procurement workflow checks
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  workflow-tests:
+    name: PO, budget, payment and receiving
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: mbstring, pdo_sqlite, sqlite3, gd, zip
+          coverage: none
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Install PHP dependencies
+        run: composer install --no-interaction --prefer-dist --no-progress
+      - name: Prepare test environment
+        run: |
+          cp .env.example .env
+          php artisan key:generate
+      - name: Build frontend assets
+        run: |
+          npm ci
+          npm run build
+      - name: Run focused procurement tests
+        run: >-
+          php artisan test
+          tests/Feature/PurchaseOrderCheckerFlowTest.php
+          tests/Feature/BudgetMakerSelectionTest.php
+          tests/Feature/ReceivingInventoryTest.php
