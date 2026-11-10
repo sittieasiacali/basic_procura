@@ -294,24 +294,23 @@ class PurchaseOrderCheckerFlowTest extends TestCase
             ->assertSessionHasErrors('assignments.'.PurchaseOrderApprovalStage::NotedBy->value);
     }
 
-    public function test_creator_still_cannot_note_or_approve_own_po(): void
+    public function test_creator_with_noter_role_can_note_own_po_but_cannot_approve_it(): void
     {
         $order = $this->createOrder();
         $this->actingAs($this->checker)->post(route('purchase-orders.check', $order->purchaseRequest), $this->workflowSignature($this->checker))
             ->assertSessionHasNoErrors();
         $this->preparer->roles()->sync([$this->noter->role_id, $this->approver->role_id]);
-        $order->approvals()->where('stage', PurchaseOrderApprovalStage::NotedBy->value)->update(['assigned_user_id' => $this->preparer->id]);
         $this->actingAs($this->preparer)->withSession(['workspace_role_id' => $this->noter->role_id])
-            ->post(route('purchase-orders.acknowledge', $order->purchaseRequest), $this->workflowSignature($this->preparer))
-            ->assertForbidden();
-        $this->post(route('purchase-orders.signature', [$order->purchaseRequest, PurchaseOrderApprovalStage::NotedBy->value]), $this->workflowSignature($this->preparer))
-            ->assertForbidden();
-
-        $order->approvals()->where('stage', PurchaseOrderApprovalStage::NotedBy->value)->update([
-            'status' => 'APPROVED', 'acted_by' => $this->preparer->id,
-            'signature_name' => $this->preparer->name, 'signature_data' => $this->signatureImage(),
-            'signed_at' => now(), 'acted_at' => now(),
-        ]);
+            ->get(route('dashboard'))->assertOk()
+            ->assertViewHas('myActions', fn ($actions) => $actions->contains(fn ($action) => $action['request']->is($order->purchaseRequest)));
+        $this->get(route('purchase-requests.show', $order->purchaseRequest))->assertOk()->assertSee('Noted By signature');
+        $this->post(route('purchase-orders.acknowledge', $order->purchaseRequest), $this->workflowSignature($this->preparer))
+            ->assertSessionHasNoErrors();
+        $noted = $order->fresh()->approvalFor(PurchaseOrderApprovalStage::NotedBy);
+        $this->assertSame($this->noter->id, $noted->assigned_user_id);
+        $this->assertSame($this->preparer->id, $noted->acted_by);
+        $this->assertTrue($noted->hasValidSignature());
+        $this->assertSame('FOR_APPROVAL', $order->fresh()->status);
         $order->approvals()->where('stage', PurchaseOrderApprovalStage::ApprovedBy->value)->update(['assigned_user_id' => $this->preparer->id]);
         $order->update(['status' => 'FOR_APPROVAL']);
         $this->withSession(['workspace_role_id' => $this->approver->role_id])
@@ -320,6 +319,24 @@ class PurchaseOrderCheckerFlowTest extends TestCase
             ])->assertForbidden();
         $this->post(route('purchase-orders.signature', [$order->purchaseRequest, PurchaseOrderApprovalStage::ApprovedBy->value]), $this->workflowSignature($this->preparer))
             ->assertForbidden();
+    }
+
+    public function test_any_noter_can_act_but_cannot_use_another_noters_signature(): void
+    {
+        $order = $this->createOrder();
+        $this->actingAs($this->checker)->post(route('purchase-orders.check', $order->purchaseRequest), $this->workflowSignature($this->checker))
+            ->assertSessionHasNoErrors();
+        $otherNoter = $this->user(RoleSlug::PoNoted);
+        $this->actingAs($otherNoter)->get(route('dashboard'))->assertOk()
+            ->assertViewHas('myActions', fn ($actions) => $actions->contains(fn ($action) => $action['request']->is($order->purchaseRequest)));
+        $this->get(route('purchase-requests.show', $order->purchaseRequest))->assertOk()->assertSee('Noted By signature');
+        $this->post(route('purchase-orders.signature', [$order->purchaseRequest, PurchaseOrderApprovalStage::NotedBy->value]), $this->workflowSignature($otherNoter))
+            ->assertSessionHasNoErrors();
+        $this->actingAs($this->noter)->post(route('purchase-orders.acknowledge', $order->purchaseRequest), [])->assertForbidden();
+        $this->actingAs($otherNoter)->post(route('purchase-orders.acknowledge', $order->purchaseRequest), [])->assertSessionHasNoErrors();
+        $this->get(route('dashboard'))->assertOk()->assertViewHas('myActions', fn ($actions) => $actions->isEmpty());
+        $this->actingAs($this->approver)->get(route('dashboard'))->assertOk()
+            ->assertViewHas('myActions', fn ($actions) => $actions->contains(fn ($action) => $action['request']->is($order->purchaseRequest)));
     }
 
     public function test_browser_diagnostics_require_login_and_only_include_the_users_own_queue(): void

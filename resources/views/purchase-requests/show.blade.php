@@ -189,7 +189,7 @@
             && ! auth()->user()->can('approve', $handoffPurchaseOrder)) {
             $handoffNotedApproval = $handoffPurchaseOrder->approvalFor(\App\Enums\PurchaseOrderApprovalStage::NotedBy);
             $handoffApprovedApproval = $handoffPurchaseOrder->approvalFor(\App\Enums\PurchaseOrderApprovalStage::ApprovedBy);
-            $completedByMe = fn ($approval, array $statuses) => (int) $approval?->assigned_user_id === (int) auth()->id()
+            $completedByMe = fn ($approval, array $statuses) => (int) $approval?->acted_by === (int) auth()->id()
                 && in_array($approval?->status, $statuses, true)
                 && $approval?->acted_at !== null;
 

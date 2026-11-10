@@ -2,8 +2,8 @@
 
 namespace App\Policies;
 
-use App\Enums\PurchaseRequestStatus;
 use App\Enums\PurchaseOrderApprovalStage;
+use App\Enums\PurchaseRequestStatus;
 use App\Enums\RoleSlug;
 use App\Models\PurchaseRequest;
 use App\Models\User;
@@ -44,6 +44,8 @@ class PurchaseRequestPolicy
             || $purchaseRequest->team_leader_id === $user->id
             || $purchaseRequest->current_responsible_role_id === $user->activeRole()?->id
             || $purchaseRequest->screening?->screened_by === $user->id
+            || ($user->hasPoRole(PurchaseOrderApprovalStage::NotedBy)
+                && $purchaseRequest->purchaseOrder?->status === 'FOR_ACKNOWLEDGEMENT')
             || ($purchaseRequest->purchaseOrder && $purchaseRequest->purchaseOrder->approvals()
                 ->where(fn ($approval) => $approval->where('assigned_user_id', $user->id)->orWhere('acted_by', $user->id))
                 ->exists())

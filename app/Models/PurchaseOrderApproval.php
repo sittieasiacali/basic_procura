@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Enums\PurchaseOrderApprovalStage;
+use App\Support\WorkflowSignature;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
@@ -28,12 +29,13 @@ class PurchaseOrderApproval extends Model
             return false;
         }
 
-        if ($this->acted_by === null || (int) $this->acted_by !== (int) $this->assigned_user_id) {
+        if ($this->acted_by === null || ($this->stage !== PurchaseOrderApprovalStage::NotedBy && (int) $this->acted_by !== (int) $this->assigned_user_id)) {
             return false;
         }
 
-        return \App\Support\WorkflowSignature::isValidImage($this->signature_data);
+        return WorkflowSignature::isValidImage($this->signature_data);
     }
+
     public function purchaseOrder(): BelongsTo
     {
         return $this->belongsTo(PurchaseOrder::class);

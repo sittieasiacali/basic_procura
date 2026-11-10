@@ -60,7 +60,9 @@ final class PurchaseOrderActionQueue
             $order->whereNotIn('status', ['APPROVED', 'REJECTED', 'CANCELLED'])
                 ->whereHas('approvals', fn (Builder $approval) => $approval
                     ->where('stage', $stage->value)
-                    ->where('assigned_user_id', $userId)
+                    ->when($stage !== PurchaseOrderApprovalStage::NotedBy, fn (Builder $assigned) => $assigned->where('assigned_user_id', $userId))
+                    ->when($stage === PurchaseOrderApprovalStage::NotedBy, fn (Builder $noted) => $noted->where(fn (Builder $available) => $available
+                        ->whereNull('signed_at')->orWhere('acted_by', $userId)))
                     ->where(fn (Builder $incomplete) => self::whereIncompleteStage($incomplete)));
 
             foreach ($previousStages as $previousStage) {
@@ -84,7 +86,8 @@ final class PurchaseOrderActionQueue
             ->whereNotNull('acted_at')
             ->whereColumn('acted_at', '>=', 'signed_at')
             ->whereNotNull('acted_by')
-            ->whereColumn('acted_by', 'assigned_user_id');
+            ->where(fn (Builder $actor) => $actor->where('stage', PurchaseOrderApprovalStage::NotedBy->value)
+                ->orWhereColumn('acted_by', 'assigned_user_id'));
     }
 
     private static function whereIncompleteStage(Builder $approval): void
@@ -101,7 +104,9 @@ final class PurchaseOrderActionQueue
                 ->orWhereNull('acted_at')
                 ->orWhereColumn('acted_at', '<', 'signed_at')
                 ->orWhereNull('acted_by')
-                ->orWhereColumn('acted_by', '!=', 'assigned_user_id');
+                ->orWhere(fn (Builder $wrongActor) => $wrongActor
+                    ->where('stage', '!=', PurchaseOrderApprovalStage::NotedBy->value)
+                    ->whereColumn('acted_by', '!=', 'assigned_user_id'));
         });
     }
 }

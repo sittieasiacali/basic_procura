@@ -18,6 +18,9 @@ class PurchaseOrderPolicy
 
     public function view(User $user, PurchaseOrder $purchaseOrder): bool
     {
+        if ($purchaseOrder->status === 'FOR_ACKNOWLEDGEMENT' && $user->hasPoRole(PurchaseOrderApprovalStage::NotedBy)) {
+            return true;
+        }
         // The Purchasing Team prepares every PO as a team, so it may view any of them (read-only).
         if ($user->hasRole(RoleSlug::PurchasingTeam->value)) {
             return true;
@@ -71,8 +74,7 @@ class PurchaseOrderPolicy
     {
         return $purchaseOrder->status === 'FOR_ACKNOWLEDGEMENT'
             && $this->stageActionRecorded($purchaseOrder, PurchaseOrderApprovalStage::CheckedBy)
-            && $this->isAssignedActor($user, $purchaseOrder, PurchaseOrderApprovalStage::NotedBy)
-            && $purchaseOrder->created_by !== $user->id;
+            && $this->isAssignedActor($user, $purchaseOrder, PurchaseOrderApprovalStage::NotedBy);
     }
 
     public function approve(User $user, PurchaseOrder $purchaseOrder): bool
@@ -106,7 +108,7 @@ class PurchaseOrderPolicy
             return false;
         }
 
-        if (! in_array($stage, [PurchaseOrderApprovalStage::PreparedBy, PurchaseOrderApprovalStage::CheckedBy], true)
+        if ($stage === PurchaseOrderApprovalStage::ApprovedBy
             && $purchaseOrder->created_by === $user->id) {
             return false;
         }
@@ -146,6 +148,13 @@ class PurchaseOrderPolicy
 
     private function isAssignedActor(User $user, PurchaseOrder $purchaseOrder, PurchaseOrderApprovalStage $stage): bool
     {
+        if ($stage === PurchaseOrderApprovalStage::NotedBy) {
+            $approval = $purchaseOrder->approvalFor($stage);
+
+            return $user->hasPoRole($stage) && $approval !== null
+                && (! $approval->hasValidSignature() || (int) $approval->acted_by === (int) $user->id);
+        }
+
         return $user->hasPoRole($stage)
             && (int) $purchaseOrder->approvalFor($stage)?->assigned_user_id === (int) $user->id;
     }
