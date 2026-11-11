@@ -17,6 +17,28 @@
 
         @include('dashboard.partials.filters', ['idPrefix' => 'team'])
 
+        @if($returnedCount > 0 && $requestTab !== 'returned')
+            <section class="card mb-4 border-warning" aria-labelledby="needs-correction-heading">
+                <div class="card-header"><div><h2 class="h5 mb-1" id="needs-correction-heading">Needs correction <span class="badge text-bg-warning">{{ $returnedCount }}</span></h2><p class="small text-muted mb-0">Review the reason, edit your request, and submit it again.</p></div></div>
+                <div class="flow-request-grid">
+                    @foreach($returnedRequests as $correction)
+                        <article class="flow-request-card">
+                            <div class="flow-request-card-topline"><strong class="flow-request-number">{{ $correction->request_number }}</strong><x-status-badge :status="$correction->status" /></div>
+                            <h3 class="flow-request-title">{{ $correction->title }}</h3>
+                            <p class="small mt-2 mb-1"><strong>Correction reason:</strong> {{ $correction->latestReturnApproval?->remarks ?? 'Open the request to review the correction details.' }}</p>
+                            <p class="small text-muted">Returned by {{ $correction->latestReturnApproval?->user?->name ?? 'Purchasing' }} on {{ $correction->latestReturnApproval?->acted_at?->format('M j, Y g:i A') }}</p>
+                            <div class="flow-request-card-footer">
+                                @can('update', $correction)<a class="btn btn-primary" href="{{ route('purchase-requests.edit', $correction) }}">Edit and resubmit</a>@endcan
+                                <a class="btn btn-outline-secondary" href="{{ route('purchase-requests.show', $correction) }}" data-workflow-request-preview>View request</a>
+                            </div>
+                        </article>
+                    @endforeach
+                </div>
+                @if($returnedRequests->hasPages())<div class="card-footer"><a href="{{ request()->fullUrlWithQuery(['request_tab' => 'returned']) }}#completed-requests-heading">View all returned requests</a></div>@endif
+            </section>
+        @endif
+
+
         <section class="card mb-4" aria-labelledby="pending-requests-heading">
             <div class="card-header"><div><h2 id="pending-requests-heading" class="h5 mb-1">Pending requests</h2><p class="mb-0 small text-muted">Requests still moving through the workflow.</p></div></div>
             <div class="flow-request-grid">
@@ -91,7 +113,7 @@
                     'searchPlaceholder' => 'Search request, title...',
                 ]])
                 <div class="table-responsive">
-                    <table class="table table-hover align-middle mb-0">
+                    <table data-mobile-cards class="table table-hover align-middle mb-0">
                         <thead><tr><th class="table-row-number">#</th><th>Request</th><th>Returned by</th><th>Return remarks</th><th>Returned on</th><th class="text-end">Action</th></tr></thead>
                         <tbody>
                         @forelse($returnedRequests as $purchaseRequest)
@@ -108,9 +130,9 @@
                                     <span class="fw-semibold">{{ $returnApproval?->user?->name ?? $returnApproval?->signature_name ?? 'Approver not recorded' }}</span>
                                     <div class="small text-muted">{{ $returnApproval?->user?->role?->name ?? $returnApproval?->approval_level }}</div>
                                 </td>
-                                <td class="small"><x-workflow-remarks :request="$purchaseRequest" /></td>
+                                <td class="small">{{ $returnApproval?->remarks }}</td>
                                 <td class="small text-muted text-nowrap">{{ $returnApproval?->acted_at?->format('M j, Y g:i A') ?? 'Not recorded' }}</td>
-                                <td class="text-end text-nowrap"><a class="btn btn-sm btn-outline-primary" href="{{ route('purchase-requests.show', $purchaseRequest) }}" data-workflow-request-preview>View request <x-ui.icon name="chevron-right" size="15" /></a></td>
+                                <td class="text-end text-nowrap">@can('update', $purchaseRequest)<a class="btn btn-sm btn-primary me-1" href="{{ route('purchase-requests.edit', $purchaseRequest) }}">Edit and resubmit</a>@endcan<a class="btn btn-sm btn-outline-primary" href="{{ route('purchase-requests.show', $purchaseRequest) }}" data-workflow-request-preview>View request <x-ui.icon name="chevron-right" size="15" /></a></td>
                             </tr>
                         @empty
                             <tr><td colspan="6"><x-ui.empty-state icon="file-text" title="No returned requests found" description="Requests returned for correction will appear here with the approver and their remarks." /></td></tr>
@@ -136,7 +158,7 @@
                 'dateLabel' => 'Completed',
             ]])
             <div class="table-responsive">
-                <table class="table table-hover align-middle mb-0">
+                <table data-mobile-cards class="table table-hover align-middle mb-0">
                     <thead><tr><th class="table-row-number">#</th><th>Request</th><th>Workflow status</th><th>Completed</th><th class="text-end">Action</th></tr></thead>
                     <tbody>
                     @forelse($doneRequests as $purchaseRequest)

@@ -14,6 +14,7 @@
             </div>
             <div class="dashboard-header-actions page-actions d-flex flex-wrap gap-2">
                 <a class="btn btn-outline-primary" href="{{ route('dashboard') }}">Back to dashboard</a>
+                <a class="btn btn-outline-primary" href="{{ route('returned-monitoring.index') }}">Return Monitoring</a>
                 <a class="btn btn-outline-primary d-inline-flex align-items-center gap-2" href="{{ route('workflow-tracker.index') }}"><x-ui.icon name="flow" size="16" />Workflow Tracker</a>
             </div>
         </header>

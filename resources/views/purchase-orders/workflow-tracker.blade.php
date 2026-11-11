@@ -24,6 +24,18 @@
     </header>
     @include('purchase-orders.partials.preview-modal')
 
+    @if($returnedRequests->total() > 0)
+    <section class="card mb-3" aria-labelledby="tracker-returns-heading">
+        <div class="card-header"><div><h2 class="h5 mb-1" id="tracker-returns-heading">Requests returned before PO creation</h2><p class="small text-muted mb-0">Live status updates after requestor correction and resubmission. Once a PO is created, it appears in Purchase Order progress.</p></div></div>
+        <div class="table-responsive"><table class="table align-middle mb-0" data-mobile-cards><thead><tr><th>Request</th><th>Correction reason</th><th>Current workflow status</th><th>Action</th></tr></thead><tbody>
+        @foreach($returnedRequests as $entry)
+            <tr><td><strong>{{ $entry->request_number }}</strong><div class="small">{{ $entry->title }}</div></td><td>{{ $entry->latestReturnApproval?->remarks }}<div class="small text-muted">Returned by {{ $entry->latestReturnApproval?->user?->name }}</div></td><td><x-status-badge :status="$entry->status" /><div class="small text-muted">{{ $entry->responsibleRole?->name }}</div></td><td><a class="btn btn-sm btn-outline-primary" href="{{ route('purchase-requests.show', $entry) }}" data-workflow-request-preview>View request</a></td></tr>
+        @endforeach
+        </tbody></table></div>
+        @if($returnedRequests->hasPages())<div class="card-footer">{{ $returnedRequests->links() }}</div>@endif
+    </section>
+    @endif
+
     <section class="card dashboard-panel" aria-labelledby="tracker-list-heading">
         <div class="card-header workflow-tracker-header">
             <div>
@@ -51,7 +63,7 @@
         </form>
 
         <div class="table-responsive">
-            <table class="table table-hover align-middle mb-0 dashboard-table workflow-tracker-table">
+            <table data-mobile-cards class="table table-hover align-middle mb-0 dashboard-table workflow-tracker-table">
                 <thead>
                     <tr><th class="table-row-number">#</th><th>Purchase Order</th><th>Request</th><th>Supplier</th><th>Current stage &amp; progress</th><th>PO status</th><th class="text-end">Action</th></tr>
                 </thead>

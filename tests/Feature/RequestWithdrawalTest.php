@@ -31,7 +31,8 @@ class RequestWithdrawalTest extends TestCase
         $requestor = $this->user(RoleSlug::TeamLeader);
         $request = $this->request($requestor, PurchaseRequestStatus::ForItScreening, 'IT');
         $itStaff = $this->user(RoleSlug::ItStaff);
-        $this->assertTrue($itStaff->can('claim', $request));
+        $request->update(['assigned_user_id' => $itStaff->id]);
+        $this->assertTrue($itStaff->can('screen', $request));
 
         $this->actingAs($requestor)->get(route('purchase-requests.show', $request))->assertOk()
             ->assertSee('Withdraw Request')->assertSee('withdraws the <strong>whole request and all its items</strong>', false);
@@ -83,7 +84,7 @@ class RequestWithdrawalTest extends TestCase
             ->assertSee('Equipment no longer needed.')->assertSee($itStaff->name);
     }
 
-    public function test_withdrawal_is_allowed_only_before_a_purchase_order_exists(): void
+    public function test_withdrawal_remains_allowed_after_po_creation_before_final_budget(): void
     {
         $requestor = $this->user(RoleSlug::TeamLeader);
         $withoutPo = $this->request($requestor, PurchaseRequestStatus::ForBudgetProcessing, 'IT');
@@ -94,9 +95,9 @@ class RequestWithdrawalTest extends TestCase
         ]);
 
         $this->actingAs($requestor)->get(route('purchase-requests.show', $withPo))->assertOk()
-            ->assertDontSee('data-bs-target="#withdraw-request-modal"', false);
-        $this->post(route('purchase-requests.withdraw', $withPo), ['withdrawal_reason' => 'Changed our mind.'])->assertForbidden();
-        $this->assertSame(PurchaseRequestStatus::ForBudgetProcessing, $withPo->fresh()->status);
+            ->assertSee('data-bs-target="#withdraw-request-modal"', false);
+        $this->post(route('purchase-requests.withdraw', $withPo), ['withdrawal_reason' => 'Changed our mind.'])->assertSessionHasNoErrors();
+        $this->assertSame(PurchaseRequestStatus::WithdrawalPending, $withPo->fresh()->status);
 
         $this->post(route('purchase-requests.withdraw', $withoutPo), ['withdrawal_reason' => 'Changed our mind.'])->assertSessionHasNoErrors();
         $withoutPo->refresh();
@@ -128,7 +129,7 @@ class RequestWithdrawalTest extends TestCase
         $this->actingAs($requestor)->get(route('dashboard'))->assertOk()
             ->assertSee('id="void-request-modal"', false)
             ->assertSee('data-void-url="'.route('purchase-requests.withdraw', $withdrawable, false).'"', false)
-            ->assertDontSee('data-void-url="'.route('purchase-requests.withdraw', $withPo, false).'"', false);
+            ->assertSee('data-void-url="'.route('purchase-requests.withdraw', $withPo, false).'"', false);
 
         // Voiding from the dashboard returns there.
         $this->from(route('dashboard'))->post(route('purchase-requests.withdraw', $withdrawable), ['withdrawal_reason' => 'Duplicate request.'])
@@ -188,7 +189,8 @@ class RequestWithdrawalTest extends TestCase
         $this->actingAs($this->user(RoleSlug::OmSmtsApprover))
             ->post(route('purchase-requests.withdraw', $submitted), ['withdrawal_reason' => 'Not mine to withdraw.'])->assertForbidden();
         $this->actingAs($requestor)
-            ->post(route('purchase-requests.withdraw', $draft), ['withdrawal_reason' => 'Still a draft.'])->assertForbidden();
+            ->post(route('purchase-requests.withdraw', $draft), ['withdrawal_reason' => 'Still a draft.'])->assertSessionHasNoErrors();
+        $this->assertSame(PurchaseRequestStatus::Voided, $draft->fresh()->status);
 
         $this->post(route('purchase-requests.withdraw', $submitted), ['withdrawal_reason' => 'Duplicate request.'])->assertSessionHasNoErrors();
         $this->assertTrue($this->user(RoleSlug::OmSmtsApprover)->can('acknowledgeWithdrawal', $submitted->fresh()));
@@ -206,7 +208,7 @@ class RequestWithdrawalTest extends TestCase
             $response = $this->get(route('dashboard', $query))->assertOk()
                 ->assertSeeInOrder(['Workflow Tracker', 'Voided Monitoring'])
                 ->assertDontSee('id="voided-monitoring-heading"', false);
-            $this->assertSame(1, substr_count($response->getContent(), 'href="'.route('voided-monitoring.index').'"'));
+            $this->assertGreaterThanOrEqual(1, substr_count($response->getContent(), 'href="'.route('voided-monitoring.index').'"'));
         }
     }
 

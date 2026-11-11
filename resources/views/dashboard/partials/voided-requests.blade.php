@@ -13,7 +13,7 @@
     'dateLabel' => 'Updated',
 ]])
 <div class="table-responsive">
-    <table class="table table-hover align-middle mb-0 voided-requests-table">
+    <table data-mobile-cards class="table table-hover align-middle mb-0 voided-requests-table">
         <thead><tr><th class="table-row-number">#</th><th>Request</th><th>Status</th><th>Stopped at</th><th>Reason</th><th>Withdrawn</th><th>Acknowledged</th><th class="text-end">Action</th></tr></thead>
         <tbody>
         @forelse($voidedRequests as $purchaseRequest)

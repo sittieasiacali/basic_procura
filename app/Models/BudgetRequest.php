@@ -228,6 +228,7 @@ class BudgetRequest extends Model
             ->orWhereHas('campaign', fn (Builder $campaign) => $campaign->where('name', 'like', $term))
             ->orWhereHas('custodian', fn (Builder $custodian) => $custodian->where('name', 'like', $term))
             ->orWhereHas('lines', fn (Builder $line) => $line->where('details', 'like', $term)
+                ->orWhere('funding_allocations', 'like', $term)
                 ->orWhere('request_campaign', 'like', $term)
                 ->orWhere('requesting_team', 'like', $term)
                 ->orWhere('bank_details', 'like', $term)

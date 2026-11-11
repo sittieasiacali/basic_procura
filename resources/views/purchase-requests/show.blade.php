@@ -18,7 +18,7 @@
             'UNCLASSIFIED' => 'Pending IT / Premises classification',
             default => $purchaseRequest->request_type,
         };
-        $latestReturn = $purchaseRequest->auditLogs->where('action', 'OM_RETURNED')->sortByDesc('created_at')->first();
+        $latestReturn = $purchaseRequest->auditLogs->whereIn('action', ['OM_RETURNED', 'PO_RETURNED_TO_REQUESTOR'])->sortByDesc('id')->first();
         $hideQuotationSummary = auth()->user()->hasAnyRole([
             \App\Enums\RoleSlug::Om->value,
             \App\Enums\RoleSlug::OmSmtsApprover->value,
@@ -297,6 +297,7 @@
         @endif
     </header>
     @include('purchase-requests.partials.withdrawal')
+    @include('purchase-requests.partials.return-to-requestor')
     @can('submit', $purchaseRequest)
         <div class="modal fade" id="submit-request-modal" tabindex="-1" aria-labelledby="submit-request-heading" aria-hidden="true">
             <div class="modal-dialog modal-lg">
@@ -544,7 +545,7 @@
         <div class="card border-0 shadow-sm mb-3 quotation-comparison-card">
             <div class="card-header bg-white"><div class="section-kicker">Supplier comparison</div><div class="fw-semibold">Canvassing &amp; Quotations</div><small class="text-muted fw-normal d-block">Compare every submitted quotation. Item-level rows are retained when a supplier submitted a bulk quotation.</small></div>
             <div class="table-responsive">
-                <table class="table align-middle mb-0 quotation-comparison-table">
+                <table data-mobile-cards class="table align-middle mb-0 quotation-comparison-table">
                     <thead class="table-light"><tr><th>Reference</th><th>Supplier</th><th>Quoted Item</th><th>Amount / Line Total</th><th>Lead Time</th><th>Warranty</th><th>Quotation</th><th>Recommendation</th><th>Workflow status</th><th>Actions</th></tr></thead>
                     <tbody>
                     @foreach($quotations as $quotation)
@@ -705,7 +706,7 @@
                     <input type="hidden" name="_validation_context" value="president-return">
                     <input type="hidden" name="decision" value="REJECT">
                     <div class="modal-header"><h2 class="modal-title fs-5">Return to Canvassing?</h2><button class="btn-close" type="button" data-bs-dismiss="modal"></button></div>
-                    <div class="modal-body"><p class="small text-muted">Adding a reason helps Purchasing revise the quotation set.</p><label class="form-label" for="president-return-remarks">Remarks <span class="text-muted fw-normal">(optional)</span></label><textarea class="form-control" id="president-return-remarks" name="remarks" rows="4" maxlength="2000">{{ old('_validation_context') === 'president-return' ? old('remarks') : '' }}</textarea><section class="approval-signature-pad mt-3" data-signature-pad aria-labelledby="president-return-signature-heading"><span class="approval-signature-box__label" id="president-return-signature-heading">Electronic signature</span><strong class="approval-signature-box__account">Sign as: {{ auth()->user()->name }}</strong><canvas class="approval-signature-pad__canvas" data-signature-canvas width="760" height="190" tabindex="0" aria-label="Draw your electronic signature"></canvas><input type="hidden" name="signature_name" value="{{ auth()->user()->name }}"><input type="hidden" name="signature_data" data-signature-data><div class="approval-signature-pad__footer"><small>Draw your signature before confirming the return.</small><button class="btn btn-sm btn-outline-primary" type="button" data-signature-clear>Clear signature</button></div><div class="field-validation-message" data-signature-client-error hidden>Draw your signature before confirming this decision.</div>@error('signature_data')<div class="field-validation-message">{{ $message }}</div>@enderror</section></div>
+                    <div class="modal-body"><p class="small text-muted">Explain what Purchasing needs to correct before returning this request.</p><label class="form-label" for="president-return-remarks">Reason for correction <span class="text-danger">*</span></label><textarea required class="form-control" id="president-return-remarks" name="remarks" rows="4" maxlength="2000">{{ old('_validation_context') === 'president-return' ? old('remarks') : '' }}</textarea>@error('remarks')<div class="text-danger small">{{ $message }}</div>@enderror<section class="approval-signature-pad mt-3" data-signature-pad aria-labelledby="president-return-signature-heading"><span class="approval-signature-box__label" id="president-return-signature-heading">Electronic signature</span><strong class="approval-signature-box__account">Sign as: {{ auth()->user()->name }}</strong><canvas class="approval-signature-pad__canvas" data-signature-canvas width="760" height="190" tabindex="0" aria-label="Draw your electronic signature"></canvas><input type="hidden" name="signature_name" value="{{ auth()->user()->name }}"><input type="hidden" name="signature_data" data-signature-data><div class="approval-signature-pad__footer"><small>Draw your signature before confirming the return.</small><button class="btn btn-sm btn-outline-primary" type="button" data-signature-clear>Clear signature</button></div><div class="field-validation-message" data-signature-client-error hidden>Draw your signature before confirming this decision.</div>@error('signature_data')<div class="field-validation-message">{{ $message }}</div>@enderror</section></div>
                     <div class="modal-footer"><button class="btn btn-outline-secondary" type="button" data-bs-dismiss="modal">Cancel</button><button class="btn btn-warning" type="submit">Return to Canvassing</button></div>
                 </form></div>
             </div>
@@ -732,6 +733,9 @@
                                 <textarea class="form-control" id="po_remarks" name="remarks" rows="2" placeholder="Notes for the purchase order"></textarea>
                             </div>
                         </div>
+                        @can('returnToRequestor', $purchaseRequest)
+                            <button class="btn btn-outline-secondary mt-3" type="button" data-bs-toggle="modal" data-bs-target="#po-return-requestor-modal">Return to Requestor</button>
+                        @endcan
                         <div class="mt-3 d-flex justify-content-between align-items-center">
                             <div class="small text-muted">Approved supplier: {{ $purchaseRequest->selectedSupplier?->name ?? 'Not yet selected' }}</div>
                             <button class="btn btn-primary" type="submit">Generate Purchase Order</button>
@@ -1027,7 +1031,7 @@
                     <section class="budget-prepared-summary mb-3" aria-labelledby="budget-prepared-heading">
                         <h3 class="budget-prepared-title" id="budget-prepared-heading">Prepared by Budget Maker <span>Read only</span></h3>
                         <dl>
-                            <div><dt>Campaign source account</dt><dd>{{ $purchaseRequest->budgetRequest->campaign?->name ?? 'Not assigned' }}<small>{{ $purchaseRequest->budgetRequest->campaign_account_number ?: 'No account number' }}</small></dd></div>
+                            <div><dt>Campaign source account</dt><dd>{{ $purchaseRequest->budgetRequest->lines->map(fn ($line) => $line->sourceAccountSummary())->unique()->join('; ') ?: 'Not assigned' }}</dd></div>
                             <div><dt>PO / Supplier</dt><dd>{{ $preparedOrder?->po_number ?? 'Not recorded' }}<small>{{ $preparedOrder?->supplier?->name ?? 'Supplier not recorded' }}</small></dd></div>
                             <div><dt>Amount</dt><dd class="budget-prepared-amount">&#8369; {{ number_format((float) $purchaseRequest->budgetRequest->amount, 2) }}</dd></div>
                         </dl>

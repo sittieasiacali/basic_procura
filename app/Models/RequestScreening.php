@@ -13,12 +13,12 @@ class RequestScreening extends Model
     use HasFactory;
 
     protected $fillable = [
-        'purchase_request_id', 'screened_by', 'team', 'decision', 'evidence', 'decided_at',
+        'purchase_request_id', 'screened_by', 'team', 'decision', 'evidence', 'decided_at', 'superseded_at',
     ];
 
     protected function casts(): array
     {
-        return ['decided_at' => 'datetime'];
+        return ['decided_at' => 'datetime', 'superseded_at' => 'datetime'];
     }
 
     public function purchaseRequest(): BelongsTo

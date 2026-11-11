@@ -28,6 +28,11 @@
             <section class="budget-create-pos procura-form-section procura-form-context" aria-labelledby="final-selected-heading">
                 <div class="budget-create-section-heading budget-create-card-heading"><span class="budget-create-heading-icon"><x-ui.icon name="receipt" size="21" /></span><div><div class="section-kicker">Prepared by Budget Maker</div><h2 id="final-selected-heading">Selected Budget Requests</h2><p>Untick rows in the list to leave them out.</p></div><span class="budget-create-count">{{ $budgetRequests->count() }} selected</span></div>
                 @include('budget-requests.partials.preparation-table', ['preparationBudgets' => $budgetRequests, 'showPriority' => false])
+                @foreach($budgetRequests as $selectedBudget)
+                    @foreach($selectedBudget->lines as $line)
+                        @include('budget-requests.partials.funding-contributions', ['fundingLine' => $line])
+                    @endforeach
+                @endforeach
             </section>
 
             <section class="budget-create-card procura-form-section" aria-label="Priority and remarks">

@@ -6,8 +6,8 @@ use App\Enums\PurchaseOrderApprovalStage;
 use App\Enums\PurchaseRequestStatus;
 use App\Enums\RoleSlug;
 use App\Models\Campaign;
-use App\Models\PurchaseRequest;
 use App\Models\PoRoleAssignment;
+use App\Models\PurchaseRequest;
 use App\Models\Role;
 use App\Models\Supplier;
 use App\Models\User;
@@ -92,8 +92,8 @@ class PurchaseRequestListTest extends TestCase
         $this->purchaseRequest($requestor, PurchaseRequestStatus::Fulfilled, 'Fulfilled Request');
         $this->purchaseRequest($requestor, PurchaseRequestStatus::Cancelled, 'Cancelled Request');
 
-        // IT staff see every submitted request, but never someone else's draft.
-        $this->actingAs($this->user(RoleSlug::ItStaff))->get(route('purchase-requests.index'))
+        // Purchasing sees submitted requests across stages; IT is scoped to its screening queue.
+        $this->actingAs($this->user(RoleSlug::PurchasingTeam))->get(route('purchase-requests.index'))
             ->assertOk()
             ->assertSee('data-summary-count="all">7', false)
             ->assertSee('data-summary-count="pending">2', false)
@@ -143,9 +143,9 @@ class PurchaseRequestListTest extends TestCase
         $operationsRequestor = $this->user(RoleSlug::Requestor, $this->operations);
         $salesRequestor = $this->user(RoleSlug::Requestor, $this->sales);
         $matching = $this->purchaseRequest($operationsRequestor, PurchaseRequestStatus::ForOmApproval, 'Unique Laptop');
-        $matching->forceFill(['created_at' => '2026-08-03 08:00:00'])->save();
+        $matching->forceFill(['created_at' => '2026-08-03 08:00:00', 'updated_at' => '2026-08-03 08:00:00'])->save();
         $excluded = $this->purchaseRequest($salesRequestor, PurchaseRequestStatus::Approved, 'Office Chair');
-        $excluded->forceFill(['created_at' => '2026-07-01 08:00:00'])->save();
+        $excluded->forceFill(['created_at' => '2026-07-01 08:00:00', 'updated_at' => '2026-07-01 08:00:00'])->save();
 
         $this->actingAs($this->user(RoleSlug::Admin))->get(route('purchase-requests.index', [
             'search' => 'Requested item 1',
@@ -370,6 +370,9 @@ class PurchaseRequestListTest extends TestCase
 
         $poUrl = route('purchase-orders.store', $purchaseRequest);
         $poBase = [
+            'expected_delivery_date' => now()->addWeek()->toDateString(),
+            'payable_on' => now()->toDateString(),
+            'payment_details' => 'Bank transfer',
             'priority_level' => 'NORMAL',
             'transaction_type' => 'CASH',
             'fund_source' => 'MAIN_FUND',
@@ -385,16 +388,18 @@ class PurchaseRequestListTest extends TestCase
         $lineId = $purchaseRequest->items()->firstOrFail()->id;
         $this->post($poUrl, [
             ...$poBase,
-            'po_items' => [$lineId => ['quantity' => 2, 'unit' => 'piece', 'unit_price' => 500]],
-        ])->assertSessionHasErrors('po_items');
+            'po_items' => [$lineId => ['quantity' => 0, 'unit' => 'piece', 'unit_price' => 500]],
+        ])->assertSessionHasErrors('po_items.'.$lineId.'.quantity');
 
         $this->post($poUrl, [
             ...$poBase,
-            'po_items' => [$lineId => ['quantity' => 2, 'unit' => 'piece', 'unit_price' => 600]],
+            // Client pricing is ignored: the approved quotation determines the unit price.
+            'po_items' => [$lineId => ['quantity' => 2, 'unit' => 'piece', 'unit_price' => 1]],
         ])->assertSessionHasNoErrors();
 
         $order = $purchaseRequest->fresh()->purchaseOrder;
         $this->assertSame('1200.00', $order->total_amount);
+        $this->assertSame('600.00', $order->items()->firstOrFail()->unit_price);
         $this->assertSame('2.00', $order->items()->firstOrFail()->quantity);
         $this->assertNull($purchaseRequest->fresh()->total_amount);
     }

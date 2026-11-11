@@ -18,6 +18,7 @@
         }
     </script>
     @vite(['resources/css/app.css', 'resources/js/app.js'])
+    @vite('resources/css/mobile.css')
 </head>
 <body class="procura-home-body @yield('body-class')">
     @php($homeUser = $user ?? auth()->user()->loadMissing('role'))

@@ -22,7 +22,7 @@ class RequestWithdrawalController extends Controller
     public function store(Request $request, PurchaseRequest $purchaseRequest, PurchaseRequestWorkflow $workflow): RedirectResponse
     {
         // Only the requestor may void. A page opened earlier can be stale (already
-        // voided, or a PO was issued since): explain that instead of a bare 403.
+        // voided, or the budget was finalized since): explain that instead of a bare 403.
         abort_unless($request->user()->id === $purchaseRequest->requestor_id || $request->user()->isAdministrator(), 403);
         if ($request->user()->cannot('withdraw', $purchaseRequest)) {
             return redirect()->back(fallback: route('purchase-requests.show', $purchaseRequest))
@@ -32,7 +32,7 @@ class RequestWithdrawalController extends Controller
 
         $voidedNow = DB::transaction(function () use ($request, $purchaseRequest, $workflow, $validated): bool {
             $locked = PurchaseRequest::query()->lockForUpdate()->findOrFail($purchaseRequest->id);
-            // Re-check under the lock: a PO may have been created since the page loaded.
+            // Re-check under the lock: the budget may have been finalized since the page loaded.
             if ($request->user()->cannot('withdraw', $locked)) {
                 throw ValidationException::withMessages(['withdrawal_reason' => RequestWithdrawal::blockedReason($locked) ?? 'This request can no longer be voided.']);
             }

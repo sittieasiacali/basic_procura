@@ -9,11 +9,14 @@ use App\Models\PoRoleAssignment;
 use App\Models\PurchaseOrder;
 use App\Models\PurchaseRequest;
 use App\Models\SupplierQuotation;
+use App\Services\PurchaseRequestWorkflow;
 use App\Services\WorkflowEmailNotifier;
+use App\Support\ItemBudgetAllocation;
 use App\Support\PurchaseOrderDocumentData;
 use App\Support\PurchaseOrderLinePricing;
 use App\Support\PurchaseOrderNumber;
 use App\Support\WorkflowSignature;
+use App\Support\WorkflowUrl;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -178,7 +181,30 @@ class PurchaseOrderController extends Controller
         abort_unless($purchaseRequest->purchaseOrder()->exists(), 404);
         $this->authorize('view', $purchaseRequest->purchaseOrder);
         $purchaseRequest->load(['requestor', 'quotations.supplier', 'quotations.creator', 'quotations.approver', 'quotations.item', 'purchaseOrder.supplier', 'purchaseOrder.budgetCampaign', 'purchaseOrder.items.requestItem', 'purchaseOrder.approvals.assignedUser', 'purchaseOrder.approvals.actor']);
+
         return view('purchase-orders.document', ['purchaseRequest' => $purchaseRequest, 'purchaseOrderDocument' => PurchaseOrderDocumentData::from($purchaseRequest), 'canPrint' => $purchaseRequest->purchaseOrder->isApproved(), 'mode' => $request->string('mode')->toString()]);
+    }
+
+    public function returnToRequestor(Request $request, PurchaseRequest $purchaseRequest, PurchaseRequestWorkflow $workflow): RedirectResponse
+    {
+        $this->authorize('returnToRequestor', $purchaseRequest);
+        $validated = $request->validate(['correction_reason' => ['required', 'string', 'max:5000']]);
+
+        DB::transaction(function () use ($request, $purchaseRequest, $workflow, $validated): void {
+            $locked = PurchaseRequest::query()->lockForUpdate()->findOrFail($purchaseRequest->id);
+            $this->authorize('returnToRequestor', $locked);
+            $previousSupplier = $locked->selected_supplier_id;
+            // Preserve prior decisions and files, while making a fresh screening possible.
+            $locked->screening()->update(['superseded_at' => now()]);
+            $locked->quotations()->update(['is_approved' => false, 'approved_by' => null, 'approved_at' => null, 'is_recommended' => false]);
+            $locked->forceFill(['selected_supplier_id' => null, 'assigned_user_id' => null])->save();
+            $workflow->transition($locked, PurchaseRequestStatus::Returned, $request->user(),
+                'PO_RETURNED_TO_REQUESTOR', $validated['correction_reason'], 'PO_PREPARATION_RETURN',
+                ['previous_selected_supplier_id' => $previousSupplier]);
+        });
+
+        return ($request->boolean('_embedded') ? redirect()->away(WorkflowUrl::route('workflow.done')) : redirect()->route('purchase-requests.show', $purchaseRequest))
+            ->with('success', 'Returned to the requestor for correction.');
     }
 
     public function store(Request $request, PurchaseRequest $purchaseRequest): RedirectResponse
@@ -196,6 +222,7 @@ class PurchaseOrderController extends Controller
             'po_items' => ['sometimes', 'array'],
             'po_items.*.quantity' => ['required_with:po_items', 'numeric', 'decimal:0,2', 'gt:0', 'max:9999999999.99'],
             'po_items.*.unit' => ['required_with:po_items', 'string', 'max:50'],
+            ...ItemBudgetAllocation::rules(),
             ...WorkflowSignature::rules(),
         ]);
         WorkflowSignature::assertValid($request, $validated);
@@ -220,6 +247,7 @@ class PurchaseOrderController extends Controller
             $approvedSubtotal = round((float) $approvedQuotations->sum(fn (SupplierQuotation $quotation) => $quotation->vatBreakdown()['base']), 2);
             $approvedVat = round((float) $approvedQuotations->sum(fn (SupplierQuotation $quotation) => $quotation->vatBreakdown()['vat']), 2);
             $approvedTotal = round((float) $approvedQuotations->sum(fn (SupplierQuotation $quotation) => $quotation->vatBreakdown()['total']), 2);
+            $itemBudgets = ItemBudgetAllocation::forRequest($locked, $validated['item_allocations'] ?? null);
             $items = $locked->items;
             $needsLineDetails = $items->contains(fn ($item) => $item->quantity === null || blank($item->unit) || $item->estimated_unit_price === null);
             $poLines = [];
@@ -227,7 +255,9 @@ class PurchaseOrderController extends Controller
                 $submittedLines = $validated['po_items'] ?? [];
                 $requestItemIds = $items->pluck('id')->map(fn ($id) => (string) $id)->sort()->values()->all();
                 $submittedItemIds = collect(array_keys($submittedLines))->map(fn ($id) => (string) $id)->sort()->values()->all();
-                if ($requestItemIds !== $submittedItemIds) throw ValidationException::withMessages(['po_items' => 'Enter purchase order details for every requested item.']);
+                if ($requestItemIds !== $submittedItemIds) {
+                    throw ValidationException::withMessages(['po_items' => 'Enter purchase order details for every requested item.']);
+                }
             }
             $lineAmounts = PurchaseOrderLinePricing::amounts($items, $approvedQuotations);
             foreach ($items as $item) {
@@ -245,9 +275,15 @@ class PurchaseOrderController extends Controller
                     'total_price' => $amount,
                 ];
             }
-            if ($locked->purchaseOrder()->exists()) return $locked->purchaseOrder;
+            if ($locked->purchaseOrder()->exists()) {
+                return $locked->purchaseOrder;
+            }
             $assignments = PoRoleAssignment::query()->pluck('user_id', 'stage');
-            foreach (PurchaseOrderApprovalStage::cases() as $stage) if (! $assignments->has($stage->value)) throw ValidationException::withMessages(['po_assignments' => 'Configure all four PO-specific assignments before preparing a Purchase Order.']);
+            foreach (PurchaseOrderApprovalStage::cases() as $stage) {
+                if (! $assignments->has($stage->value)) {
+                    throw ValidationException::withMessages(['po_assignments' => 'Configure all four PO-specific assignments before preparing a Purchase Order.']);
+                }
+            }
             abort_unless(
                 $request->user()->hasRole(RoleSlug::PurchasingTeam->value)
                     || (int) $assignments[PurchaseOrderApprovalStage::PreparedBy->value] === (int) $request->user()->id,
@@ -255,8 +291,10 @@ class PurchaseOrderController extends Controller
                 'Only the assigned PO Preparer may create and sign this Purchase Order.',
             );
             $campaign = $locked->teamLeader?->campaign ?? $locked->requestor?->campaign;
-            if (! $campaign?->is_active) throw ValidationException::withMessages(['campaign' => 'An active Campaign Account is required.']);
-            $order = $locked->purchaseOrder()->create(['po_number' => PurchaseOrderNumber::reserve(), 'supplier_id' => $locked->selected_supplier_id, 'created_by' => $request->user()->id, 'issued_at' => now()->toDateString(), 'expected_delivery_date' => $validated['expected_delivery_date'] ?? $locked->required_date?->toDateString(), 'delivery_lead_time' => $validated['delivery_lead_time'] ?? null, 'status' => 'FOR_CHECKING', 'subtotal' => $approvedSubtotal, 'tax_amount' => $approvedVat, 'total_amount' => $approvedTotal, 'remarks' => $validated['remarks'] ?? null, 'budget_campaign_id' => $campaign->id, 'budget_campaign_account_number' => $campaign->account_number, 'budget_payable_on' => $validated['payable_on'] ?? null, 'budget_source_bank_account' => $campaign->account_number, 'account_number' => trim($validated['account_number']), 'account_name' => $accountName, 'payment_terms' => $paymentTerms, 'payment_details' => $validated['payment_details'] ?? null, 'requested_by' => $locked->teamLeader?->name ?? $locked->requestor?->name]);
+            if (! $campaign?->is_active) {
+                throw ValidationException::withMessages(['campaign' => 'An active Campaign Account is required.']);
+            }
+            $order = $locked->purchaseOrder()->create(['item_budget_allocations' => $itemBudgets, 'po_number' => PurchaseOrderNumber::reserve(), 'supplier_id' => $locked->selected_supplier_id, 'created_by' => $request->user()->id, 'issued_at' => now()->toDateString(), 'expected_delivery_date' => $validated['expected_delivery_date'] ?? $locked->required_date?->toDateString(), 'delivery_lead_time' => $validated['delivery_lead_time'] ?? null, 'status' => 'FOR_CHECKING', 'subtotal' => $approvedSubtotal, 'tax_amount' => $approvedVat, 'total_amount' => $approvedTotal, 'remarks' => $validated['remarks'] ?? null, 'budget_campaign_id' => $campaign->id, 'budget_campaign_account_number' => $campaign->account_number, 'budget_payable_on' => $validated['payable_on'] ?? null, 'budget_source_bank_account' => $campaign->account_number, 'account_number' => trim($validated['account_number']), 'account_name' => $accountName, 'payment_terms' => $paymentTerms, 'payment_details' => $validated['payment_details'] ?? null, 'requested_by' => $locked->teamLeader?->name ?? $locked->requestor?->name]);
             $preparedAt = now();
             foreach (PurchaseOrderApprovalStage::cases() as $stage) {
                 $isPreparedStage = $stage === PurchaseOrderApprovalStage::PreparedBy;
@@ -273,7 +311,9 @@ class PurchaseOrderController extends Controller
                     'acted_at' => $isPreparedStage ? $preparedAt : null,
                 ]);
             }
-            foreach ($items as $item) { $order->items()->create(['purchase_request_item_id' => $item->id, 'description' => $item->description, ...$poLines[$item->id], 'specifications' => $item->brand_specifications]); }
+            foreach ($items as $item) {
+                $order->items()->create(['purchase_request_item_id' => $item->id, 'description' => $item->description, ...$poLines[$item->id], 'specifications' => $item->brand_specifications]);
+            }
             $locked->auditLogs()->create([
                 'user_id' => $request->user()->id,
                 'action' => 'PURCHASE_ORDER_CREATED',
@@ -285,7 +325,9 @@ class PurchaseOrderController extends Controller
                 'metadata' => ['role' => $request->user()->activeRole()?->slug, 'purchase_order_id' => $order->id, 'source' => 'approved_quotation'],
             ]);
             $this->workflowEmails->purchaseOrderMoved($order, $request->user());
-            $created = true; return $order;
+            $created = true;
+
+            return $order;
         });
         $redirect = route('purchase-requests.show', ['purchaseRequest' => $purchaseRequest, 'from_stage' => 'budget-request']);
 
@@ -305,7 +347,13 @@ class PurchaseOrderController extends Controller
     {
         $validated = $request->validate(['delivery_lead_time' => ['nullable', 'string', 'max:255'],
             'expected_delivery_date' => ['required', 'date'], 'remarks' => ['nullable', 'string', 'max:2000'], 'payable_on' => ['required', 'date'], 'payment_details' => ['required', 'string', 'max:2000'], 'account_number' => ['required', 'string', 'max:255'], 'account_name' => ['required', 'string', 'max:255'], 'payment_terms' => ['required', 'string', 'max:255'], 'po_items' => ['sometimes', 'array'], 'po_items.*.quantity' => ['required_with:po_items', 'numeric', 'decimal:0,2', 'gt:0', 'max:9999999999.99'], 'po_items.*.unit' => ['required_with:po_items', 'string', 'max:50'], 'po_items.*.unit_price' => ['required_with:po_items', 'numeric', 'decimal:0,2', 'min:0', 'max:9999999999999.99']]);
-        DB::transaction(function () use ($request, $purchaseRequest, $validated) { $order = $purchaseRequest->purchaseOrder()->lockForUpdate()->firstOrFail(); $order->load('approvals'); $this->authorize('update', $order); $order->update(['delivery_lead_time' => $validated['delivery_lead_time'] ?? $order->delivery_lead_time, 'expected_delivery_date' => $validated['expected_delivery_date'] ?? $order->expected_delivery_date?->toDateString(), 'remarks' => $validated['remarks'] ?? $order->remarks, 'budget_payable_on' => $validated['payable_on'] ?? $order->budget_payable_on?->toDateString(), 'payment_details' => $validated['payment_details'] ?? $order->payment_details, 'account_number' => trim($validated['account_number']), 'account_name' => trim((string) ($validated['account_name'] ?? $order->account_name)), 'payment_terms' => trim((string) ($validated['payment_terms'] ?? $order->payment_terms))]); });
+        DB::transaction(function () use ($purchaseRequest, $validated) {
+            $order = $purchaseRequest->purchaseOrder()->lockForUpdate()->firstOrFail();
+            $order->load('approvals');
+            $this->authorize('update', $order);
+            $order->update(['delivery_lead_time' => $validated['delivery_lead_time'] ?? $order->delivery_lead_time, 'expected_delivery_date' => $validated['expected_delivery_date'] ?? $order->expected_delivery_date?->toDateString(), 'remarks' => $validated['remarks'] ?? $order->remarks, 'budget_payable_on' => $validated['payable_on'] ?? $order->budget_payable_on?->toDateString(), 'payment_details' => $validated['payment_details'] ?? $order->payment_details, 'account_number' => trim($validated['account_number']), 'account_name' => trim((string) ($validated['account_name'] ?? $order->account_name)), 'payment_terms' => trim((string) ($validated['payment_terms'] ?? $order->payment_terms))]);
+        });
+
         return back()->with('success', 'Purchase Order details updated.');
     }
 
@@ -363,6 +411,7 @@ class PurchaseOrderController extends Controller
 
         return back();
     }
+
     public function check(Request $request, PurchaseRequest $purchaseRequest): RedirectResponse
     {
         $this->transition($request, $purchaseRequest, PurchaseOrderApprovalStage::CheckedBy, 'check', 'FOR_ACKNOWLEDGEMENT', ['checked_by' => $request->user()->id, 'checked_at' => now(), 'checker_remarks' => $request->input('remarks')]);
@@ -377,7 +426,7 @@ class PurchaseOrderController extends Controller
         return back();
     }
 
-public function approve(Request $request, PurchaseRequest $purchaseRequest): RedirectResponse|JsonResponse
+    public function approve(Request $request, PurchaseRequest $purchaseRequest): RedirectResponse|JsonResponse
     {
         $order = $purchaseRequest->purchaseOrder()->with('approvals')->firstOrFail();
         $this->authorize('approve', $order);
@@ -411,7 +460,7 @@ public function approve(Request $request, PurchaseRequest $purchaseRequest): Red
         return $this->signature($request, $purchaseRequest, PurchaseOrderApprovalStage::PreparedBy->value);
     }
 
-public function signature(Request $request, PurchaseRequest $purchaseRequest, string $stage): RedirectResponse
+    public function signature(Request $request, PurchaseRequest $purchaseRequest, string $stage): RedirectResponse
     {
         $approvalStage = PurchaseOrderApprovalStage::tryFrom($stage);
         abort_unless($approvalStage, 404);

@@ -7,7 +7,7 @@
     'dateLabel' => 'Updated',
 ]])
 <div class="table-responsive">
-    <table class="table table-hover align-middle mb-0 dashboard-table partial-payments-table">
+    <table data-mobile-cards class="table table-hover align-middle mb-0 dashboard-table partial-payments-table">
         <thead><tr><th class="table-row-number">#</th><th>BR Number</th><th>Project title</th><th class="text-end">Amount due</th><th>Paid</th><th class="text-end">Balance</th><th>Last payment</th><th class="text-end">Action</th></tr></thead>
         <tbody>
         @forelse($partialRequests as $purchaseRequest)

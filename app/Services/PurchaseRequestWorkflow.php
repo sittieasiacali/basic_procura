@@ -88,6 +88,10 @@ class PurchaseRequestWorkflow
         ?string $signatureName = null,
         ?string $signatureData = null,
     ): void {
+        if (($newStatus === PurchaseRequestStatus::Returned || $action === 'PRESIDENT_SUPPLIER_APPROVAL_REJECTED') && blank($remarks)) {
+            throw ValidationException::withMessages(['remarks' => 'Explain the correction needed before returning this request.']);
+        }
+
         $previousStatus = $purchaseRequest->status;
 
         if (! $previousStatus->canTransitionTo($newStatus)) {
@@ -118,7 +122,12 @@ class PurchaseRequestWorkflow
 
         $this->recordAudit($purchaseRequest, $user, $action, $previousStatus, $newStatus, $remarks, $metadata);
         if ($previousStatus !== $newStatus) {
-            app(ProcurementNotifications::class)->send($purchaseRequest, $action, 'Current stage: '.str($newStatus->value)->replace('_', ' ')->title());
+            $message = match (true) {
+                $action === 'PURCHASING_BUDGET_APPROVED' => 'Your budget has been finalized. Void requests are no longer allowed. The request is ready for payment.',
+                $newStatus === PurchaseRequestStatus::Returned || $action === 'PRESIDENT_SUPPLIER_APPROVAL_REJECTED' => 'Returned for correction: '.$remarks,
+                default => 'Current stage: '.str($newStatus->value)->replace('_', ' ')->title(),
+            };
+            app(ProcurementNotifications::class)->send($purchaseRequest, $action, $message);
         }
         $this->activityNotifier->requestMoved($purchaseRequest, $previousStatus, $action);
         if (request()->hasSession()) {

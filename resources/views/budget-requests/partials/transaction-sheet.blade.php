@@ -4,8 +4,9 @@
     $budgetLines = $budget->lines;
     $budgetAccount = $budget->source_bank_account ?: $budget->campaign_account_number ?: $budget->campaign?->account_number;
     // A group BR can fund POs from several campaign source accounts; then each line names its own.
-    $lineAccount = fn ($line) => $line->source_bank_account ?: $budgetAccount;
-    $hasMixedAccounts = $budgetLines->map($lineAccount)->filter()->unique()->count() > 1;
+    $lineAccount = fn ($line) => $line->funding_allocations ? $line->sourceAccountSummary() : ($line->source_bank_account ?: $budgetAccount);
+    $hasMixedAccounts = $budgetLines->map($lineAccount)->filter()->unique()->count() > 1
+        || $budgetLines->contains(fn ($line) => count($line->sourceContributions()) > 1);
     $budgetRequester = $budget->requester ?? $purchaseRequest?->requestor;
     $transactionSheetTitle = match ($budget->payment_method) {
         'ONLINE' => 'Online Transactions',
@@ -93,6 +94,10 @@
             </tfoot>
         </table>
     </div>
+
+    @foreach($budget->lines as $fundingLine)
+        @include('budget-requests.partials.funding-contributions', ['fundingLine' => $fundingLine])
+    @endforeach
 
     @include('budget-requests.partials.br-signatures')
 </div>

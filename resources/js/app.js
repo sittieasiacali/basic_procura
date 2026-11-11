@@ -1,3 +1,4 @@
+import './budget-contributions';
 import './bootstrap';
 import './purchase-order-preview';
 import './budget-request-preview';
@@ -10,6 +11,7 @@ import './request-void';
 import './inventory';
 import './inventory-sku';
 import './dashboard-history';
+import './mobile-workflow';
 
 function initializeBudgetRequestQueue() {
     const queue = document.querySelector('[data-budget-request-queue]');

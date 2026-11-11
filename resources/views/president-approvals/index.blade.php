@@ -47,7 +47,7 @@
             </div>
         </div>
         <div class="table-responsive">
-            <table class="table align-middle mb-0">
+            <table data-mobile-cards class="table align-middle mb-0">
                 <thead class="table-light">
                     <tr>
                         <th>Request</th>

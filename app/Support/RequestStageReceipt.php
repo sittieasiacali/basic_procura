@@ -4,6 +4,7 @@ namespace App\Support;
 
 use App\Enums\PurchaseRequestStatus;
 use App\Enums\RoleSlug;
+use App\Models\AuditLog;
 use App\Models\PurchaseRequest;
 use App\Models\Supplier;
 use App\Models\User;
@@ -16,7 +17,7 @@ use App\Models\User;
  */
 class RequestStageReceipt
 {
-    /** @return array{title: string, message: string, action: string, log: \App\Models\AuditLog}|null */
+    /** @return array{title: string, message: string, action: string, log: AuditLog}|null */
     public static function for(PurchaseRequest $purchaseRequest, User $user): ?array
     {
         if ($user->hasRole(RoleSlug::Admin->value)) {
@@ -74,6 +75,7 @@ class RequestStageReceipt
             'RESUBMITTED_FOR_OM_APPROVAL' => 'Resubmitted to OM',
             'OM_APPROVED_FOR_SCREENING' => 'Approved',
             'OM_RETURNED' => 'Returned to requestor',
+            'PO_RETURNED_TO_REQUESTOR' => 'Returned to requestor',
             'INVENTORY_AVAILABLE' => 'Inventory available',
             'INVENTORY_RELEASED' => 'Inventory released',
             'INVENTORY_UNAVAILABLE' => 'Awaiting quotations',
@@ -120,6 +122,11 @@ class RequestStageReceipt
                 'statuses' => [PurchaseRequestStatus::ForPremisesScreening],
                 'title' => 'Submitted to Premises screening.',
                 'message' => 'You approved this request on :date. It moved straight to Premises for inventory screening. Your review stage is closed and no further action is required from you.',
+            ],
+            'PO_RETURNED_TO_REQUESTOR' => [
+                'statuses' => [PurchaseRequestStatus::Returned],
+                'title' => 'Returned to Requestor.',
+                'message' => 'You returned this request on :date. The requestor must correct and resubmit it before processing can continue.',
             ],
             'OM_RETURNED' => [
                 'statuses' => [PurchaseRequestStatus::Returned],

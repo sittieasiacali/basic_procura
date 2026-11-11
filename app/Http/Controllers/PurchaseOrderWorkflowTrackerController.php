@@ -2,7 +2,9 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\PurchaseRequestStatus;
 use App\Models\PurchaseOrder;
+use App\Models\PurchaseRequest;
 use App\Support\PurchaseOrderWorkflowTracker;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
@@ -13,6 +15,10 @@ class PurchaseOrderWorkflowTrackerController extends Controller
 {
     private const STAGES = [
         'all' => 'All',
+        'returned' => 'Returned to Requestor',
+        'resubmitted' => 'Resubmitted Requests',
+        'withdrawal' => 'Void Pending',
+        'voided' => 'Voided',
         'checking' => 'PO Checking',
         'noting' => 'PO Noting',
         'po-approval' => 'PO Approval',
@@ -56,10 +62,25 @@ class PurchaseOrderWorkflowTrackerController extends Controller
         $trackers = $allOrders->mapWithKeys(fn (PurchaseOrder $order) => [
             $order->id => PurchaseOrderWorkflowTracker::for($order),
         ]);
-        $stageCounts = ['all' => $allOrders->count()];
+        // Returns can occur before a PO exists; keep them visible through correction and resubmission.
+        $prePoReturns = PurchaseRequest::query()->visibleTo($request->user())->whereDoesntHave('purchaseOrder')
+            ->whereHas('latestReturnApproval')
+            ->with(['requestor:id,name', 'latestReturnApproval.user:id,name', 'responsibleRole:id,name'])
+            ->when($search !== '', function (Builder $query) use ($search): void {
+                $term = '%'.addcslashes($search, '%_\\').'%';
+                $query->where(fn ($query) => $query->where('request_number', 'like', $term)->orWhere('title', 'like', $term));
+            })->latest('updated_at')->get();
+        $returnStage = fn (PurchaseRequest $item) => match ($item->status) {
+            PurchaseRequestStatus::Returned => 'returned',
+            PurchaseRequestStatus::WithdrawalPending => 'withdrawal',
+            PurchaseRequestStatus::Voided => 'voided',
+            default => 'resubmitted',
+        };
+        $stageCounts = ['all' => $allOrders->count() + $prePoReturns->count()];
         foreach (array_keys(self::STAGES) as $key) {
             if ($key !== 'all') {
-                $stageCounts[$key] = $allOrders->filter(fn (PurchaseOrder $order) => $trackers[$order->id]['current_key'] === $key)->count();
+                $stageCounts[$key] = $allOrders->filter(fn (PurchaseOrder $order) => $trackers[$order->id]['current_key'] === $key)->count()
+                    + $prePoReturns->filter(fn ($item) => $returnStage($item) === $key)->count();
             }
         }
 
@@ -75,8 +96,14 @@ class PurchaseOrderWorkflowTrackerController extends Controller
             ['path' => route('workflow-tracker.index'), 'query' => $request->query()],
         );
 
+        $matchingReturns = $prePoReturns->filter(fn ($item) => $stage === 'all' || $returnStage($item) === $stage)->values();
+        $returnPage = LengthAwarePaginator::resolveCurrentPage('returns_page');
+        $returnedRequests = new LengthAwarePaginator($matchingReturns->forPage($returnPage, 10)->values(), $matchingReturns->count(), 10, $returnPage,
+            ['path' => route('workflow-tracker.index'), 'query' => $request->query(), 'pageName' => 'returns_page']);
+
         return view('purchase-orders.workflow-tracker', [
             'orders' => $orders,
+            'returnedRequests' => $returnedRequests,
             'search' => $search,
             'stage' => $stage,
             'stageLabels' => self::STAGES,

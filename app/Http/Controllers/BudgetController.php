@@ -7,10 +7,14 @@ use App\Models\BudgetRequest;
 use App\Models\Campaign;
 use App\Models\PurchaseRequest;
 use App\Services\PurchaseRequestWorkflow;
+use App\Support\BudgetSourceContributions;
+use App\Support\ItemBudgetAllocation;
 use App\Support\WorkflowSignature;
+use App\Support\WorkflowUrl;
+use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
@@ -19,7 +23,7 @@ use Illuminate\View\View;
 class BudgetController extends Controller
 {
     /** Standalone transaction sheet for one Budget Request (opens the print dialog with ?mode=print). */
-    public function document(Request $request, BudgetRequest $budgetRequest): View|\Illuminate\Http\JsonResponse
+    public function document(Request $request, BudgetRequest $budgetRequest): View|JsonResponse
     {
         abort_unless($budgetRequest->purchaseRequest, 404);
         $this->authorize('view', $budgetRequest->purchaseRequest);
@@ -170,9 +174,15 @@ class BudgetController extends Controller
             'requested_payment_method' => ['nullable', Rule::in(['ONLINE', 'CASH', 'CHECK', 'N/A'])],
             'bank_details' => ['sometimes', 'required', 'string', 'max:2000'],
             'payable_on' => ['nullable', 'date'],
-            'campaign_id' => ['required', 'integer', Rule::exists('campaigns', 'id')->where(
+            'campaign_id' => ['required_without:source_accounts', 'nullable', 'integer', Rule::exists('campaigns', 'id')->where(
                 fn ($query) => $query->where('is_active', true)->whereIn('name', array_keys(Campaign::BUDGET_ACCOUNT_OPTIONS)),
             )],
+            'source_accounts' => ['sometimes', 'required', 'array', 'min:1', 'max:20'],
+            'source_accounts.*.campaign_id' => ['required', 'integer', 'distinct', Rule::exists('campaigns', 'id')->where(
+                fn ($query) => $query->where('is_active', true)->whereIn('name', array_keys(Campaign::BUDGET_ACCOUNT_OPTIONS)),
+            )],
+            'source_accounts.*.amount' => ['required', 'numeric', 'decimal:0,2', 'gt:0', 'max:9999999999999.99'],
+            ...ItemBudgetAllocation::rules(),
             // Budget Information is completed by Finance at final approval.
             ...self::budgetInformationRules(),
             'remarks' => ['nullable', 'string', 'max:2000'],
@@ -188,11 +198,18 @@ class BudgetController extends Controller
             $this->validateSelection($purchaseRequest);
             // Without a PO this is an unsaved stand-in priced from the approved quotation; its id is null.
             $purchaseOrder = $purchaseRequest->budgetPurchaseOrder();
+            if (array_key_exists('item_allocations', $validated)) {
+                abort_unless((int) $purchaseOrder->created_by === (int) $request->user()->id, 403, 'Only the PO creator may change item budget allocations.');
+            }
+            $itemBudgets = ItemBudgetAllocation::forOrder($purchaseOrder, $validated['item_allocations'] ?? null);
+            if (array_key_exists('item_allocations', $validated)) {
+                $purchaseOrder->update(['item_budget_allocations' => $itemBudgets]);
+            }
             $reference = $purchaseOrder->po_number ?? $purchaseRequest->request_number;
-            $campaign = Campaign::query()->where('is_active', true)
-                ->whereIn('name', array_keys(Campaign::BUDGET_ACCOUNT_OPTIONS))
-                ->lockForUpdate()->findOrFail($validated['campaign_id']);
             $amount = (float) $purchaseOrder->total_amount;
+            $contributions = BudgetSourceContributions::resolve($validated, $amount);
+            // Retain the first source in legacy reference fields; each contribution is saved on the PO's BR line.
+            $campaign = Campaign::findOrFail($contributions[0]['campaign_id']);
             $priority = $validated['priority_level'] ?? $purchaseRequest->priority_level ?? 'NORMAL';
             $purchaseRequest->update(['priority_level' => $priority]);
             $validated['account_type'] ??= $purchaseOrder->budget_account_type;
@@ -239,6 +256,8 @@ class BudgetController extends Controller
                 'amount' => $amount,
             ]);
             $budget->lines()->create([
+                'funding_allocations' => $contributions,
+                'item_allocations' => $itemBudgets,
                 'purchase_order_id' => $purchaseOrder->id,
                 'campaign_id' => $campaign->id,
                 'source_bank_account' => $campaign->account_number,
@@ -266,6 +285,8 @@ class BudgetController extends Controller
                     'budget_request_id' => $budget->id,
                     'purchase_order_id' => $purchaseOrder->id,
                     'amount' => $amount,
+                    'item_allocations' => $itemBudgets,
+                    'source_contributions' => $contributions,
                 ],
             ]);
 
@@ -396,10 +417,9 @@ class BudgetController extends Controller
     /** Inside the dashboard action modal, close the modal instead of loading the next page in it. */
     private function finished(Request $request, RedirectResponse $redirect, string $message): RedirectResponse
     {
-        return ($request->boolean('_embedded') ? redirect()->away(\App\Support\WorkflowUrl::route('workflow.done')) : $redirect)
+        return ($request->boolean('_embedded') ? redirect()->away(WorkflowUrl::route('workflow.done')) : $redirect)
             ->with('success', $message);
     }
-
 
     /** @return array<string, array<int, mixed>> */
     private static function budgetInformationRules(): array

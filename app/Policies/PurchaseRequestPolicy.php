@@ -11,12 +11,17 @@ use App\Support\RequestWithdrawal;
 
 class PurchaseRequestPolicy
 {
-    public function before(User $user, string $ability): ?bool
+    public function before(User $user, string $ability, PurchaseRequest|string|null $purchaseRequest = null): ?bool
     {
+        if ($purchaseRequest instanceof PurchaseRequest && in_array($purchaseRequest->status, [PurchaseRequestStatus::WithdrawalPending, PurchaseRequestStatus::Voided], true)
+            && ! in_array($ability, ['view', 'viewPriority', 'acknowledgeWithdrawal', 'delete'], true)) {
+            return false;
+        }
+
         if (in_array($ability, ['review', 'reviewOm'], true)) {
             return false;
         }
-        if ($user->hasRole(RoleSlug::Admin->value) && ! in_array($ability, ['claim', 'screen', 'releaseInventory'], true)) {
+        if ($user->hasRole(RoleSlug::Admin->value) && ! in_array($ability, ['claim', 'screen', 'releaseInventory', 'withdraw', 'returnToRequestor'], true)) {
             return true;
         }
 
@@ -176,6 +181,14 @@ class PurchaseRequestPolicy
             && ! $purchaseRequest->quotations()->exists();
     }
 
+    public function returnToRequestor(User $user, PurchaseRequest $purchaseRequest): bool
+    {
+        return $user->hasPoRole(PurchaseOrderApprovalStage::PreparedBy)
+            && $purchaseRequest->status === PurchaseRequestStatus::ForBudgetProcessing
+            && ! $purchaseRequest->purchaseOrder()->exists()
+            && ! $purchaseRequest->budgetRequest()->exists();
+    }
+
     public function prepareBudgetRequest(User $user, PurchaseRequest $purchaseRequest): bool
     {
         return $user->hasAnyRole([
@@ -257,15 +270,12 @@ class PurchaseRequestPolicy
             && in_array($purchaseRequest->requested_team, [null, $team], true);
     }
 
-    /** The requestor may void a draft, or withdraw a submitted request until a Purchase Order exists. */
+    /** The requestor may void a draft, or withdraw a submitted request until the budget is finalized. */
     public function withdraw(User $user, PurchaseRequest $purchaseRequest): bool
     {
         return $user->id === $purchaseRequest->requestor_id
             && in_array($purchaseRequest->status, [PurchaseRequestStatus::Draft, ...PurchaseRequestStatus::withdrawable()], true)
-            // Lists load the PO already; use it instead of one query per card.
-            && ($purchaseRequest->relationLoaded('purchaseOrder')
-                ? $purchaseRequest->purchaseOrder === null
-                : ! $purchaseRequest->purchaseOrder()->exists());
+            && ! RequestWithdrawal::budgetFinalized($purchaseRequest);
     }
 
     public function acknowledgeWithdrawal(User $user, PurchaseRequest $purchaseRequest): bool

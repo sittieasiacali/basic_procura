@@ -3,9 +3,9 @@
 use App\Http\Controllers\Admin\AccountController;
 use App\Http\Controllers\Admin\CampaignController;
 use App\Http\Controllers\Admin\DataManagementController;
-use App\Http\Controllers\Admin\TransactionDeletionController;
 use App\Http\Controllers\Admin\PurchaseOrderWorkflowAssignmentController;
 use App\Http\Controllers\Admin\SystemHealthController;
+use App\Http\Controllers\Admin\TransactionDeletionController;
 use App\Http\Controllers\AttachmentController;
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\Auth\PasswordChangeController;
@@ -15,20 +15,24 @@ use App\Http\Controllers\BudgetRequestQueueController;
 use App\Http\Controllers\CanvassingController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DeliveryLocationController;
-use App\Http\Controllers\InventoryController;
 use App\Http\Controllers\InventoryClaimController;
+use App\Http\Controllers\InventoryController;
+use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\OmApprovalController;
 use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\PresidentApprovalController;
 use App\Http\Controllers\PurchaseOrderController;
 use App\Http\Controllers\PurchaseOrderWorkflowTrackerController;
-use App\Http\Controllers\WorkflowRemarksFeedController;
 use App\Http\Controllers\PurchaseRequestController;
 use App\Http\Controllers\ReceivingController;
 use App\Http\Controllers\RequestFlowController;
+use App\Http\Controllers\RequestInventoryReleaseController;
 use App\Http\Controllers\RequestWithdrawalController;
+use App\Http\Controllers\ReturnedMonitoringController;
 use App\Http\Controllers\ScreeningController;
+use App\Http\Controllers\SupplierController;
 use App\Http\Controllers\VoidedMonitoringController;
+use App\Http\Controllers\WorkflowRemarksFeedController;
 use App\Http\Controllers\WorkspaceRoleController;
 use Illuminate\Support\Facades\Route;
 
@@ -44,12 +48,15 @@ Route::middleware('auth')->group(function () {
     Route::get('/change-password', [PasswordChangeController::class, 'edit'])->name('password.change');
     Route::post('/change-password', [PasswordChangeController::class, 'update'])->name('password.update');
     Route::get('/dashboard', DashboardController::class)->name('dashboard');
-    Route::resource('suppliers', \App\Http\Controllers\SupplierController::class)
+    Route::resource('suppliers', SupplierController::class)
         ->only(['index', 'store', 'update'])->middleware('role:it-staff,premises-staff,purchasing,purchasing-team,procurement-staff,canvassing-staff,admin');
-    Route::get('/notifications', [\App\Http\Controllers\NotificationController::class, 'index'])->name('notifications.index');
-    Route::get('/notifications/summary', [\App\Http\Controllers\NotificationController::class, 'summary'])->name('notifications.summary');
-    Route::post('/notifications/read-all', [\App\Http\Controllers\NotificationController::class, 'readAll'])->name('notifications.read-all');
-    Route::post('/notifications/{notification}/read', [\App\Http\Controllers\NotificationController::class, 'read'])->name('notifications.read');
+    Route::get('/notifications', [NotificationController::class, 'index'])->name('notifications.index');
+    Route::get('/notifications/summary', [NotificationController::class, 'summary'])->name('notifications.summary');
+    Route::post('/notifications/read-all', [NotificationController::class, 'readAll'])->name('notifications.read-all');
+    Route::post('/notifications/{notification}/read', [NotificationController::class, 'read'])->name('notifications.read');
+    Route::get('/returned-monitoring', ReturnedMonitoringController::class)
+        ->middleware('role:purchasing-team,admin')
+        ->name('returned-monitoring.index');
     Route::get('/voided-monitoring', VoidedMonitoringController::class)
         ->middleware('role:purchasing-team,admin')
         ->name('voided-monitoring.index');
@@ -96,7 +103,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/my-items', [InventoryClaimController::class, 'index'])->name('inventory.my-items');
     Route::post('/inventory-releases/{inventoryRelease}/claim', [InventoryClaimController::class, 'store'])->name('inventory.claim');
     Route::get('/inventory-claim-proofs/{proof}', [InventoryClaimController::class, 'proof'])->name('inventory.proofs.show');
-    Route::post('/purchase-requests/{purchaseRequest}/inventory-release', [\App\Http\Controllers\RequestInventoryReleaseController::class, 'store'])
+    Route::post('/purchase-requests/{purchaseRequest}/inventory-release', [RequestInventoryReleaseController::class, 'store'])
         ->name('purchase-requests.inventory-release');
 
     Route::prefix('om-approvals')
@@ -147,10 +154,11 @@ Route::middleware('auth')->group(function () {
                 ->name('supplier.approve');
         });
 
-Route::prefix('purchase-orders')
+    Route::prefix('purchase-orders')
         ->name('purchase-orders.')
         ->group(function () {
             Route::post('/{purchaseRequest}', [PurchaseOrderController::class, 'store'])->name('store');
+            Route::post('/{purchaseRequest}/return-to-requestor', [PurchaseOrderController::class, 'returnToRequestor'])->name('return-to-requestor');
             Route::post('/{purchaseRequest}/skip', [PurchaseOrderController::class, 'skip'])->name('skip');
             Route::patch('/{purchaseRequest}', [PurchaseOrderController::class, 'update'])->name('update');
             Route::patch('/{purchaseRequest}/task', [PurchaseOrderController::class, 'updateTask'])->name('task.update');

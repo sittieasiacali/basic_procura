@@ -71,7 +71,7 @@
 
     <div class="account-monitoring-results" aria-live="polite">{{ number_format($accountRows->total()) }} {{ $hasAccountFilters ? 'matching' : 'registered' }} {{ $accountRows->total() === 1 ? 'account' : 'accounts' }}<span>Account totals above cover all users.</span></div>
     <div class="table-responsive">
-        <table class="table table-hover align-middle mb-0 account-monitoring-table">
+        <table data-mobile-cards class="table table-hover align-middle mb-0 account-monitoring-table">
             <thead><tr><th scope="col">Account</th><th scope="col">Role</th><th scope="col">Campaign</th><th scope="col">Status</th><th scope="col">Created</th><th scope="col" class="text-end">Action</th></tr></thead>
             <tbody>
             @forelse($accountRows as $monitoredAccount)

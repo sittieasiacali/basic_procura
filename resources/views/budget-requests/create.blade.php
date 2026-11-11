@@ -11,7 +11,7 @@
     $bankDetails = $approvedQuote?->bank_details ?: ($order->account_number ? trim(($order->account_name ?: $order->supplier?->name).' '.$order->account_number) : 'N/A');
 @endphp
 <div class="budget-create-page budget-create-page--compact budget-create-page--wide procura-form-page">
-    <x-ui.form-page-header class="budget-create-header" eyebrow="Budget preparation" title="Create Budget Request" description="Choose the campaign source account for this Purchase Order, review the details, then submit." icon="wallet" />
+    <x-ui.form-page-header class="budget-create-header" eyebrow="Budget preparation" title="Create Budget Request" description="Choose the contributing campaign accounts, enter each share, then submit." icon="wallet" />
 
     <form method="POST" action="{{ route('budget.store') }}" class="budget-create-layout budget-create-layout--wide" data-validation-context="budget" data-budget-create-form novalidate>
         @csrf
@@ -21,17 +21,20 @@
             @error('purchase_request_id')<div class="alert alert-danger" role="alert">{{ $message }}</div>@enderror
 
             <section class="budget-create-card procura-form-section" aria-labelledby="budget-accounts-heading">
-                <div class="budget-create-section-heading budget-create-card-heading"><span class="budget-create-heading-icon"><x-ui.icon name="wallet" size="21" /></span><div><div class="section-kicker">Account selection</div><h2 id="budget-accounts-heading">Campaign Source Account</h2><p>Select the account to fund this Budget Request.</p></div></div>
+                <div class="budget-create-section-heading budget-create-card-heading"><span class="budget-create-heading-icon"><x-ui.icon name="wallet" size="21" /></span><div><div class="section-kicker">Account selection</div><h2 id="budget-accounts-heading">Campaign Source Accounts</h2><p>Select the accounts contributing to this Budget Request.</p></div></div>
                 <div class="budget-create-field-grid">
-                    <div class="budget-create-field budget-create-field--wide">
-                        <label for="budget_campaign_id">Campaign2 / Campaign source account <span aria-hidden="true">*</span></label>
-                        <select class="form-select @error('campaign_id') is-invalid @enderror" id="budget_campaign_id" name="campaign_id" data-budget-source-campaign required>
-                            <option value="">Select campaign source account</option>
-                            @foreach($campaigns as $campaign)
-                                <option value="{{ $campaign->id }}" @selected((string) old('campaign_id', $order->budget_campaign_id) === (string) $campaign->id)>{{ $campaign->name }} — {{ $campaign->account_number }}</option>
+                    <div class="budget-create-field budget-create-field--wide" data-budget-contributions data-total="{{ number_format((float) $order->total_amount, 2, '.', '') }}">
+                        <h3 class="h6">Campaign2 / Campaign source accounts <span class="text-danger">*</span></h3>
+                        <p class="small text-muted">Add the contributing accounts and the amount each will cover. Contributions must total the approved PO amount, including VAT and shipping.</p>
+                        @error('source_accounts')<div class="alert alert-danger">{{ $message }}</div>@enderror
+                        <div data-source-account-rows>
+                            @foreach(old('source_accounts', [['campaign_id' => old('campaign_id', $order->budget_campaign_id), 'amount' => number_format((float) $order->total_amount, 2, '.', '')]]) as $sourceIndex => $source)
+                                @include('budget-requests.partials.source-account-row')
                             @endforeach
-                        </select>
-                        @error('campaign_id')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                        </div>
+                        <template data-source-account-template>@include('budget-requests.partials.source-account-row', ['sourceIndex' => '__INDEX__', 'source' => ['campaign_id' => '', 'amount' => '']])</template>
+                        <button class="btn btn-outline-primary mt-2" type="button" data-add-source-account>Add source account</button>
+                        <p class="small mt-2 mb-0" data-source-account-feedback role="status" aria-live="polite"></p>
                     </div>
                     <div class="budget-create-field budget-create-field--wide">
                         <label for="team-account-{{ $purchaseRequest->id }}">Request team based account — {{ $orderReference }}</label>
@@ -117,6 +120,7 @@
                         </article>
                 </div>
             </section>
+
 
             @if(config('procurement.budget_preparation.signature_required'))
             <section class="budget-create-card procura-form-section" aria-label="Budget Maker signature">

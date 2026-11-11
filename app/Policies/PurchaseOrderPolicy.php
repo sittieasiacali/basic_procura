@@ -3,13 +3,30 @@
 namespace App\Policies;
 
 use App\Enums\PurchaseOrderApprovalStage;
+use App\Enums\PurchaseRequestStatus;
 use App\Enums\RoleSlug;
 use App\Models\PurchaseOrder;
 use App\Models\User;
+use Illuminate\Support\Facades\DB;
 
 class PurchaseOrderPolicy
 {
     public const CHECKER_WORKFLOW_VERSION = 'self-check-v1';
+
+    public function before(User $user, string $ability, PurchaseOrder|string|null $purchaseOrder = null): ?bool
+    {
+        if ($purchaseOrder instanceof PurchaseOrder && $ability !== 'view') {
+            $query = $purchaseOrder->purchaseRequest();
+            if (DB::transactionLevel() > 0) {
+                $query->lockForUpdate();
+            }
+            if (in_array($query->first()?->status, [PurchaseRequestStatus::WithdrawalPending, PurchaseRequestStatus::Voided], true)) {
+                return false;
+            }
+        }
+
+        return null;
+    }
 
     public function prepare(User $user): bool
     {

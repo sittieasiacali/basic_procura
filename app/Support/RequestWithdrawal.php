@@ -4,6 +4,7 @@ namespace App\Support;
 
 use App\Enums\PurchaseRequestStatus;
 use App\Enums\RoleSlug;
+use App\Models\BudgetRequest;
 use App\Models\PurchaseRequest;
 use App\Models\User;
 
@@ -41,7 +42,12 @@ class RequestWithdrawal
             PurchaseRequestStatus::ForSupplierApproval => [RoleSlug::President->value],
             PurchaseRequestStatus::SupplierApproved,
             PurchaseRequestStatus::Approved,
-            PurchaseRequestStatus::ForBudgetProcessing => $purchasing,
+            PurchaseRequestStatus::PoCreated,
+            PurchaseRequestStatus::ForBudgetProcessing,
+            PurchaseRequestStatus::ForBudgetMaker,
+            PurchaseRequestStatus::ForBudgetChecker,
+            PurchaseRequestStatus::ForBudgetProceeder,
+            PurchaseRequestStatus::AwaitingPresidentFinalApproval => $purchasing,
             default => [],
         };
     }
@@ -58,10 +64,22 @@ class RequestWithdrawal
         return match (true) {
             $purchaseRequest->status === PurchaseRequestStatus::WithdrawalPending => 'A void was already requested for this request. It is waiting for the handling staff to acknowledge it.',
             $purchaseRequest->status === PurchaseRequestStatus::Voided => 'This request is already voided.',
-            $purchaseRequest->purchaseOrder()->exists(),
-            ! in_array($purchaseRequest->status, [PurchaseRequestStatus::Draft, ...PurchaseRequestStatus::withdrawable()], true) => 'This request can no longer be voided because a Purchase Order has been issued or processing is complete. Contact Purchasing to cancel it.',
+            self::budgetFinalized($purchaseRequest),
+            ! in_array($purchaseRequest->status, [PurchaseRequestStatus::Draft, ...PurchaseRequestStatus::withdrawable()], true) => 'This request can no longer be voided because the budget has been finalized or processing is complete.',
             default => null,
         };
+    }
+
+    public static function budgetFinalized(PurchaseRequest $purchaseRequest): bool
+    {
+        // Include grouped budgets through the allocation table, even after a status rollback.
+        return BudgetRequest::query()
+            ->where(fn ($query) => $query->where('purchase_request_id', $purchaseRequest->id)
+                ->orWhereHas('allocations', fn ($allocation) => $allocation->where('purchase_request_id', $purchaseRequest->id)))
+            ->where(fn ($query) => $query->whereNotNull('final_approval_at')
+                ->orWhere('final_approval_status', 'APPROVED')
+                ->orWhereIn('status', ['APPROVED', 'PARTIALLY_PAID', 'PAID']))
+            ->exists();
     }
 
     public static function canAcknowledge(User $user, PurchaseRequest $purchaseRequest): bool
@@ -98,7 +116,8 @@ class RequestWithdrawal
             PurchaseRequestStatus::ForProcurement => 'Quotation',
             PurchaseRequestStatus::ForCanvassing => 'Canvassing',
             PurchaseRequestStatus::ForSupplierApproval => 'President supplier approval',
-            PurchaseRequestStatus::SupplierApproved, PurchaseRequestStatus::Approved, PurchaseRequestStatus::ForBudgetProcessing => 'Purchase Order preparation',
+            PurchaseRequestStatus::SupplierApproved, PurchaseRequestStatus::Approved, PurchaseRequestStatus::PoCreated, PurchaseRequestStatus::ForBudgetProcessing => 'Purchase Order preparation',
+            PurchaseRequestStatus::ForBudgetMaker, PurchaseRequestStatus::ForBudgetChecker, PurchaseRequestStatus::ForBudgetProceeder, PurchaseRequestStatus::AwaitingPresidentFinalApproval => 'Budget Request finalization',
             default => $stage ? str($stage)->replace('_', ' ')->title()->toString() : 'Not recorded',
         };
     }

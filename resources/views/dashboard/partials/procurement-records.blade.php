@@ -7,7 +7,7 @@
         'dateLabel' => 'Updated',
     ]])
     <div class="table-responsive">
-        <table class="table table-hover align-middle mb-0 dashboard-table">
+        <table data-mobile-cards class="table table-hover align-middle mb-0 dashboard-table">
             <thead><tr><th class="table-row-number">#</th><th>Request</th><th>Suppliers quoted</th><th>Recommendation</th><th>Status</th><th class="text-end">Updated</th><th class="text-end">Action</th></tr></thead>
             <tbody>
                 @forelse($canvassingRecords as $record)
@@ -39,7 +39,7 @@
         'dateLabel' => 'Created',
     ]])
     <div class="table-responsive">
-        <table class="table table-hover align-middle mb-0 dashboard-table">
+        <table data-mobile-cards class="table table-hover align-middle mb-0 dashboard-table">
             <thead><tr><th class="table-row-number">#</th><th>PO Number</th><th>Request</th><th>Supplier</th><th>Status</th><th>Created by</th><th class="text-end">Amount</th><th class="text-end">Action</th></tr></thead>
             <tbody>
                 @forelse($createdPurchaseOrders as $purchaseOrder)

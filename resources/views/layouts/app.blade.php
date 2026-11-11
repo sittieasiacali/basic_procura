@@ -26,6 +26,7 @@
     </script>
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     @vite('resources/css/workspace-theme.css')
+    @vite('resources/css/mobile.css')
     @stack('head')
 </head>
 <body class="workspace-theme {{ ($hideNavigation ?? false) ? 'workspace-theme--without-navigation' : '' }}">
@@ -166,6 +167,12 @@
             'url' => route('voided-monitoring.index'),
             'active' => request()->routeIs('voided-monitoring.*'),
             'icon' => 'x-circle',
+        ];
+        $primaryNavigation[] = [
+            'label' => 'Return Monitoring',
+            'url' => route('returned-monitoring.index'),
+            'active' => request()->routeIs('returned-monitoring.*'),
+            'icon' => 'file-text',
         ];
     }
 

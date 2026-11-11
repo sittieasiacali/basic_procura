@@ -3,6 +3,7 @@
 namespace App\Support;
 
 use App\Enums\PurchaseOrderApprovalStage;
+use App\Enums\PurchaseRequestStatus;
 use App\Models\PurchaseOrder;
 
 final class PurchaseOrderWorkflowTracker
@@ -89,6 +90,16 @@ final class PurchaseOrderWorkflowTracker
             $latestInventory?->logged_at,
             $inventory?->isNotEmpty() ? $inventory->count().' item(s) logged' : null,
         );
+
+        $stopped = match ($request?->status) {
+            PurchaseRequestStatus::Returned => ['Returned to requestor for correction', 'returned'],
+            PurchaseRequestStatus::WithdrawalPending => ['Withdrawal pending acknowledgment', 'withdrawal'],
+            PurchaseRequestStatus::Voided => ['Request voided', 'voided'],
+            default => null,
+        };
+        if ($stopped) {
+            return ['current' => $stopped[0], 'current_key' => $stopped[1], 'steps' => $steps];
+        }
 
         $rejected = collect($steps)->firstWhere('state', 'rejected');
         if ($rejected) {

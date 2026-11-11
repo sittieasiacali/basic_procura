@@ -2,9 +2,9 @@
 
 namespace App\Http\Requests;
 
+use App\Enums\PurchaseRequestStatus;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Validator;
-use App\Enums\PurchaseRequestStatus;
 
 class OmDecisionRequest extends FormRequest
 {
@@ -22,7 +22,7 @@ class OmDecisionRequest extends FormRequest
             : false;
 
         return [
-            'remarks' => ['nullable', 'string', 'max:5000'],
+            'remarks' => [$this->routeIs('*.return') ? 'required' : 'nullable', 'string', 'max:5000'],
             'signature_name' => $signatureRequired
                 ? ['required', 'string', 'max:255']
                 : ['nullable', 'string', 'max:255'],

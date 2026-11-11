@@ -73,3 +73,9 @@
         </div>
     </section>
 @endif
+
+@if((int) auth()->id() === (int) $purchaseRequest->requestor_id && \App\Support\RequestWithdrawal::budgetFinalized($purchaseRequest))
+    <div class="alert alert-info no-print" role="status">
+        <strong>Budget finalized.</strong> Void requests are no longer allowed for this request.
+    </div>
+@endif

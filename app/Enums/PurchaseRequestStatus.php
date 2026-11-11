@@ -44,9 +44,8 @@ enum PurchaseRequestStatus: string
     case Voided = 'VOIDED';
 
     /**
-     * Stages a requestor may withdraw from: submitted, but before a Purchase Order exists.
-     * Cancelling an issued PO needs its own process, so ForBudgetProcessing is only
-     * withdrawable while no PO has been created (checked by the policy).
+     * Stages a requestor may withdraw from before the budget is finalized.
+     * The policy also checks the budget record for historical final approval.
      *
      * @return list<self>
      */
@@ -56,7 +55,8 @@ enum PurchaseRequestStatus: string
             self::ForTlApproval, self::ForOmApproval, self::Returned, self::ForOmSmtsApproval,
             self::ForTeamScreening, self::ForItScreening, self::ForPremisesScreening,
             self::ForInventoryRelease, self::ForProcurement, self::ForCanvassing,
-            self::ForSupplierApproval, self::SupplierApproved, self::Approved, self::ForBudgetProcessing,
+            self::ForSupplierApproval, self::SupplierApproved, self::Approved, self::PoCreated, self::ForBudgetProcessing,
+            self::ForBudgetMaker, self::ForBudgetChecker, self::ForBudgetProceeder, self::AwaitingPresidentFinalApproval,
         ];
     }
 
@@ -108,7 +108,7 @@ enum PurchaseRequestStatus: string
             ],
             self::Approved => [self::PoCreated],
             self::PoCreated => [self::ForBudgetProcessing],
-            self::ForBudgetProcessing => [self::AwaitingPresidentFinalApproval],
+            self::ForBudgetProcessing => [self::AwaitingPresidentFinalApproval, self::Returned],
             self::ForBudgetMaker => [self::AwaitingPresidentFinalApproval, self::ForPayment, self::ForCanvassing],
             // Current controller exposes the Proceeder action from this queue.
             // Keep the explicit FOR_BUDGET_PROCEEDER state supported for legacy data,

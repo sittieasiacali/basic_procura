@@ -62,7 +62,7 @@
         </form>
 
         <div class="table-responsive">
-            <table class="table table-hover align-middle mb-0">
+            <table data-mobile-cards class="table table-hover align-middle mb-0">
                 <thead>
                     <tr>
                         <th>PO Code</th>

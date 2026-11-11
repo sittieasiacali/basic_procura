@@ -25,7 +25,7 @@
             'disapproved' => ['label' => 'Disapproved', 'value' => 'disapproved', 'class' => 'danger'],
         ];
     @endphp
-    <div class="row g-3 mb-4">
+    <div class="row g-3 mb-4 request-summary-grid">
         @foreach($summaryCards as $key => $card)
             @php
                 $query = request()->only(['search', 'priority', 'status', 'campaign_id', 'date_from', 'date_to']);
@@ -45,19 +45,19 @@
 
     <div class="card filter-panel mb-3">
         <div class="card-body">
-            <form class="row g-2 align-items-end" method="GET">
+            <form class="row g-2 align-items-end request-list-filters" method="GET">
                 @if(request()->filled('summary'))<input type="hidden" name="summary" value="{{ request('summary') }}">@endif
-                <div class="col-md-6 col-xl-3">
+                <div class="col-md-6 col-xl-3 request-filter-search">
                     <label class="form-label small" for="search">Search</label>
                     <input class="form-control" id="search" type="search" name="search" value="{{ request('search') }}" placeholder="Search PO, request, requestor…">
                 </div>
                 @if(auth()->user()->canViewPriority())
-                    <div class="col-sm-6 col-md-3 col-xl-2">
+                    <div class="col-sm-6 col-md-3 col-xl-2 request-filter-advanced">
                         <label class="form-label small" for="priority">Priority</label>
                         <select class="form-select" id="priority" name="priority"><option value="">All priority levels</option>@foreach(\App\Models\PurchaseRequest::PRIORITY_LEVELS as $value => $label)<option value="{{ $value }}" @selected(request('priority') === $value)>{{ $label }}</option>@endforeach</select>
                     </div>
                 @endif
-                <div class="col-sm-6 col-md-3 col-xl-2">
+                <div class="col-sm-6 col-md-3 col-xl-2 request-filter-advanced">
                     <label class="form-label small" for="status">Status</label>
                     <select class="form-select" id="status" name="status">
                         <option value="">All statuses</option>
@@ -68,7 +68,7 @@
                         @endforeach
                     </select>
                 </div>
-                <div class="col-sm-6 col-md-3 col-xl-2">
+                <div class="col-sm-6 col-md-3 col-xl-2 request-filter-advanced">
                     <label class="form-label small" for="campaign_id">Campaign</label>
                     <select class="form-select" id="campaign_id" name="campaign_id">
                         <option value="">All campaigns</option>
@@ -77,15 +77,15 @@
                         @endforeach
                     </select>
                 </div>
-                <div class="col-sm-6 col-xl-2">
+                <div class="col-sm-6 col-xl-2 request-filter-advanced">
                     <label class="form-label small" for="date_from">Updated from</label>
                     <input class="form-control" id="date_from" type="date" name="date_from" value="{{ request('date_from') }}">
                 </div>
-                <div class="col-sm-6 col-xl-2">
+                <div class="col-sm-6 col-xl-2 request-filter-advanced">
                     <label class="form-label small" for="date_to">Updated to</label>
                     <input class="form-control" id="date_to" type="date" name="date_to" value="{{ request('date_to') }}">
                 </div>
-                <div class="col-xl-1 d-flex gap-2">
+                <div class="col-xl-1 d-flex gap-2 request-filter-actions">
                     <button class="btn btn-primary flex-grow-1" type="submit">Apply filters</button>
                     <a class="btn btn-outline-secondary" href="{{ route('purchase-requests.index') }}" title="Clear filters">Clear</a>
                 </div>
@@ -93,7 +93,7 @@
         </div>
     </div>
 
-    <div class="card">
+    <div class="card request-list-panel">
         <div class="flow-request-grid">
                 @forelse($purchaseRequests as $purchaseRequest)
                     <article class="flow-request-card">
@@ -102,6 +102,10 @@
                             <x-request-list-status-badge :status="$purchaseRequest->status" />
                         </div>
                         <h2 class="flow-request-title">{{ $purchaseRequest->title }}</h2>
+                        @if($purchaseRequest->status === \App\Enums\PurchaseRequestStatus::Returned)
+                            <div class="alert alert-warning small mt-2 mb-1"><strong>Returned for correction:</strong> {{ $purchaseRequest->latestReturnApproval?->remarks }}</div>
+                        @endif
+
                         <div class="flow-request-meta">
                             <span>{{ $purchaseRequest->requestor->name }}</span>
                             <span aria-hidden="true">&middot;</span>
@@ -132,6 +136,10 @@
                         
                         <div class="flow-request-card-footer">
                             <x-admin-delete-transaction :purchase-request="$purchaseRequest" />
+                            @if($purchaseRequest->status === \App\Enums\PurchaseRequestStatus::Returned)
+                                @can('update', $purchaseRequest)<a class="btn btn-sm btn-primary" href="{{ route('purchase-requests.edit', $purchaseRequest) }}">Edit and resubmit</a>@endcan
+                            @endif
+
                             <a class="btn btn-sm btn-outline-primary" href="{{ route('purchase-requests.show', $purchaseRequest) }}" data-workflow-request-preview>View request <x-ui.icon name="chevron-right" size="15" /></a>
                         </div>
                     </article>
@@ -159,7 +167,7 @@
                 <h2 id="processed-requests-heading" class="h5 mb-1">My processed requests</h2>
                 <p class="mb-0 text-muted small">Requests you completed and handed to the next stage. Select one to preview or print it.</p>
             </div></div>
-            <div class="table-responsive"><table class="table table-hover align-middle mb-0 processed-requests-table">
+            <div class="table-responsive"><table data-mobile-cards class="table table-hover align-middle mb-0 processed-requests-table">
                 <thead><tr><th>Request</th><th>Completed step</th><th>Current status</th><th class="text-end">Processed</th></tr></thead>
                 <tbody>
                 @foreach($processedRequests as $processed)

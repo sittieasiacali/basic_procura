@@ -90,7 +90,7 @@
         @if($items->hasPages())<div class="card-footer">{{ $items->links() }}</div>@endif
         @elseif($view === 'released')
             <div class="table-responsive">
-                <table class="table table-hover align-middle mb-0">
+                <table data-mobile-cards class="table table-hover align-middle mb-0">
                     <thead><tr><th>#</th><th>Item</th><th class="text-end">Quantity released</th><th>Released to</th><th>Released by</th><th>Released on</th><th>Remarks</th><th>Claim</th></tr></thead>
                     <tbody>
                     @forelse($releases as $release)
@@ -187,7 +187,7 @@
     <section class="card mt-4" aria-labelledby="inventory-activity-heading">
         <div class="card-header"><h2 class="section-title mb-0" id="inventory-activity-heading">Activity log</h2></div>
         <div class="table-responsive">
-            <table class="table table-hover align-middle mb-0 inventory-activity-table">
+            <table data-mobile-cards class="table table-hover align-middle mb-0 inventory-activity-table">
                 <thead><tr><th class="col-when">When</th><th class="col-activity">Activity</th><th>Item</th><th class="col-qty text-end">Quantity</th><th class="col-account">Account</th></tr></thead>
                 <tbody>
                     @forelse($activities as $activity)

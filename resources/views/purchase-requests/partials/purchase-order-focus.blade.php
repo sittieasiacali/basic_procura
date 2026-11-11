@@ -146,7 +146,12 @@
                     />
                 </div>
                 <div class="po-focus-preview-hint"><x-ui.icon name="file-text" size="16" />The signed Purchase Order will be submitted to the assigned Checker.</div>
+                <div class="d-flex flex-wrap justify-content-end gap-2" style="grid-column: 1 / -1; order: 15">
+                @can('returnToRequestor', $purchaseRequest)
+                    <button class="btn btn-outline-secondary" type="button" data-bs-toggle="modal" data-bs-target="#po-return-requestor-modal">Return to Requestor</button>
+                @endcan
                 <button class="btn btn-primary po-focus-submit" type="submit" data-po-submit><span data-po-submit-label><x-ui.icon name="request" size="18" />Create purchase order</span></button>
+                </div>
             </form>
 
         @else

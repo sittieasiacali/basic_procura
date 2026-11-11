@@ -1,6 +1,6 @@
 {{-- Inventory items table. Expects $items (paginated, from InventoryItem::registerFilters()). --}}
 <div class="table-responsive">
-    <table class="table table-hover align-middle mb-0">
+    <table data-mobile-cards class="table table-hover align-middle mb-0">
         <thead><tr><th class="table-row-number">#</th><th>Item</th><th class="text-end">Available</th><th>Location</th><th>Source</th><th>Logged</th><th>Status</th><th class="text-end">Action</th></tr></thead>
         <tbody>
         @forelse($items as $item)

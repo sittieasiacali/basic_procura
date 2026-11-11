@@ -134,6 +134,7 @@ final class PurchaseOrderDocumentData
             'requestedBy' => $requestedBy,
             'accountType' => $accountType,
             'items' => $items,
+            'itemBudgetAllocations' => $purchaseOrder->item_budget_allocations ?? [],
             'official' => [
                 'companyAddress' => config('procurement.company.address'),
                 'companyLogo' => asset(config('procurement.company.logo')),

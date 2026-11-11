@@ -78,14 +78,14 @@
         @include('budget-requests.partials.preparation-table', ['preparationBudgets' => $budgetRequests])
     @else
     <div class="table-responsive">
-        <table class="table table-hover align-middle mb-0">
+        <table data-mobile-cards class="table table-hover align-middle mb-0">
             <thead><tr>@if($canFinalize)<th class="br-select-cell"><input class="form-check-input" type="checkbox" aria-label="Select all Budget Requests waiting for Finance on this page" data-br-select-all></th>@endif<th class="table-row-number">#</th><th>BR Number</th><th>Campaign / Account</th><th>When Can Pay</th><th>PO / Supplier</th><th>Bank details / Reference</th><th class="text-end">Amount</th></tr></thead>
             <tbody>
             @forelse($budgetRequests as $budgetRequest)
                 @php
                     // Group BRs list several accounts and POs; the cells show the first and the rest on hover.
                     $accountItems = ($budgetRequest->lines->isNotEmpty() ? $budgetRequest->lines : collect([null]))
-                        ->map(fn ($line) => ['title' => $line?->campaign?->name ?? $budgetRequest->campaign?->name ?? 'Not assigned', 'note' => $line?->source_bank_account ?: $budgetRequest->campaign_account_number ?: 'No account number'])
+                        ->flatMap(fn ($line) => $line ? collect($line->sourceContributions())->map(fn ($source) => ['title' => $source['campaign_name'] ?? 'Not assigned', 'note' => ($source['account_number'] ?? 'No account number').' | PHP '.number_format((float) $source['amount'], 2)]) : collect([['title' => $budgetRequest->campaign?->name ?? 'Not assigned', 'note' => $budgetRequest->campaign_account_number ?: 'No account number']]))
                         ->unique(fn ($item) => $item['title'].'|'.$item['note']);
                     $poItems = $budgetRequest->lines->map(fn ($line) => ['title' => ($line->purchaseOrder?->po_number ?? 'Legacy').' · '.($line->purchaseOrder?->supplier?->name ?? 'Supplier not recorded'), 'note' => $line->details]);
                     $bankItems = $budgetRequest->lines->pluck('bank_details')->filter()->unique()->map(fn ($details) => ['title' => $details]);

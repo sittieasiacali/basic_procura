@@ -2,10 +2,11 @@
 
 namespace App\Models;
 
-use App\Enums\PurchaseRequestStatus;
 use App\Enums\PurchaseOrderApprovalStage;
+use App\Enums\PurchaseRequestStatus;
 use App\Enums\RoleSlug;
 use App\Support\PurchaseOrderLinePricing;
+use App\Support\RequestStageReceipt;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -215,7 +216,7 @@ class PurchaseRequest extends Model
 
         return $query->whereHas('auditLogs', fn (Builder $log) => $log
             ->where('user_id', $user->id)
-            ->whereIn('action', array_keys(\App\Support\RequestStageReceipt::handoffLabels())));
+            ->whereIn('action', array_keys(RequestStageReceipt::handoffLabels())));
     }
 
     public function requestor(): BelongsTo
@@ -395,7 +396,7 @@ class PurchaseRequest extends Model
 
     public function screening(): HasOne
     {
-        return $this->hasOne(RequestScreening::class);
+        return $this->hasOne(RequestScreening::class)->whereNull('superseded_at');
     }
 
     public function attachments(): MorphMany

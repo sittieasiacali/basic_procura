@@ -28,7 +28,7 @@
             @include('purchase-requests.partials.voided-monitoring-register')
         @else
         <div class="table-responsive">
-            <table class="table table-hover align-middle mb-0 dashboard-table voided-requests-table">
+            <table data-mobile-cards class="table table-hover align-middle mb-0 dashboard-table voided-requests-table">
                 <thead><tr><th class="table-row-number">#</th><th>Request</th>@if($isSharedVoidedMonitoring)<th>Account owner</th>@endif<th>Status</th><th>Workflow stopped at</th><th>Reason</th><th>Withdrawn</th><th>Acknowledged by</th><th class="text-end">Action</th></tr></thead>
                 <tbody>
                 @forelse($voidedMonitoring as $purchaseRequest)

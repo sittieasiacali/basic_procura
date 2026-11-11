@@ -44,18 +44,14 @@ class ScreeningAutoRoutingTest extends TestCase
         $this->assertSame('IT', $log->metadata['auto_routed']);
         $this->assertContains('laptop', $log->metadata['matched_keywords']);
 
-        // IT can claim it from their own queue; Premises cannot.
+        // Direct IT screening does not require a claim; the decision records the acting screener.
         $this->actingAs($this->user(RoleSlug::PremisesStaff))->post(route('request-flow.claim', $request))->assertForbidden();
         $itStaff = $this->user(RoleSlug::ItStaff);
-        $this->actingAs($itStaff)->post(route('request-flow.claim', $request))->assertSessionHasNoErrors();
-        $this->assertSame($itStaff->id, $request->fresh()->assigned_user_id);
-
-        // If IT releases it, it returns to the shared queue so Premises can take it instead.
-        $this->delete(route('request-flow.unclaim', $request))->assertSessionHasNoErrors();
-        $request->refresh();
-        $this->assertSame(PurchaseRequestStatus::ForTeamScreening, $request->status);
-        $this->assertSame('UNCLASSIFIED', $request->request_type);
-        $this->assertNull($request->assigned_user_id);
+        $this->assertTrue($itStaff->can('screen', $request));
+        $this->actingAs($itStaff)->post(route('request-flow.claim', $request))->assertForbidden();
+        $this->delete(route('request-flow.unclaim', $request))->assertForbidden();
+        $this->assertSame(PurchaseRequestStatus::ForItScreening, $request->fresh()->status);
+        $this->assertNull($request->fresh()->assigned_user_id);
     }
 
     public function test_mixed_or_non_it_requests_stay_in_the_shared_queue(): void

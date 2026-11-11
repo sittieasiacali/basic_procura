@@ -2,14 +2,13 @@
 
 namespace App\Models;
 
+use App\Enums\PurchaseOrderApprovalStage;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\Relations\HasOneThrough;
-use Illuminate\Database\Eloquent\Builder;
-use App\Enums\PurchaseOrderApprovalStage;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 class PurchaseOrder extends Model
@@ -19,7 +18,7 @@ class PurchaseOrder extends Model
     protected $fillable = [
         'po_number', 'purchase_request_id', 'supplier_id', 'created_by', 'issued_at',
         'delivery_lead_time', 'expected_delivery_date', 'status', 'subtotal', 'tax_amount', 'total_amount',
-        'payment_terms', 'delivery_terms', 'remarks',
+        'payment_terms', 'delivery_terms', 'remarks', 'item_budget_allocations',
         'budget_campaign_id', 'budget_campaign_account_number', 'budget_account_type',
         'budget_transaction_type', 'budget_payable_on', 'budget_fund_source',
         'budget_source_bank_account', 'main_fund', 'requested_by', 'account_number', 'account_name', 'payment_details',
@@ -30,6 +29,7 @@ class PurchaseOrder extends Model
     protected function casts(): array
     {
         return [
+            'item_budget_allocations' => 'array',
             'issued_at' => 'date', 'expected_delivery_date' => 'date', 'budget_payable_on' => 'date',
             'checked_at' => 'datetime', 'acknowledged_at' => 'datetime', 'approved_at' => 'datetime',
             'subtotal' => 'decimal:2', 'tax_amount' => 'decimal:2', 'total_amount' => 'decimal:2',
@@ -57,6 +57,7 @@ class PurchaseOrder extends Model
     {
         return $this->isApproved();
     }
+
     public function isIssued(): bool
     {
         return $this->isApproved();
@@ -107,9 +108,20 @@ class PurchaseOrder extends Model
         return $this->belongsTo(User::class, 'created_by');
     }
 
-    public function checker(): BelongsTo { return $this->belongsTo(User::class, 'checked_by'); }
-    public function acknowledger(): BelongsTo { return $this->belongsTo(User::class, 'acknowledged_by'); }
-    public function approver(): BelongsTo { return $this->belongsTo(User::class, 'approved_by'); }
+    public function checker(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'checked_by');
+    }
+
+    public function acknowledger(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'acknowledged_by');
+    }
+
+    public function approver(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'approved_by');
+    }
 
     public function items(): HasMany
     {

@@ -7,6 +7,7 @@ use App\Enums\RoleSlug;
 use App\Models\PurchaseRequest;
 use App\Services\PurchaseRequestWorkflow;
 use App\Support\WorkflowSignature;
+use App\Support\WorkflowUrl;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -116,7 +117,7 @@ class PresidentApprovalController extends Controller
         $validated = $request->validate([
             'decision' => ['required', 'in:APPROVE,REJECT,ACKNOWLEDGE'],
             'quotation_id' => ['required_if:decision,APPROVE', 'nullable', 'integer'],
-            'remarks' => ['nullable', 'string', 'max:2000'],
+            'remarks' => ['required_if:decision,REJECT', 'nullable', 'string', 'max:2000'],
             ...WorkflowSignature::rules(),
         ]);
         WorkflowSignature::assertValid($request, $validated);
@@ -223,10 +224,9 @@ class PresidentApprovalController extends Controller
         });
 
         // Land on the request, which closes to a receipt naming the next stage.
-        return ($request->boolean('_embedded') ? redirect()->away(\App\Support\WorkflowUrl::route('workflow.done')) : redirect()->route('purchase-requests.show', $purchaseRequest))
+        return ($request->boolean('_embedded') ? redirect()->away(WorkflowUrl::route('workflow.done')) : redirect()->route('purchase-requests.show', $purchaseRequest))
             ->with('success', $validated['decision'] === 'ACKNOWLEDGE'
                 ? 'Request acknowledged without supplier pricing and returned to Purchasing for follow-up.'
                 : 'President decision recorded.');
     }
-
 }

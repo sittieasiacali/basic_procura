@@ -6,8 +6,8 @@ use App\Enums\PurchaseRequestStatus;
 use App\Enums\RoleSlug;
 use App\Http\Requests\StorePurchaseRequestRequest;
 use App\Http\Requests\UpdatePurchaseRequestRequest;
-use App\Models\Campaign;
 use App\Models\AuditLog;
+use App\Models\Campaign;
 use App\Models\DeliveryLocation;
 use App\Models\InventoryItem;
 use App\Models\PurchaseRequest;
@@ -16,19 +16,20 @@ use App\Models\Role;
 use App\Models\SupplierQuotation;
 use App\Models\User;
 use App\Services\PurchaseRequestWorkflow;
-use App\Support\WorkflowSignature;
-use App\Support\RequestStageReceipt;
+use App\Support\AttachmentFiles;
 use App\Support\PurchaseOrderActionQueue;
 use App\Support\PurchaseOrderDocumentData;
-use Illuminate\Support\Arr;
-use Illuminate\Support\Collection;
+use App\Support\RequestStageReceipt;
+use App\Support\WorkflowSignature;
+use App\Support\WorkflowUrl;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
-use App\Support\AttachmentFiles;
+use Illuminate\Support\Arr;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
@@ -70,6 +71,7 @@ class PurchaseRequestController extends Controller
             ? Campaign::query()->find($filters['campaign_id'])
             : null;
         $query = (clone $visibleQuery)->with([
+            'latestReturnApproval.user:id,name',
             'requestor.campaign',
             'responsibleRole',
             'items',
@@ -136,10 +138,10 @@ class PurchaseRequestController extends Controller
     }
 
     /** Requests the current user completed and handed to the next workflow stage. */
-    private function processedRequests(User $user, \Illuminate\Database\Eloquent\Builder $filteredRequests): Collection
+    private function processedRequests(User $user, Builder $filteredRequests): Collection
     {
         if (! $this->isWorkflowUser($user)) {
-            return new Collection();
+            return new Collection;
         }
 
         $labels = RequestStageReceipt::handoffLabels();
@@ -213,7 +215,7 @@ class PurchaseRequestController extends Controller
         // A submitted request closes to its screening handoff receipt.
         if ($action === 'submit') {
             return $request->boolean('_embedded')
-                ? redirect()->away(\App\Support\WorkflowUrl::route('workflow.done'))
+                ? redirect()->away(WorkflowUrl::route('workflow.done'))
                 : redirect()->route('purchase-requests.show', $purchaseRequest);
         }
 
@@ -294,11 +296,11 @@ class PurchaseRequestController extends Controller
             'budgetRequest.lines.purchaseOrder.purchaseRequest',
             'budgetRequest.lines.campaign',
             'budgetRequest.checker',
-              'budgetRequest.allocations.purchaseOrder',
-              'budgetRequest.finalApprover',
-              'budgetRequest.campaign',
-              'budgetRequest.custodian',
-              'budgetRequest.payments',
+            'budgetRequest.allocations.purchaseOrder',
+            'budgetRequest.finalApprover',
+            'budgetRequest.campaign',
+            'budgetRequest.custodian',
+            'budgetRequest.payments',
             'payments.recorder',
             'goodsReceipts.receiver',
             'inventoryItems.logger',
@@ -373,7 +375,7 @@ class PurchaseRequestController extends Controller
 
         if ($action === 'submit') {
             return $request->boolean('_embedded')
-                ? redirect()->away(\App\Support\WorkflowUrl::route('workflow.done'))
+                ? redirect()->away(WorkflowUrl::route('workflow.done'))
                 : redirect()->route('purchase-requests.show', $purchaseRequest);
         }
 
@@ -406,7 +408,7 @@ class PurchaseRequestController extends Controller
             foreach ($items as $item) {
                 if (($missing = $item->missingSubmissionDetails()) !== []) {
                     throw ValidationException::withMessages([
-                        'items' => "Edit the request and add the ".Arr::join($missing, ', ', ' and ')." for \"{$item->description}\" before submitting.",
+                        'items' => 'Edit the request and add the '.Arr::join($missing, ', ', ' and ')." for \"{$item->description}\" before submitting.",
                     ]);
                 }
             }
@@ -421,7 +423,7 @@ class PurchaseRequestController extends Controller
         });
 
         return $request->boolean('_embedded')
-            ? redirect()->away(\App\Support\WorkflowUrl::route('workflow.done'))
+            ? redirect()->away(WorkflowUrl::route('workflow.done'))
             : redirect()->route('purchase-requests.show', $purchaseRequest);
     }
 
@@ -522,7 +524,7 @@ class PurchaseRequestController extends Controller
      * Manual quotations are comparable when they describe the same request;
      * itemized quotations must cover the complete requested-item set.
      *
-     * @return array{entries: \Illuminate\Support\Collection, lowest: ?array, lowest_tie: bool, recommended: ?array}
+     * @return array{entries: Collection, lowest: ?array, lowest_tie: bool, recommended: ?array}
      */
     private function quotationSummary(PurchaseRequest $purchaseRequest): array
     {

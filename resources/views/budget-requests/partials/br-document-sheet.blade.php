@@ -15,5 +15,9 @@
 
     @include('budget-requests.partials.preparation-table', ['preparationBudgets' => collect([$budget]), 'preparationDocument' => true])
 
+    @foreach($budget->lines as $line)
+        @include('budget-requests.partials.funding-contributions', ['fundingLine' => $line])
+    @endforeach
+
     @include('budget-requests.partials.br-signatures')
 </div>
