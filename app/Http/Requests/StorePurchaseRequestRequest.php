@@ -5,10 +5,9 @@ namespace App\Http\Requests;
 use App\Enums\RoleSlug;
 use App\Models\PurchaseRequest;
 use App\Models\PurchaseRequestItem;
+use App\Support\AttachmentFiles;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
-use Illuminate\Validation\Rules\File;
-use Illuminate\Validation\Validator;
 
 class StorePurchaseRequestRequest extends FormRequest
 {
@@ -40,7 +39,7 @@ class StorePurchaseRequestRequest extends FormRequest
                 Rule::in(array_keys(PurchaseRequest::categoriesForTeam(is_string($this->input('requested_team')) ? $this->input('requested_team') : null))),
             ],
             'purpose' => ['required', 'string', 'max:5000'],
-            'required_date' => ['required', 'date', 'after_or_equal:today'],
+            'required_date' => ['nullable', 'date', 'after_or_equal:today'],
             'delivery_location' => ['required', 'string', 'max:255'],
             'remarks' => ['nullable', 'string', 'max:5000'],
             // Priority is assigned by IT / Premises during screening.
@@ -49,33 +48,16 @@ class StorePurchaseRequestRequest extends FormRequest
             'signature_data' => ['required_if:action,submit', 'nullable', 'string', 'max:500000'],
             'items' => ['required', 'array', 'min:1'],
             'items.*.description' => ['required', 'string', 'max:2000'],
-            // Quantity, a quotation file and the approval email are needed to
-            // submit; a draft may leave them blank. The item picture is optional.
+            // Quantity and email approval are needed to submit; quotation files and pictures are optional.
             'items.*.quantity' => ['required_if:action,submit', 'nullable', 'numeric', 'gt:0', 'max:9999999999.99'],
             'items.*.unit' => ['sometimes', 'nullable', 'string', 'max:50'],
             'items.*.estimated_unit_price' => ['sometimes', 'nullable', 'numeric', 'min:0', 'max:9999999999999.99'],
             'items.*.brand_specifications' => ['nullable', 'string', 'max:5000'],
             'items.*.reference_url' => ['nullable', 'url', 'max:2048'],
-            'items.*.attachment' => ['required_if:action,submit', 'nullable', File::types(['pdf', 'jpg', 'jpeg', 'png'])->max(5 * 1024)],
-            'items.*.picture' => ['nullable', File::types(['jpg', 'jpeg', 'png', 'webp'])->max(5 * 1024)],
-            'items.*.quotation_file' => ['nullable', File::types(PurchaseRequestItem::quotationFileTypes())->max(5 * 1024)],
+            'items.*.attachment' => ['required_if:action,submit', 'nullable', new AttachmentFiles(['pdf', 'jpg', 'jpeg', 'png', 'webp', 'eml', 'msg'])],
+            'items.*.picture' => ['nullable', new AttachmentFiles(['jpg', 'jpeg', 'png', 'webp'])],
+            'items.*.quotation_file' => ['nullable', new AttachmentFiles(PurchaseRequestItem::quotationFileTypes())],
         ];
-    }
-
-    /** A quotation file is required when submitting. */
-    public function withValidator(Validator $validator): void
-    {
-        $validator->after(function (Validator $validator): void {
-            if ($this->input('action') !== 'submit') {
-                return;
-            }
-
-            foreach ((array) $this->input('items', []) as $index => $item) {
-                if (! $this->hasFile("items.$index.quotation_file")) {
-                    $validator->errors()->add("items.$index.quotation_file", PurchaseRequestItem::submissionMessages()['items.*.quotation_file.required']);
-                }
-            }
-        });
     }
 
     protected function prepareForValidation(): void

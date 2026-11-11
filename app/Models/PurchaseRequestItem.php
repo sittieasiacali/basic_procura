@@ -87,7 +87,6 @@ class PurchaseRequestItem extends Model
     public function missingSubmissionDetails(): array
     {
         return array_keys(array_filter([
-            'quotation file' => ! $this->hasQuotationFile(),
             'quantity' => $this->quantity === null || (float) $this->quantity <= 0,
             'email approval' => ! $this->hasEmailApproval(),
         ]));

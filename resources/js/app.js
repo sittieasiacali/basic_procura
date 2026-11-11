@@ -9,6 +9,7 @@ import './request-title';
 import './request-void';
 import './inventory';
 import './inventory-sku';
+import './dashboard-history';
 
 function initializeBudgetRequestQueue() {
     const queue = document.querySelector('[data-budget-request-queue]');
@@ -558,87 +559,6 @@ document.addEventListener('click', (event) => {
     });
 });
 
-function initializeAttachmentPreviews() {
-    // Each file field previews its own pick in the [data-attachment-preview] box beside it.
-    document.addEventListener('change', (event) => {
-        const input = event.target;
-        if (!(input instanceof HTMLInputElement) || input.type !== 'file') {
-            return;
-        }
-
-        const preview = (input.closest('[class*="col-"]') ?? input.parentElement)?.querySelector('[data-attachment-preview]');
-        if (! preview) {
-            return;
-        }
-
-        if (input.dataset.previewUrl) {
-            URL.revokeObjectURL(input.dataset.previewUrl);
-            delete input.dataset.previewUrl;
-        }
-        preview.replaceChildren();
-        const file = input.files?.[0];
-        if (! file) {
-            return;
-        }
-
-        const details = document.createElement('div');
-        details.className = 'border rounded p-2 d-flex flex-wrap align-items-center gap-2';
-        const label = document.createElement('span');
-        label.className = 'small text-break';
-        label.textContent = `${file.name} · ${Math.ceil(file.size / 1024)} KB`;
-        details.appendChild(label);
-
-        const kind = file.type.startsWith('image/') ? 'image' : (file.type === 'application/pdf' ? 'pdf' : 'file');
-        let url = null;
-        if (kind !== 'file') {
-            url = URL.createObjectURL(file);
-            input.dataset.previewUrl = url;
-        }
-
-        if (kind === 'image') {
-            const image = document.createElement('img');
-            image.className = 'attachment-preview-image';
-            image.alt = `Preview of ${file.name}`;
-            image.src = url;
-            image.title = 'View full size';
-            image.addEventListener('click', () => attachmentViewer.open({ url, kind, name: file.name }));
-            details.prepend(image);
-        } else if (kind === 'pdf') {
-            const pdf = document.createElement('embed');
-            pdf.className = 'attachment-preview-pdf';
-            pdf.type = file.type;
-            pdf.src = url;
-            details.prepend(pdf);
-        } else {
-            const icon = document.createElement('span');
-            icon.className = 'badge text-bg-secondary';
-            icon.textContent = 'FILE';
-            details.prepend(icon);
-        }
-
-        if (url) {
-            const view = document.createElement('button');
-            view.className = 'btn btn-sm btn-outline-primary ms-auto';
-            view.type = 'button';
-            view.textContent = 'View';
-            view.addEventListener('click', () => attachmentViewer.open({ url, kind, name: file.name }));
-            details.appendChild(view);
-        }
-
-        const remove = document.createElement('button');
-        remove.className = `btn btn-sm btn-outline-danger${url ? '' : ' ms-auto'}`;
-        remove.type = 'button';
-        remove.textContent = 'Remove';
-        remove.addEventListener('click', () => {
-            input.value = '';
-            // Let the form re-check what is still needed to submit.
-            input.dispatchEvent(new Event('change', { bubbles: true }));
-        });
-        details.appendChild(remove);
-        preview.appendChild(details);
-    });
-}
-
 document.addEventListener('submit', (event) => {
     const form = event.target;
 
@@ -801,7 +721,6 @@ function initializeSignaturePads() {
 document.addEventListener('DOMContentLoaded', () => {
     initializeValidationUx();
     initializeAppPageBack();
-    initializeAttachmentPreviews();
     initializeSignaturePads();
 
     function initializeInventoryUnavailableModal() {
@@ -1493,3 +1412,11 @@ function initializeBudgetTableZoom() {
 }
 
 document.addEventListener('DOMContentLoaded', initializeBudgetTableZoom);
+
+import './procurement-revisions';
+
+import '../css/supplier-picker.css';
+import './supplier-picker';
+
+import '../css/attachment-fields.css';
+import './attachment-fields';

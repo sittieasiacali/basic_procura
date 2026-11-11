@@ -3,7 +3,10 @@
 @section('title', 'Inventory')
 
 @section('content')
+    <div class="inventory-page">
     <x-ui.page-header
+        class="inventory-hero"
+        style="--inventory-header-image: url('{{ asset('images/inventory-workspace-hero.webp') }}')"
         eyebrow="{{ $canViewRegister ? 'Inventory register' : 'My items' }}"
         title="{{ $canViewRegister ? 'Inventory' : 'My items' }}"
         description="{{ $canViewRegister ? 'Review all inventory, newly added items, and every release. Goods received through purchasing are logged automatically.' : 'Confirm receipt of items released to your account and attach proof photos.' }}"
@@ -12,7 +15,7 @@
     </x-ui.page-header>
 
     @if($canViewRegister)
-    <div class="row g-3 mb-4">
+    <div class="row g-3 mb-4 inventory-summary-grid">
         @foreach([
             'items' => ['Inventory items', 'inventory', 'primary'],
             'in_stock' => ['In stock', 'check-circle', 'success'],
@@ -22,9 +25,9 @@
                 <div class="card inventory-summary-card h-100">
                     <div class="card-body d-flex align-items-center gap-3">
                         <span class="inventory-summary-icon inventory-summary-icon--{{ $tone }}" aria-hidden="true"><x-ui.icon :name="$icon" size="20" /></span>
-                        <div>
-                            <div class="small text-muted">{{ $label }}</div>
-                            <div class="h4 mb-0">{{ number_format($summary[$key]) }}</div>
+                        <div class="inventory-summary-copy">
+                            <div class="small text-muted inventory-summary-label">{{ $label }}</div>
+                            <div class="h4 mb-0 inventory-summary-value">{{ number_format($summary[$key]) }}</div>
                         </div>
                     </div>
                 </div>
@@ -33,12 +36,12 @@
     </div>
     @endif
 
-    <section class="card" aria-labelledby="inventory-register-heading">
+    <section class="card inventory-register" aria-labelledby="inventory-register-heading">
         <div class="card-header">
-            <div class="d-flex justify-content-between align-items-center w-100">
+            <div class="d-flex justify-content-between align-items-center w-100 inventory-register-header">
                 <h2 class="section-title mb-0" id="inventory-register-heading">{{ match($view) { 'added' => 'Added items', 'released' => 'Released items', 'claimed' => 'Claimed items', default => 'All stock' } }}</h2>
                 @can('create', \App\Models\InventoryItem::class)
-                    <div class="d-flex flex-wrap gap-2">
+                    <div class="d-flex flex-wrap gap-2 inventory-register-actions">
                         <a class="btn btn-outline-primary btn-sm" href="{{ route('inventory.import-template') }}" download>Download template</a>
                         <button class="btn btn-outline-primary btn-sm" type="button" data-bs-toggle="modal" data-bs-target="#inventory-import-modal">Import CSV</button>
                         <button class="btn btn-primary btn-sm" type="button" data-bs-toggle="modal" data-bs-target="#inventory-add-modal">Add item</button>
@@ -220,6 +223,7 @@
     </section>
     @endif
 
+    </div>
     @can('create', \App\Models\InventoryItem::class)
         @include('inventory.partials.add-modal')
         @include('inventory.partials.import-modal')

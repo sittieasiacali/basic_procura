@@ -35,7 +35,7 @@
             <dl>
                 <div><dt>Requested by</dt><dd>{{ $document['requestedBy'] }}</dd></div>
                 <div><dt>Request date</dt><dd>{{ $request->created_at?->format('M j, Y') ?? 'Not recorded' }}</dd></div>
-                <div><dt>Expected delivery</dt><dd>{{ $order->expected_delivery_date?->format('M j, Y') ?? 'Not recorded' }}</dd></div>
+                <div><dt>Lead time</dt><dd>{{ $order->delivery_lead_time ?: 'Not recorded' }}</dd></div><div><dt>Expected delivery</dt><dd>{{ $order->expected_delivery_date?->format('M j, Y') ?? 'Not recorded' }}</dd></div>
                 <div><dt>Delivery location</dt><dd>{{ $request->delivery_location ?: 'Not provided' }}</dd></div>
                 <div><dt>Remarks</dt><dd>{{ $order->remarks ?: 'N/A' }}</dd></div>
             </dl>

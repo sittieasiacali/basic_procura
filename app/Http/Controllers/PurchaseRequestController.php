@@ -26,6 +26,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
+use App\Support\AttachmentFiles;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
@@ -212,7 +213,7 @@ class PurchaseRequestController extends Controller
         // A submitted request closes to its screening handoff receipt.
         if ($action === 'submit') {
             return $request->boolean('_embedded')
-                ? redirect()->away(route('workflow.done', [], false))
+                ? redirect()->away(\App\Support\WorkflowUrl::route('workflow.done'))
                 : redirect()->route('purchase-requests.show', $purchaseRequest);
         }
 
@@ -372,7 +373,7 @@ class PurchaseRequestController extends Controller
 
         if ($action === 'submit') {
             return $request->boolean('_embedded')
-                ? redirect()->away(route('workflow.done', [], false))
+                ? redirect()->away(\App\Support\WorkflowUrl::route('workflow.done'))
                 : redirect()->route('purchase-requests.show', $purchaseRequest);
         }
 
@@ -420,7 +421,7 @@ class PurchaseRequestController extends Controller
         });
 
         return $request->boolean('_embedded')
-            ? redirect()->away(route('workflow.done', [], false))
+            ? redirect()->away(\App\Support\WorkflowUrl::route('workflow.done'))
             : redirect()->route('purchase-requests.show', $purchaseRequest);
     }
 
@@ -476,14 +477,14 @@ class PurchaseRequestController extends Controller
                 $requestTotal += $itemTotal;
             }
 
-            if ($attachment instanceof UploadedFile) {
-                $this->storeItemAttachment($item, $attachment, $user, PurchaseRequestItem::ATTACHMENT_EMAIL_APPROVAL);
+            foreach (AttachmentFiles::files($attachment) as $file) {
+                $this->storeItemAttachment($item, $file, $user, PurchaseRequestItem::ATTACHMENT_EMAIL_APPROVAL);
             }
-            if ($picture instanceof UploadedFile) {
-                $this->storeItemAttachment($item, $picture, $user, PurchaseRequestItem::ATTACHMENT_PICTURE);
+            foreach (AttachmentFiles::files($picture) as $file) {
+                $this->storeItemAttachment($item, $file, $user, PurchaseRequestItem::ATTACHMENT_PICTURE);
             }
-            if ($quotationFile instanceof UploadedFile) {
-                $this->storeItemAttachment($item, $quotationFile, $user, PurchaseRequestItem::ATTACHMENT_QUOTATION);
+            foreach (AttachmentFiles::files($quotationFile) as $file) {
+                $this->storeItemAttachment($item, $file, $user, PurchaseRequestItem::ATTACHMENT_QUOTATION);
             }
         }
 

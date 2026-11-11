@@ -139,6 +139,11 @@ class User extends Authenticatable
 
     public function hasPoRole(PurchaseOrderApprovalStage $stage): bool
     {
+        // The President workspace reviews and approves; PO preparation belongs to Purchasing.
+        if ($stage === PurchaseOrderApprovalStage::PreparedBy && $this->hasRole(RoleSlug::President->value)) {
+            return false;
+        }
+
         $roleStage = match ($this->activeRole()?->slug) {
             RoleSlug::PoChecker->value => PurchaseOrderApprovalStage::CheckedBy,
             RoleSlug::PoNoted->value => PurchaseOrderApprovalStage::NotedBy,

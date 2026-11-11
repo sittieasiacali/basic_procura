@@ -1,0 +1,74 @@
+/* Shared screen surfaces for both application layouts; documents keep their print styling. */
+@media screen {
+    :root {
+        --asi-container-border: #9293a7;
+        --asi-container-divider: #d6d7e1;
+        --asi-container-radius: 14px;
+    }
+
+    :is(.app-main, .procura-home-main) :is(
+        .card, .dashboard-request-card, .procura-summary-card, .procura-recent-card,
+        .po-focus-card, .po-focus-form-card, .quotation-entry-card,
+        .payment-history-panel, .request-compass
+    ) {
+        border: 1px solid var(--asi-container-border) !important;
+        border-radius: var(--asi-container-radius);
+        --bs-card-border-radius: var(--asi-container-radius);
+        --bs-card-inner-border-radius: calc(var(--asi-container-radius) - 1px);
+        box-shadow: none !important;
+        min-width: 0;
+    }
+
+    :is(body.workspace-theme, body.procura-home-body) :is(.app-main, .procura-home-main) :is(
+        .card, .procura-summary-card, .procura-recent-card,
+        .po-focus-card, .po-focus-form-card, .quotation-entry-card,
+        .payment-history-panel, .request-compass
+    ) {
+        border-color: var(--asi-container-border) !important;
+    }
+
+    :is(body.workspace-theme, body.procura-home-body) :is(.app-main, .procura-home-main) .card :is(.card, .quotation-entry-card, .payment-history-panel) {
+        border-color: var(--asi-container-divider) !important;
+    }
+
+    :is(.app-main, .procura-home-main) .card > :is(.card-header, .card-footer) {
+        border-color: var(--asi-container-divider);
+    }
+
+    :is(.app-main, .procura-home-main) :is(.table-toolbar, .builder-identity-row, .executive-summary, .account-monitoring-summary) {
+        border-color: var(--asi-container-divider);
+    }
+
+    :is(.app-main, .procura-home-main) :is(.po-history-tabs, .dashboard-creator-tabs) {
+        border-color: var(--asi-container-divider);
+        box-shadow: none;
+    }
+
+    :is(.app-main, .procura-home-main) :is(.goods-received-summary > div, .request-compass-panel) {
+        border: 1px solid var(--asi-container-divider);
+        border-radius: 10px;
+    }
+
+    :is(.workspace-theme, .procura-home-body) :is(.modal-content, .dropdown-menu) {
+        border: 1px solid var(--asi-container-border);
+    }
+
+    .dashboard-history { display: grid; grid-template-columns: minmax(0, 1fr) 44px; gap: 8px; min-width: 0; }
+    .dashboard-history-switcher { grid-column: 2; grid-row: 1; min-width: 0; }
+    .dashboard-history-arrow { position: sticky; top: 88px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; width: 44px; height: 240px; padding: 12px 0; border: 1px solid #160D76; border-radius: 12px; background: #ECF5FC; color: #160D76; }
+    .dashboard-history-arrow span { writing-mode: vertical-rl; text-orientation: upright; text-transform: uppercase; font-size: .7rem; font-weight: 700; letter-spacing: .1em; }
+    .dashboard-history-arrow[data-history-direction="previous"] svg { transform: rotate(180deg); }
+    .dashboard-history-arrow:hover { background: #160D76; color: #fff; }
+    .dashboard-history-arrow[aria-disabled="true"] { opacity: .5; cursor: wait; }
+    .dashboard-history-arrow:focus-visible { outline: 3px solid #4094D9; outline-offset: 3px; }
+    .dashboard-history > .tab-content { grid-column: 1; grid-row: 1; min-width: 0; perspective: 1400px; }
+    .dashboard-history .tab-pane > .card { min-width: 0; margin: 0; }
+    .dashboard-history .table-responsive { max-width: 100%; }
+
+    @media (max-width: 575.98px) {
+        :is(.app-main, .procura-home-main) .table-toolbar-field { min-width: 0; max-width: 100%; }
+        :is(.app-main, .procura-home-main) .table-toolbar-field :is(.form-control, .form-select) { min-width: 0; }
+        :is(.app-main, .procura-home-main) .table-toolbar-dates .form-control { width: 0; }
+        .dashboard-history { gap: 4px; }
+    }
+}

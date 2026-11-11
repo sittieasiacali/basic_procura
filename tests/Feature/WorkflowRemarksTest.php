@@ -120,6 +120,25 @@ class WorkflowRemarksTest extends TestCase
         $this->get(route('purchase-requests.show', $first))->assertOk()->assertSee('Updated note on next request')->assertDontSee('Request note 1');
     }
 
+    public function test_mirrored_request_and_screening_remarks_appear_once_but_later_events_remain(): void
+    {
+        $owner = $this->user(RoleSlug::Requestor);
+        $request = $this->purchaseRequest($owner, 1);
+        $request->update(['remarks' => 'Initial request note']);
+        $at = now()->startOfSecond();
+        $request->approvals()->create(['user_id' => $owner->id, 'approval_level' => 'REQUESTOR_SUBMISSION', 'action' => 'SUBMITTED_FOR_SCREENING', 'new_status' => 'FOR_IT_SCREENING', 'remarks' => 'Initial request note', 'acted_at' => $at->copy()->addSeconds(10)]);
+        $request->auditLogs()->create(['user_id' => $owner->id, 'action' => 'CREATED_DRAFT', 'remarks' => 'Initial request note']);
+        $request->approvals()->create(['user_id' => $owner->id, 'approval_level' => 'IT_PREMISES_SCREENING', 'action' => 'INVENTORY_UNAVAILABLE', 'new_status' => 'FOR_PROCUREMENT', 'remarks' => 'Screening note', 'acted_at' => $at]);
+        $request->screening()->create(['screened_by' => $owner->id, 'team' => 'IT', 'decision' => 'UNAVAILABLE', 'evidence' => 'Screening note', 'decided_at' => $at->copy()->subSeconds(20)]);
+        $later = $request->auditLogs()->create(['user_id' => $owner->id, 'action' => 'SCREENING_REVIEWED', 'remarks' => 'Screening note']);
+        $later->forceFill(['created_at' => $at->copy()->addDay()])->save();
+        $entries = app(WorkflowRemarks::class)->forRequest($request->id);
+        $this->assertSame(1, $entries->where('text', 'Initial request note')->count());
+        $this->assertSame(2, $entries->where('text', 'Screening note')->count());
+        $this->assertSame(2, $request->approvals()->count());
+        $this->assertSame(2, $request->auditLogs()->count());
+    }
+
     private function user(RoleSlug $role): User
     {
         return User::factory()->create(['role_id' => Role::where('slug', $role->value)->value('id')]);

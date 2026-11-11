@@ -1,0 +1,8 @@
+.attachment-file-controls { display: grid; grid-template-columns: 1fr auto; gap: .4rem; margin: .5rem 0; }
+.attachment-paste-box { min-height: 2.25rem; padding: .5rem .65rem; border: 1px dashed #9ba4cf; border-radius: .4rem; color: #526081; background: #f9faff; font-size: .78rem; overflow-wrap: anywhere; }
+.attachment-paste-box:empty::before { content: attr(data-placeholder); pointer-events: none; }
+.attachment-paste-box:focus { outline: 2px solid #756bda; outline-offset: 1px; background: #fff; }
+.attachment-file-controls [role="status"] { grid-column: 1 / -1; }
+.attachment-file-card { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; padding: .5rem; margin-top: .35rem; border: 1px solid #dce1f0; border-radius: .4rem; }
+.attachment-file-name { flex: 1; font-size: .8rem; overflow-wrap: anywhere; min-width: 8rem; }
+.attachment-file-thumbnail { max-width: 72px; max-height: 64px; object-fit: contain; }

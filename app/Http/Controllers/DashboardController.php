@@ -168,10 +168,10 @@ class DashboardController extends Controller
         $budgetRegisterTab = $creatorWorkflow === null
             && in_array('approved', [$request->query('budget_register_tab'), $request->query('processed_tab')], true)
             ? 'approved' : 'created';
-        // Budget Maker workflow: the processed list is split by stage (all / waiting for Finance / finalized).
+        // Final Budget Request starts with requests waiting for finalization; finalized records have their own tab.
         $budgetStage = $creatorWorkflow === 'budget-request' && in_array($request->query('processed_tab'), ['finance', 'finalized'], true)
             ? $request->query('processed_tab')
-            : null;
+            : ($creatorWorkflow === 'budget-request' ? 'finance' : null);
         $loadsBudgetRegister = $isBudgetMaker;
         $budgetRequests = $loadsBudgetRegister
             ? BudgetRequest::query()
@@ -292,7 +292,7 @@ class DashboardController extends Controller
         $embedsBudgetRegister = $isWorkflowDashboard && $budgetRequests !== null;
         $showsProcessedByMe = $isWorkflowDashboard && $user->hasAnyRole([RoleSlug::ItStaff->value, RoleSlug::PremisesStaff->value]);
         $processedTabOptions = $creatorWorkflow !== null
-            ? ($creatorWorkflow === 'budget-request' ? ['processed', 'finance', 'finalized'] : ['processed'])
+            ? ($creatorWorkflow === 'budget-request' ? ['finance', 'finalized'] : ['processed'])
             : array_keys(array_filter([
                 'mine' => $showsProcessedByMe,
                 'created' => $embedsBudgetRegister,
@@ -927,9 +927,7 @@ class DashboardController extends Controller
         }
 
         if ($role === RoleSlug::President->value) {
-            return $query->whereIn('status', [
-                PurchaseRequestStatus::ForSupplierApproval->value,
-            ]);
+            return $query->where('status', PurchaseRequestStatus::ForSupplierApproval->value);
         }
 
         if ($role === RoleSlug::BudgetMaker->value) {
@@ -1040,80 +1038,7 @@ class DashboardController extends Controller
     /** @return array{label: string, url: string}|null */
     private function actionDetails(User $user, PurchaseRequest $purchaseRequest): ?array
     {
-        if ($purchaseRequest->status === PurchaseRequestStatus::ForBudgetProcessing
-            && $purchaseRequest->purchaseOrder?->isApproved()
-            && $purchaseRequest->purchaseOrder?->budget_campaign_id !== null
-            && ! $purchaseRequest->budgetRequest()->exists()
-            && Gate::forUser($user)->allows('prepareBudgetRequest', $purchaseRequest)) {
-            return [
-                'label' => 'Prepare budget',
-                'url' => route('budget.create', ['purchase_request_id' => $purchaseRequest->id]),
-            ];
-        }
-
-        if ($purchaseRequest->status === PurchaseRequestStatus::ForBudgetProcessing
-            && ! $purchaseRequest->purchaseOrder
-            && Gate::forUser($user)->allows('prepare', PurchaseOrder::class)) {
-            return [
-                'label' => 'Create purchase order',
-                'url' => route('purchase-requests.show', $purchaseRequest).'#purchase-order-actions',
-            ];
-        }
-
-        $purchaseOrderAction = match ($purchaseRequest->purchaseOrder?->status) {
-            'FOR_CHECKING' => ['check', 'Check purchase order', 'purchase-order-check-actions'],
-            'FOR_ACKNOWLEDGEMENT' => ['note', 'Note purchase order', 'purchase-order-acknowledgement-actions'],
-            'FOR_APPROVAL' => ['approve', 'Approve purchase order', 'purchase-order-approval-actions'],
-            default => null,
-        };
-
-        if ($purchaseOrderAction !== null) {
-            [$ability, $label, $anchor] = $purchaseOrderAction;
-
-            if (Gate::forUser($user)->allows($ability, $purchaseRequest->purchaseOrder)) {
-                return [
-                    'label' => $label,
-                    'url' => route('purchase-requests.show', $purchaseRequest).'#'.$anchor,
-                ];
-            }
-        }
-        [$ability, $label, $anchor, $route] = match ($purchaseRequest->status) {
-            PurchaseRequestStatus::Draft => ['update', 'Complete draft', null, 'purchase-requests.edit'],
-            PurchaseRequestStatus::Returned => ['update', 'Revise and resubmit', null, 'purchase-requests.edit'],
-            PurchaseRequestStatus::ForOmApproval => ['reviewOm', 'Review request', 'om-actions', 'purchase-requests.show'],
-            PurchaseRequestStatus::ForTeamScreening => ['claim', 'Claim for screening', 'screening-claim-actions', 'purchase-requests.show'],
-            PurchaseRequestStatus::ForItScreening,
-            PurchaseRequestStatus::ForPremisesScreening => $purchaseRequest->assigned_user_id === null
-                && ! ($purchaseRequest->status === PurchaseRequestStatus::ForItScreening
-                    && $user->hasRole(RoleSlug::ItStaff->value))
-                ? ['claim', 'Claim for screening', 'screening-claim-actions', 'purchase-requests.show']
-                : ['screen', 'Screen request', 'screening-actions', 'purchase-requests.show'],
-            PurchaseRequestStatus::ForProcurement => ['manageCanvassing', 'Add quotation', 'canvassing-actions', 'purchase-requests.show'],
-            PurchaseRequestStatus::ForCanvassing => ['manageCanvassing', 'Add quotation', 'canvassing-actions', 'purchase-requests.show'],
-            PurchaseRequestStatus::ForSupplierApproval => ['reviewPresident', 'Review supplier selection', 'supplier-approval-actions', 'purchase-requests.show'],
-            PurchaseRequestStatus::ForBudgetProcessing => $purchaseRequest->purchaseOrder
-                ? ['manageBudget', 'Prepare budget request', 'budget-request-actions', 'purchase-requests.show']
-                : ['manageCanvassing', 'Create purchase order', 'purchase-order-actions', 'purchase-requests.show'],
-            PurchaseRequestStatus::ForBudgetMaker,
-            PurchaseRequestStatus::ForBudgetChecker,
-            PurchaseRequestStatus::ForBudgetProceeder,
-            PurchaseRequestStatus::AwaitingPresidentFinalApproval => ['reviewBudgetFinal', 'Final budget', 'final-approval-actions', 'purchase-requests.show'],
-            PurchaseRequestStatus::ForPayment => ['processPayment', 'Record payment', 'payment-actions', 'purchase-requests.show'],
-            PurchaseRequestStatus::ForReceiving => ['receiveGoods', 'Receive goods', 'receiving-actions', 'purchase-requests.show'],
-            PurchaseRequestStatus::ForInventoryRelease => ['releaseInventory', 'Release items', 'inventory-release-actions', 'purchase-requests.show'],
-            default => abort(500, 'Unsupported dashboard action status.'),
-        };
-
-        if (! Gate::forUser($user)->allows($ability, $purchaseRequest)) {
-            return null;
-        }
-
-        $url = route($route, $purchaseRequest);
-
-        return [
-            'label' => $label,
-            'url' => $anchor ? $url.'#'.$anchor : $url,
-        ];
+        return \App\Support\WorkflowAction::for($user, $purchaseRequest);
     }
 
     /** @return array<string, string> */

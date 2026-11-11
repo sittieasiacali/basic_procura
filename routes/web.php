@@ -44,6 +44,12 @@ Route::middleware('auth')->group(function () {
     Route::get('/change-password', [PasswordChangeController::class, 'edit'])->name('password.change');
     Route::post('/change-password', [PasswordChangeController::class, 'update'])->name('password.update');
     Route::get('/dashboard', DashboardController::class)->name('dashboard');
+    Route::resource('suppliers', \App\Http\Controllers\SupplierController::class)
+        ->only(['index', 'store', 'update'])->middleware('role:it-staff,premises-staff,purchasing,purchasing-team,procurement-staff,canvassing-staff,admin');
+    Route::get('/notifications', [\App\Http\Controllers\NotificationController::class, 'index'])->name('notifications.index');
+    Route::get('/notifications/summary', [\App\Http\Controllers\NotificationController::class, 'summary'])->name('notifications.summary');
+    Route::post('/notifications/read-all', [\App\Http\Controllers\NotificationController::class, 'readAll'])->name('notifications.read-all');
+    Route::post('/notifications/{notification}/read', [\App\Http\Controllers\NotificationController::class, 'read'])->name('notifications.read');
     Route::get('/voided-monitoring', VoidedMonitoringController::class)
         ->middleware('role:purchasing-team,admin')
         ->name('voided-monitoring.index');

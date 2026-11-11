@@ -4,10 +4,12 @@
         <div class="modal-dialog modal-lg"><div class="modal-content">
             <div class="modal-header"><h2 class="modal-title fs-5">Quotation Q-{{ str_pad((string) $quotation->id, 5, '0', STR_PAD_LEFT) }}</h2><button class="btn-close" type="button" data-bs-dismiss="modal" aria-label="Close"></button></div>
             <div class="modal-body"><dl class="row mb-3">
+                <dt class="col-sm-4">Quotation stage</dt><dd class="col-sm-8">{{ $quotation->sourceLabel() }}</dd>
                 <dt class="col-sm-4">Supplier</dt><dd class="col-sm-8">{{ $quotation->supplier?->name }}</dd>
-                <dt class="col-sm-4">Net of VAT</dt><dd class="col-sm-8">&#8369; {{ number_format($quotation->vatBreakdown()['base'], 2) }}</dd>
+                <dt class="col-sm-4">Item amount (net)</dt><dd class="col-sm-8">&#8369; {{ number_format($quotation->vatBreakdown()['base'] - (float) $quotation->shipping_fee, 2) }}</dd>
+                <dt class="col-sm-4">Shipping fee</dt><dd class="col-sm-8">&#8369; {{ number_format((float) $quotation->shipping_fee, 2) }}</dd>
                 <dt class="col-sm-4">VAT</dt><dd class="col-sm-8">&#8369; {{ number_format($quotation->vatBreakdown()['vat'], 2) }} ({{ $quotation->vatBreakdown()['rate'] }}%)</dd>
-                <dt class="col-sm-4">Total</dt><dd class="col-sm-8">&#8369; {{ number_format($quotation->vatBreakdown()['total'], 2) }} â€” {{ str($quotation->vatBreakdown()['treatment'])->lower()->replace('_', ' ') }}</dd>
+                <dt class="col-sm-4">Total</dt><dd class="col-sm-8">&#8369; {{ number_format($quotation->vatBreakdown()['total'], 2) }} &middot; {{ match ($quotation->vatBreakdown()['treatment']) { 'EXCLUSIVE' => 'VAT (12%)', 'INCLUSIVE' => 'VAT inclusive (12%)', default => 'Non-VAT' } }}</dd>
                 <dt class="col-sm-4">Delivery location</dt><dd class="col-sm-8">{{ $quotation->delivery_location ?: $purchaseRequest->delivery_location ?: 'Not recorded' }}</dd>
                 <dt class="col-sm-4">Requestor / TL</dt><dd class="col-sm-8">{{ $purchaseRequest->requestor?->name ?: 'Not recorded' }} / {{ $purchaseRequest->teamLeader?->name ?: 'Not recorded' }}</dd>
                 <dt class="col-sm-4">Recommendation</dt><dd class="col-sm-8">{{ $quotation->recommendationStatus() }}</dd>
@@ -20,7 +22,7 @@
             <div class="modal-footer"><button class="btn btn-outline-secondary" type="button" data-bs-dismiss="modal">Close</button></div>
         </div></div>
     </div>
-    @if((auth()->id() === $quotation->created_by || auth()->user()->isAdministrator()) && ! $quotation->is_approved)
+    @if((auth()->id() === $quotation->created_by || auth()->user()->isAdministrator()) && $quotation->belongsToWorkspace(auth()->user()) && ! $quotation->is_approved)
         <div class="modal fade" id="quotation-edit-{{ $quotation->id }}" tabindex="-1" aria-labelledby="quotation-edit-title-{{ $quotation->id }}" aria-hidden="true">
             <div class="modal-dialog">
                 <form class="modal-content" method="POST" action="{{ route('canvassing.quotations.update', [$purchaseRequest, $quotation]) }}" data-unsaved-changes>
@@ -67,8 +69,8 @@
                                 </select>
                             </div>
                             <div class="col-md-6">
-                                <label class="form-label" for="quotation-{{ $quotation->id }}-lead-time">Lead Time</label>
-                                <input class="form-control" id="quotation-{{ $quotation->id }}-lead-time" name="delivery_lead_time" value="{{ old('delivery_lead_time', $quotation->delivery_lead_time) }}">
+                                <label class="form-label" for="quotation-{{ $quotation->id }}-shipping">Shipping fee (added after VAT)</label>
+                                <input class="form-control" id="quotation-{{ $quotation->id }}-shipping" type="number" min="0" step="0.01" name="shipping_fee" value="{{ old('shipping_fee', $quotation->shipping_fee) }}">
                             </div>
                             <div class="col-md-6">
                                 <label class="form-label" for="quotation-{{ $quotation->id }}-warranty">Warranty</label>

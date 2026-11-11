@@ -246,27 +246,19 @@ class PurchaseRequest extends Model
         return $query
             ->where('status', PurchaseRequestStatus::ForBudgetProcessing->value)
             ->whereNotNull('selected_supplier_id')
-            ->whereNull('purchase_requests.purchase_order_skipped_at')
             ->whereDoesntHave('purchaseOrder')
             ->whereHas('quotations', fn (Builder $quotation) => $quotation
                 ->where('is_approved', true)
                 ->whereColumn('supplier_quotations.supplier_id', 'purchase_requests.selected_supplier_id'));
     }
 
-    /**
-     * Requests waiting for a Budget Request: the PO completed approval, or the
-     * PO step was skipped and the budget is built from the approved quotation.
-     */
+    /** Requests with an approved Purchase Order waiting for budget preparation. */
     public function scopeReadyForBudgetRequest(Builder $query): Builder
     {
         return $query
             ->where('purchase_requests.status', PurchaseRequestStatus::ForBudgetProcessing->value)
             ->whereDoesntHave('budgetRequest')
-            ->where(fn (Builder $ready) => $ready
-                ->whereHas('purchaseOrder', fn (Builder $order) => $order->eligibleForBudgetRequest())
-                ->orWhere(fn (Builder $skipped) => $skipped
-                    ->whereNotNull('purchase_requests.purchase_order_skipped_at')
-                    ->whereDoesntHave('purchaseOrder')));
+            ->whereHas('purchaseOrder', fn (Builder $order) => $order->eligibleForBudgetRequest());
     }
 
     public function skippedPurchaseOrder(): bool

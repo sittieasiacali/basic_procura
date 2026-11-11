@@ -28,7 +28,7 @@
                     </table>
                 </div>
                 <label class="form-label" for="inventory-import-file">CSV file</label>
-                <input class="form-control @error('inventory_csv') is-invalid @enderror" id="inventory-import-file" type="file" name="inventory_csv" accept=".csv,text/csv" required aria-describedby="inventory-import-help">
+                <input class="form-control @error('inventory_csv') is-invalid @enderror" id="inventory-import-file" type="file" data-single-import name="inventory_csv" accept=".csv,text/csv" required aria-describedby="inventory-import-help">
                 <div class="form-text" id="inventory-import-help">Up to {{ number_format(500) }} rows and 2 MB. A unique SKU and inventory code are generated for every row.</div>
                 @error('inventory_csv')
                     <div class="alert alert-danger mt-3 mb-0" role="alert">

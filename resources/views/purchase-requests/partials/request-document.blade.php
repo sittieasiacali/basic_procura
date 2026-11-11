@@ -76,6 +76,9 @@
 
     <section>
         <h3 class="request-document__section-title">Requested items</h3>
+        @if(request()->routeIs('purchase-requests.preview'))
+            @include('purchase-requests.partials.requested-items')
+        @else
         <table class="request-document__table">
             <thead><tr><th>#</th><th>Description</th><th>Quotation</th><th class="text-end">Qty</th><th>Unit</th><th class="text-end">Unit price</th><th class="text-end">Total</th></tr></thead>
             <tbody>
@@ -104,6 +107,7 @@
                 <tfoot><tr><th colspan="6" class="text-end">Estimated total</th><td class="text-end">₱ {{ number_format($itemsTotal, 2) }}</td></tr></tfoot>
             @endif
         </table>
+        @endif
     </section>
 
     <section>

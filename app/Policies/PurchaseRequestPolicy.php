@@ -184,7 +184,7 @@ class PurchaseRequestPolicy
             RoleSlug::BudgetMaker->value,
             RoleSlug::PurchasingTeam->value,
         ]) && $purchaseRequest->status === PurchaseRequestStatus::ForBudgetProcessing
-            && ($purchaseRequest->purchaseOrder?->isApproved() ?? $purchaseRequest->skippedPurchaseOrder())
+            && ($purchaseRequest->purchaseOrder?->isApproved() ?? false)
             && ! $purchaseRequest->budgetRequest()->exists();
     }
 

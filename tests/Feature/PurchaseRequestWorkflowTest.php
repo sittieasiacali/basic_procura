@@ -1673,6 +1673,76 @@ class PurchaseRequestWorkflowTest extends TestCase
         $this->assertSame('40.00', $order->items()->where('purchase_request_item_id', $secondItem->id)->firstOrFail()->total_price);
     }
 
+    public function test_shipping_and_po_team_lead_time_flow_into_the_purchase_order(): void
+    {
+        $request = $this->createRequest($this->user(RoleSlug::TeamLeader), false);
+        $firstItem = $request->items()->firstOrFail();
+        $firstItem->update(['quantity' => 3, 'unit' => 'unit', 'estimated_unit_price' => 20, 'estimated_total' => 60]);
+        $secondItem = $request->items()->create([
+            'description' => 'Second quoted item',
+            'quantity' => null,
+            'unit' => 'piece',
+            'estimated_unit_price' => 40,
+            'estimated_total' => 40,
+        ]);
+        $purchasing = $this->user(RoleSlug::PurchasingTeam);
+        $supplier = Supplier::query()->create(['name' => 'Approved line supplier', 'is_active' => true]);
+        $request->forceFill([
+            'status' => PurchaseRequestStatus::ForBudgetProcessing,
+            'selected_supplier_id' => $supplier->id,
+        ])->save();
+        $request->quotations()->create([
+            'supplier_id' => $supplier->id,
+            'created_by' => $purchasing->id,
+            'item_or_service' => $request->title,
+            'shipping_fee' => 25,
+            'price' => 100.01,
+            'vat_treatment' => 'EXEMPT',
+            'base_amount' => 100.01,
+            'vat_amount' => 0,
+            'total_amount' => 100.01,
+            'is_approved' => true,
+            'approved_at' => now(),
+        ]);
+        foreach ([
+            [PurchaseOrderApprovalStage::PreparedBy, $purchasing],
+            [PurchaseOrderApprovalStage::CheckedBy, $this->user(RoleSlug::Tl)],
+            [PurchaseOrderApprovalStage::NotedBy, $this->user(RoleSlug::Om)],
+            [PurchaseOrderApprovalStage::ApprovedBy, $this->user(RoleSlug::Smt)],
+        ] as [$stage, $user]) {
+            PoRoleAssignment::query()->create(['stage' => $stage, 'user_id' => $user->id]);
+        }
+
+        $this->actingAs($purchasing)->get(route('purchase-requests.show', $request))
+            ->assertOk()
+            ->assertSee('data-po-line-amount="75.01"', false)
+            ->assertSee('data-po-line-amount="50.00"', false)
+            ->assertDontSee('name="po_items['.$firstItem->id.'][unit_price]"', false);
+
+        $this->post(route('purchase-orders.store', $request), [
+            'delivery_lead_time' => '5 business days',
+            'expected_delivery_date' => now()->addWeek()->toDateString(),
+            'remarks' => 'Automatically priced from the approved quote.',
+            'payable_on' => now()->addWeeks(2)->toDateString(),
+            'payment_details' => 'Bank transfer',
+            'account_number' => '123456789',
+            'account_name' => $supplier->name,
+            'payment_terms' => '30 days',
+            'po_items' => [
+                $firstItem->id => ['quantity' => 3, 'unit' => 'unit', 'unit_price' => 1],
+                $secondItem->id => ['quantity' => 2, 'unit' => 'piece', 'unit_price' => 1],
+            ],
+            ...$this->workflowSignature($purchasing),
+        ])->assertSessionHasNoErrors();
+
+        $order = $request->fresh()->purchaseOrder;
+        $this->assertSame('5 business days', $order->delivery_lead_time);
+        $this->assertSame('125.01', $order->subtotal);
+        $this->assertSame('125.01', $order->total_amount);
+        $this->assertSame('75.01', $order->items()->where('purchase_request_item_id', $firstItem->id)->firstOrFail()->total_price);
+        $this->assertSame('50.00', $order->items()->where('purchase_request_item_id', $secondItem->id)->firstOrFail()->total_price);
+    }
+
     public function test_purchasing_can_create_a_purchase_order_from_the_approved_supplier(): void
     {
         $request = $this->createRequest($this->user(RoleSlug::TeamLeader), true, ['request_type' => 'IT']);
@@ -3176,7 +3246,7 @@ class PurchaseRequestWorkflowTest extends TestCase
             'id' => $quotation->id,
             'price' => 1250.50,
             'delivery_location' => $payload['delivery_location'],
-            'delivery_lead_time' => $payload['delivery_lead_time'],
+            'delivery_lead_time' => null,
             'remarks' => $payload['remarks'],
         ]);
         $this->assertSame('Updated Supplier', $quotation->fresh()->supplier->name);

@@ -132,7 +132,7 @@ function initializePaymentForm() {
                 event.preventDefault();
                 if (!event.dataTransfer?.files.length) return;
                 receipts.files = event.dataTransfer.files;
-                listReceipts();
+                receipts.dispatchEvent(new Event('change', { bubbles: true }));
             });
         }
         sync();

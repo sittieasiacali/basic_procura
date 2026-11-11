@@ -155,7 +155,7 @@ class PurchaseOrderPolicy
                 && (! $approval->hasValidSignature() || (int) $approval->acted_by === (int) $user->id);
         }
 
-        return $user->hasPoRole($stage)
+        return $this->prepare($user)
             && (int) $purchaseOrder->approvalFor($stage)?->assigned_user_id === (int) $user->id;
     }
 

@@ -33,9 +33,6 @@ final class WorkflowEmailNotifier
     {
         $purchaseRequest = $order->purchaseRequest;
         $addresses = $this->teamLeaderRecipients->addresses($purchaseRequest);
-        if ($addresses === []) {
-            return;
-        }
 
         $stage = $missingSignature !== null
             ? 'Purchase Order: '.match ($missingSignature) {
@@ -70,13 +67,17 @@ final class WorkflowEmailNotifier
             return;
         }
 
+        $nextSigner = $missingSignature
+            ? $order->approvals()->where('stage', $missingSignature->value)->value('assigned_user_id')
+            : $order->approvals()->where('status', 'PENDING')->orderBy('id')->value('assigned_user_id');
+        app(ProcurementNotifications::class)->send($purchaseRequest, 'PURCHASE_ORDER_'.$order->status, $stage, $nextSigner);
         $this->send($purchaseRequest, $addresses, $stage, 'PURCHASE_ORDER_'.$order->status);
         $purchaseRequest->auditLogs()->create([
             'user_id' => $actor->id,
             'action' => 'WORKFLOW_EMAIL_QUEUED',
             'previous_status' => $purchaseRequest->status->value,
             'new_status' => $purchaseRequest->status->value,
-            'remarks' => 'Workflow update emails queued for the TL\'s assigned OM and SMT.',
+            'remarks' => $addresses === [] ? 'In-app workflow update recorded; no OM/SMT email recipients configured.' : 'Workflow update emails queued for the TL\'s assigned OM and SMT.',
             'metadata' => [
                 'purchase_order_id' => $order->id,
                 'email_stage' => $stage,
@@ -88,13 +89,14 @@ final class WorkflowEmailNotifier
 
     public function requestProcessed(PurchaseRequest $purchaseRequest, string $action, string $stage): void
     {
+        app(ProcurementNotifications::class)->send($purchaseRequest, $action, $stage);
         $this->send($purchaseRequest, $this->teamLeaderRecipients->addresses($purchaseRequest), $stage, $action);
     }
 
     /** @param list<string> $addresses */
     private function send(PurchaseRequest $purchaseRequest, array $addresses, string $stage, string $action): void
     {
-        $purchaseRequest->loadMissing([
+        $purchaseRequest->load([
             'requestor', 'items', 'screening.screener', 'screening.assets',
             'quotations.supplier', 'purchaseOrder', 'budgetRequest',
             'payments.recorder', 'goodsReceipts.receiver', 'goodsReceipts.items',
@@ -273,6 +275,7 @@ final class WorkflowEmailNotifier
             default => RequestWithdrawal::stageLabel($status->value),
         };
     }
+
     /**
      * Position on the 7-step tracker drawn in the email (8 = every step done).
      * Null hides the tracker for closed or paused requests.

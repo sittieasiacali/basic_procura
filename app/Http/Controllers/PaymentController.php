@@ -140,7 +140,7 @@ class PaymentController extends Controller
             .($receivedCount > 0 ? " {$receivedCount} received and added to inventory." : '')
             .($count - $receivedCount > 0 ? ' '.($count - $receivedCount).' moved to For receiving.' : '');
 
-        return ($request->boolean('_embedded') ? redirect()->away(route('workflow.done', [], false)) : redirect()->route('dashboard'))
+        return ($request->boolean('_embedded') ? redirect()->away(\App\Support\WorkflowUrl::route('workflow.done')) : redirect()->route('dashboard'))
             ->with('success', $message);
     }
 

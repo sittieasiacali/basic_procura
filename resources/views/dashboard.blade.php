@@ -57,7 +57,7 @@
     @endphp
 
     <div class="dashboard-page {{ $isPurchasingDashboard ? 'dashboard-page--purchasing' : '' }} {{ $isFinanceDashboard ? 'dashboard-page--finance' : '' }} {{ $user->hasAnyRole([\App\Enums\RoleSlug::ItStaff->value, \App\Enums\RoleSlug::PremisesStaff->value]) ? 'dashboard-page--screening' : '' }} {{ $user->hasRole(\App\Enums\RoleSlug::ItStaff->value) ? 'dashboard-page--it' : '' }}">
-        <header class="dashboard-page-header" @if($user->hasRole(\App\Enums\RoleSlug::ItStaff->value)) style="--dashboard-header-image: url('{{ asset('images/it-dashboard-header.png') }}')" @endif>
+        <header class="dashboard-page-header" @if($user->hasRole(\App\Enums\RoleSlug::ItStaff->value)) style="--dashboard-header-image: url('{{ asset('images/it-workspace-hero.webp') }}')" @endif>
             <div class="dashboard-heading-block">
                 <div class="dashboard-heading-top">
 
@@ -92,6 +92,8 @@
             </div>
         </header>
 
+        <details class="workspace-details">
+            <summary>Workspace details</summary>
         <section class="card dashboard-context-bar" aria-label="Workspace and quick links">
             <h2 id="workspace-heading" class="visually-hidden">Workspace</h2>
             <dl class="dashboard-context-details" aria-labelledby="workspace-heading">
@@ -132,6 +134,8 @@
                 </nav>
             @endif
         </section>
+
+        </details>
 
         <section aria-label="Operational metrics">
             <div class="row g-3 dashboard-kpi-grid">
@@ -483,6 +487,18 @@
             @endif
 
             @if($isWorkflowDashboard && ($creatorWorkflow !== 'budget-request' || $isBudgetProcessedView))
+                @if($voidedMonitoring !== null && ! $creatorWorkflow)
+                    @php($historyView = request('history_view') === 'voided' || (! request()->has('history_view') && request()->hasAny(['voided_search', 'voided_status', 'voided_from', 'voided_to', 'voided_page'])) ? 'voided' : 'processed')
+                    <div class="dashboard-history" data-dashboard-history data-current-view="{{ $historyView }}">
+                        <nav class="dashboard-history-switcher" aria-label="Switch request history">
+                            <button class="dashboard-history-arrow" type="button" data-history-direction="{{ $historyView === 'processed' ? 'next' : 'previous' }}" aria-label="Show {{ $historyView === 'processed' ? 'Voided requests' : 'Processed by me' }}" aria-controls="processed-history-panel voided-history-panel">
+                                <x-ui.icon name="chevron-right" size="20" />
+                                <span data-history-target>{{ $historyView === 'processed' ? 'Voided' : 'Processed' }}</span>
+                            </button>
+                        </nav>
+                        <div class="tab-content">
+                            <div class="tab-pane {{ $historyView === 'processed' ? 'active show' : '' }}" id="processed-history-panel" role="region" aria-labelledby="processed-requests-heading" data-history-panel="processed" @if($historyView !== 'processed') hidden @endif>
+                @endif
                 <section class="card dashboard-panel dashboard-recent-panel" aria-labelledby="processed-requests-heading">
                     @if($creatorWorkflow === 'budget-request')
                         <div class="card-header br-panel-header">
@@ -522,7 +538,7 @@
                                     @if(filled(request('br_search')) || filled(request('transaction_type')))
                                         <small>Results in every tab: {{ number_format($processedTabCounts['processed'] ?? 0) }} found. Switch tabs to narrow by stage.</small>
                                     @else
-                                        <small>Searches All, Waiting for Final BR and Finalized at once.</small>
+                                        <small>Searches Waiting for Final BR and Finalized.</small>
                                     @endif
                                 </span>
                             </div>
@@ -541,10 +557,10 @@
                         </div>
                     @endif
                     {{-- Canvassing and Purchase Orders have a single "Processed" view, so no tab strip. --}}
-                    @if($processedTabCounts && ! ($creatorWorkflow && count($processedTabCounts) === 1))
+                    @if($processedTabCounts && count($processedTabCounts) > 1)
                         <nav @class(['po-history-tabs', 'po-history-tabs--large' => $creatorWorkflow === 'budget-request']) aria-label="Processed request views">
                             @foreach(array_intersect_key([
-                                'processed' => [$creatorWorkflow === 'budget-request' ? 'All' : 'Processed', $creatorWorkflow === 'budget-request' ? 'receipt' : 'check-circle'],
+                                ...($creatorWorkflow === 'budget-request' ? [] : ['processed' => ['Processed', 'check-circle']]),
                                 'finance' => ['Waiting for Final BR', 'hourglass'],
                                 'finalized' => ['Finalized', 'check-circle'],
                                 'mine' => ['Processed by me', 'user'],
@@ -630,6 +646,14 @@
                     @if($processedRequests->hasPages())<div class="card-footer">{{ $processedRequests->fragment('processed-requests-heading')->links() }}</div>@endif
                     @endif
                 </section>
+                @if($voidedMonitoring !== null && ! $creatorWorkflow)
+                            </div>
+                            <div class="tab-pane {{ $historyView === 'voided' ? 'active show' : '' }}" id="voided-history-panel" role="region" aria-labelledby="voided-monitoring-heading" data-history-panel="voided" @if($historyView !== 'voided') hidden @endif>
+                                @include('dashboard.partials.voided-monitoring')
+                            </div>
+                        </div>
+                    </div>
+                @endif
                 @if($creatorWorkflow === 'purchase-order' && $createdPurchaseOrders)
                     @include('purchase-orders.partials.preview-modal')
                 @endif
@@ -782,7 +806,9 @@
                 </div>
             </section>
             @endif
-            @include('dashboard.partials.voided-monitoring')
+            @unless($isWorkflowDashboard && ! $creatorWorkflow && $voidedMonitoring !== null)
+                @include('dashboard.partials.voided-monitoring')
+            @endunless
             </div>
         </div>
 

@@ -18,7 +18,7 @@ use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
-/** Requestor item requirements, IT priority, optional remarks, and the optional PO step. */
+/** Requestor item requirements, IT priority, optional remarks, and required Purchase Orders. */
 class RequestRevisionsTest extends TestCase
 {
     use RefreshDatabase;
@@ -30,7 +30,7 @@ class RequestRevisionsTest extends TestCase
         Storage::fake('local');
     }
 
-    public function test_submitting_needs_a_quotation_file_quantity_and_email_approval_but_a_draft_does_not(): void
+    public function test_submitting_needs_quantity_and_email_approval_but_a_draft_does_not(): void
     {
         $requestor = $this->user(RoleSlug::Requestor);
         $bareItem = ['description' => 'Business laptop'];
@@ -39,7 +39,8 @@ class RequestRevisionsTest extends TestCase
             ->assertSessionHasNoErrors();
 
         $this->post(route('purchase-requests.store'), [...$this->payload(['items' => [$bareItem]]), 'action' => 'submit', ...$this->workflowSignature($requestor)])
-            ->assertSessionHasErrors(['items.0.quotation_file', 'items.0.quantity', 'items.0.attachment'])
+            ->assertSessionHasErrors(['items.0.quantity', 'items.0.attachment'])
+            ->assertSessionDoesntHaveErrors('items.0.quotation_file')
             ->assertSessionDoesntHaveErrors('items.0.picture');
         $this->assertSame(1, PurchaseRequest::query()->count());
     }
@@ -92,24 +93,30 @@ class RequestRevisionsTest extends TestCase
         $this->assertSame(PurchaseRequestStatus::Draft, $request->fresh()->status);
     }
 
-    public function test_quotation_text_cannot_replace_the_required_file_on_any_submission_path(): void
+    public function test_required_date_and_quotation_file_are_optional_on_all_submission_paths(): void
     {
         $owner = $this->user(RoleSlug::Requestor);
         $this->actingAs($owner);
         $item = [...$this->completeItem(), 'quotation_file' => null];
-        $payload = [...$this->payload(['items' => [$item]]), ...$this->workflowSignature($owner)];
-        $this->post(route('purchase-requests.store'), [...$payload, 'action' => 'submit'])
-            ->assertSessionHasErrors('items.0.quotation_file');
-        $this->assertSame(0, PurchaseRequest::query()->count());
+        $payload = [...$this->payload(['items' => [$item]]), 'required_date' => null, ...$this->workflowSignature($owner)];
+        $this->post(route('purchase-requests.store'), [...$payload, 'action' => 'submit'])->assertSessionHasNoErrors();
+        $submitted = PurchaseRequest::query()->sole();
+        $this->assertNull($submitted->required_date);
+        $this->assertNotSame(PurchaseRequestStatus::Draft, $submitted->status);
 
         $this->post(route('purchase-requests.store'), $payload)->assertSessionHasNoErrors();
-        $request = PurchaseRequest::query()->sole();
-        $this->post(route('purchase-requests.submit', $request), $this->workflowSignature($owner))
-            ->assertSessionHasErrors('items');
-        $this->put(route('purchase-requests.update', $request), [
+        $draft = PurchaseRequest::query()->where('status', PurchaseRequestStatus::Draft)->sole();
+        $this->get(route('purchase-requests.edit', $draft))->assertOk();
+        $this->post(route('purchase-requests.submit', $draft), $this->workflowSignature($owner))->assertSessionHasNoErrors();
+        $this->assertNotSame(PurchaseRequestStatus::Draft, $draft->fresh()->status);
+
+        $this->post(route('purchase-requests.store'), $payload)->assertSessionHasNoErrors();
+        $draft = PurchaseRequest::query()->where('status', PurchaseRequestStatus::Draft)->sole();
+        $this->put(route('purchase-requests.update', $draft), [
             ...$payload, 'action' => 'submit', 'department_campaign' => $owner->campaign->name,
-        ])->assertSessionHasErrors('items.0.quotation_file');
-        $this->assertSame(PurchaseRequestStatus::Draft, $request->fresh()->status);
+        ])->assertSessionHasNoErrors();
+        $this->assertNull($draft->fresh()->required_date);
+        $this->assertNotSame(PurchaseRequestStatus::Draft, $draft->fresh()->status);
     }
 
     public function test_a_quotation_file_without_quotation_text_is_enough_to_submit(): void
@@ -226,34 +233,28 @@ class RequestRevisionsTest extends TestCase
         $this->get(route('purchase-requests.document', $request))->assertOk()->assertSee('<dt>Remarks</dt><dd>N/A</dd>', false);
     }
 
-    public function test_a_request_can_skip_the_purchase_order_and_be_budgeted_from_its_quotation(): void
+    public function test_purchase_order_is_required_before_budget_preparation_even_for_legacy_skipped_requests(): void
     {
-        [$request, $supplier] = $this->awaitingPurchaseOrder();
+        [$request] = $this->awaitingPurchaseOrder();
         $preparer = $this->user(RoleSlug::PurchasingTeam);
-
-        $this->actingAs($preparer)->get(route('purchase-requests.show', $request))->assertOk()->assertSee('Proceed without PO');
-        $this->post(route('purchase-orders.skip', $request), ['remarks' => 'Small cash purchase.'])->assertSessionHasNoErrors()
-            ->assertSessionHas('workflow_submission_notice', fn ($notice) => $notice['requests'][0]['code'] === $request->request_number);
-        $request->refresh();
-        $this->assertNotNull($request->purchase_order_skipped_at);
+        $this->actingAs($preparer)->get(route('purchase-requests.show', $request))
+            ->assertOk()->assertDontSee('Proceed without PO');
+        $this->post(route('purchase-orders.skip', $request))->assertSessionHasErrors('purchase_order');
+        $this->assertNull($request->fresh()->purchase_order_skipped_at);
         $this->assertNull($request->purchaseOrder);
-        $this->assertFalse(PurchaseRequest::query()->eligibleForPurchaseOrderPreparation()->whereKey($request->id)->exists());
-        $this->assertTrue(PurchaseRequest::query()->readyForBudgetRequest()->whereKey($request->id)->exists());
-        $this->post(route('purchase-orders.skip', $request))->assertSessionHasErrors('status');
+        $this->assertTrue(PurchaseRequest::query()->eligibleForPurchaseOrderPreparation()->whereKey($request->id)->exists());
+        $this->assertFalse(PurchaseRequest::query()->readyForBudgetRequest()->whereKey($request->id)->exists());
 
+        $request->update(['purchase_order_skipped_at' => now(), 'purchase_order_skipped_by' => $preparer->id]);
+        $this->assertTrue(PurchaseRequest::query()->eligibleForPurchaseOrderPreparation()->whereKey($request->id)->exists());
+        $this->assertFalse(PurchaseRequest::query()->readyForBudgetRequest()->whereKey($request->id)->exists());
         $maker = $this->user(RoleSlug::BudgetMaker);
         $source = Campaign::query()->where('name', 'AIA 1')->firstOrFail();
-        $this->actingAs($maker)->get(route('budget.index'))->assertOk()->assertSee($request->request_number)->assertSee('No PO');
-        $this->get(route('budget.create', ['purchase_request_id' => $request->id]))->assertOk()->assertSee('The Purchase Order step was skipped.');
-        $this->post(route('budget.store'), ['purchase_request_id' => $request->id, 'campaign_id' => $source->id, ...$this->workflowSignature($maker)])
-            ->assertSessionHasNoErrors();
-
-        $budget = BudgetRequest::query()->sole();
-        $this->assertNull($budget->purchase_order_id);
-        $this->assertSame('1120.00', $budget->amount);
-        $this->assertSame($budget->id, $request->fresh()->budgetRequest?->id);
-        $this->assertSame(PurchaseRequestStatus::AwaitingPresidentFinalApproval, $request->fresh()->status);
-        $this->assertSame($supplier->id, $request->fresh()->selected_supplier_id);
+        $this->actingAs($maker)->get(route('budget.create', ['purchase_request_id' => $request->id]))
+            ->assertSessionHasErrors('purchase_request_id');
+        $this->post(route('budget.store'), ['purchase_request_id' => $request->id, 'campaign_id' => $source->id])
+            ->assertSessionHasErrors('purchase_request_id');
+        $this->assertDatabaseCount('budget_requests', 0);
     }
 
     public function test_only_the_po_preparer_can_skip_the_purchase_order(): void
@@ -265,6 +266,22 @@ class RequestRevisionsTest extends TestCase
     }
 
     /** @return array{PurchaseRequest, Supplier} */
+    public function test_request_items_accept_multiple_approval_quotation_and_picture_files(): void
+    {
+        $owner = $this->user(RoleSlug::Requestor);
+        $item = [...$this->completeItem(),
+            'attachment' => [UploadedFile::fake()->image('email-one.png'), UploadedFile::fake()->image('email-two.png')],
+            'quotation_file' => [UploadedFile::fake()->create('one.pdf', 10, 'application/pdf'), UploadedFile::fake()->create('two.pdf', 10, 'application/pdf')],
+            'picture' => [UploadedFile::fake()->image('picture-one.png'), UploadedFile::fake()->image('picture-two.png')],
+        ];
+        $this->actingAs($owner)->post(route('purchase-requests.store'), [...$this->payload(['items' => [$item]]), 'action' => 'submit', ...$this->workflowSignature($owner)])->assertSessionHasNoErrors();
+        $stored = PurchaseRequestItem::sole();
+        $this->assertSame(6, $stored->attachments()->count());
+        foreach ([PurchaseRequestItem::ATTACHMENT_EMAIL_APPROVAL, PurchaseRequestItem::ATTACHMENT_QUOTATION, PurchaseRequestItem::ATTACHMENT_PICTURE] as $category) {
+            $this->assertSame(2, $stored->attachments()->where('category', $category)->count());
+        }
+    }
+
     private function awaitingPurchaseOrder(): array
     {
         $supplier = Supplier::query()->create(['name' => 'No PO supplier', 'is_active' => true]);

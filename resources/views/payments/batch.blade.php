@@ -90,7 +90,7 @@
                     <div class="col-12"><label class="form-label" for="batch-details">Details <span class="text-muted">(optional)</span></label><textarea class="form-control" id="batch-details" rows="2" name="details" maxlength="2000">{{ old('details') }}</textarea></div>
                     <div class="col-12">
                         <label class="form-label" for="batch-receipts">Receipt evidence</label>
-                        <input class="form-control @error('receipts') is-invalid @enderror @error('receipts.*') is-invalid @enderror" id="batch-receipts" type="file" name="receipts[]" accept=".jpg,.jpeg,.png,.webp,.pdf" multiple required aria-describedby="batch-receipts-help">
+                        <input class="form-control @error('receipts') is-invalid @enderror @error('receipts.*') is-invalid @enderror" id="batch-receipts" type="file" data-max-files="5" data-max-file-size="10485760" name="receipts[]" accept=".jpg,.jpeg,.png,.webp,.pdf" multiple required aria-describedby="batch-receipts-help">
                         <div class="form-text" id="batch-receipts-help">Attached to every selected PO's payment. JPG, PNG, WEBP or PDF, up to 5 files of 10 MB each. Each PO is paid its remaining balance.</div>
                         @error('receipts')<div class="invalid-feedback">{{ $message }}</div>@enderror
                         @error('receipts.*')<div class="invalid-feedback">{{ $message }}</div>@enderror

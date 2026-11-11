@@ -117,6 +117,9 @@ class PurchaseRequestWorkflow
         }
 
         $this->recordAudit($purchaseRequest, $user, $action, $previousStatus, $newStatus, $remarks, $metadata);
+        if ($previousStatus !== $newStatus) {
+            app(ProcurementNotifications::class)->send($purchaseRequest, $action, 'Current stage: '.str($newStatus->value)->replace('_', ' ')->title());
+        }
         $this->activityNotifier->requestMoved($purchaseRequest, $previousStatus, $action);
         if (request()->hasSession()) {
             request()->session()->flash('workflow_request_code', $purchaseRequest->request_number);

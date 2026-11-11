@@ -89,27 +89,7 @@ class RequestStageReceipt
     /** The same user may also hold the next step (e.g. an OM who is also a PO approver). */
     private static function hasPendingWork(PurchaseRequest $purchaseRequest, User $user): bool
     {
-        // reviewOm is a role check only; the OM acts only while the request awaits OM approval.
-        if ($purchaseRequest->status === PurchaseRequestStatus::ForOmApproval && $user->can('reviewOm', $purchaseRequest)) {
-            return true;
-        }
-
-        foreach (['claim', 'screen', 'releaseInventory', 'reviewPresident', 'reviewBudgetFinal', 'submit'] as $ability) {
-            if ($user->can($ability, $purchaseRequest)) {
-                return true;
-            }
-        }
-
-        $order = $purchaseRequest->purchaseOrder;
-        if ($order) {
-            foreach (['moveToChecker', 'check', 'note', 'approve'] as $ability) {
-                if ($user->can($ability, $order)) {
-                    return true;
-                }
-            }
-        }
-
-        return false;
+        return WorkflowAction::canAct($user, $purchaseRequest);
     }
 
     /** @return array<string, array{statuses: list<PurchaseRequestStatus>, title: string, message: string}> */

@@ -16,6 +16,7 @@ use SplObjectStorage;
 class WorkflowRemarks
 {
     private array $entries = [];
+
     private ?object $requestScope = null;
 
     /** Batch only the requests represented by the current page's records. */
@@ -131,12 +132,15 @@ class WorkflowRemarks
             foreach ($request->auditLogs as $log) {
                 $duplicate = $request->approvals->contains(fn ($approval) => $approval->action === $log->action
                     && $approval->user_id === $log->user_id && $approval->remarks === $log->remarks
-                    && $approval->acted_at?->format('Y-m-d H:i:s') === $log->created_at?->format('Y-m-d H:i:s'));
+                    && $approval->acted_at && $log->created_at
+                    && abs($approval->acted_at->getTimestamp() - $log->created_at->getTimestamp()) <= 5);
                 if (! $duplicate) {
                     $add($this->label($log->action), $log->remarks, $log->user?->name, $log->created_at, $log->action);
                 }
             }
-            if ($request->screening) {
+            if ($request->screening && ! $request->approvals->contains(fn ($approval) => $approval->user_id === $request->screening->screened_by
+                && in_array($approval->action, ['INVENTORY_AVAILABLE', 'INVENTORY_UNAVAILABLE'], true)
+                && trim((string) $approval->remarks) === trim((string) $request->screening->evidence))) {
                 $add($request->screening->team.' screening', $request->screening->evidence, $request->screening->screener?->name, $request->screening->decided_at);
             }
             foreach ($request->quotations as $quotation) {
@@ -185,7 +189,7 @@ class WorkflowRemarks
                     $add('Inventory claim', $release->claim_remarks, $release->claimant?->name, $release->claimed_at);
                 }
             }
-            $this->entries[$request->id] = $entries->unique(fn ($entry) => $entry['stage'].'|'.$entry['actor'].'|'.$entry['text'].'|'.$entry['at']?->format('Y-m-d H:i:s'))
+            $this->entries[$request->id] = $entries->unique(fn ($entry) => $entry['actor'].'|'.preg_replace('/\s+/u', ' ', trim($entry['text'])).'|'.(in_array($entry['stage'], ['Request', 'Created Draft', 'Requestor Submission'], true) && ! str_starts_with((string) $entry['action'], 'RESUBMITTED') ? 'initial-request' : $entry['at']?->format('Y-m-d H:i:s')))
                 ->sortBy(fn ($entry) => $entry['at']?->getTimestamp() ?? 0)->values();
         }
     }

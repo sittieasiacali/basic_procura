@@ -15,7 +15,7 @@
                 </div>
                 <div class="mb-3">
                     <label class="form-label" for="inventory-claim-photos">Evidence photos (1 to 5)</label>
-                    <input class="form-control" id="inventory-claim-photos" type="file" name="photos[]" accept="image/jpeg,image/png,image/webp" multiple required>
+                    <input class="form-control" id="inventory-claim-photos" type="file" data-max-files="5" name="photos[]" accept="image/jpeg,image/png,image/webp" multiple required>
                     <div class="form-text">Each photo can be up to 5 MB.</div>
                     @error('photos')<div class="text-danger small">{{ $message }}</div>@enderror
                     @error('photos.*')<div class="text-danger small">{{ $message }}</div>@enderror

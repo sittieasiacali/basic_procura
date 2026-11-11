@@ -396,7 +396,7 @@ class BudgetController extends Controller
     /** Inside the dashboard action modal, close the modal instead of loading the next page in it. */
     private function finished(Request $request, RedirectResponse $redirect, string $message): RedirectResponse
     {
-        return ($request->boolean('_embedded') ? redirect()->away(route('workflow.done', [], false)) : $redirect)
+        return ($request->boolean('_embedded') ? redirect()->away(\App\Support\WorkflowUrl::route('workflow.done')) : $redirect)
             ->with('success', $message);
     }
 
@@ -420,7 +420,7 @@ class BudgetController extends Controller
             ]);
         }
 
-        if (! $purchaseRequest->purchaseOrder && ! $purchaseRequest->skippedPurchaseOrder()) {
+        if (! $purchaseRequest->purchaseOrder) {
             throw ValidationException::withMessages([
                 'purchase_request_id' => "{$purchaseRequest->request_number} does not have a Purchase Order.",
             ]);

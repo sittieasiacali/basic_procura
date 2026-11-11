@@ -131,7 +131,7 @@
             \App\Enums\PurchaseRequestStatus::AwaitingPresidentFinalApproval,
         ], true) ? 'Awaiting Purchasing Final Approval' : str($purchaseRequest->status->value)->replace('_', ' ')->title();
         $nextActionTitle = match($purchaseRequest->status) {
-            \App\Enums\PurchaseRequestStatus::ForBudgetProcessing => $purchaseOrderWorkflow['title'] ?? ($purchaseRequest->purchaseOrder || $purchaseRequest->skippedPurchaseOrder() ? 'Create Budget Request' : 'Generate Purchase Order'),
+            \App\Enums\PurchaseRequestStatus::ForBudgetProcessing => $purchaseOrderWorkflow['title'] ?? ($purchaseRequest->purchaseOrder ? 'Create Budget Request' : 'Generate Purchase Order'),
             \App\Enums\PurchaseRequestStatus::ForBudgetMaker => 'Complete Final Approval',
             \App\Enums\PurchaseRequestStatus::ForBudgetChecker,
             \App\Enums\PurchaseRequestStatus::ForBudgetProceeder => 'Complete Final Approval',
@@ -159,7 +159,6 @@
             && in_array($purchaseRequest->status, [\App\Enums\PurchaseRequestStatus::ForProcurement, \App\Enums\PurchaseRequestStatus::ForCanvassing], true);
         $canDecidePresidentApproval = auth()->user()->can('reviewPresident', $purchaseRequest);
         $poFocus = ! $purchaseRequest->purchaseOrder
-            && ! $purchaseRequest->skippedPurchaseOrder()
             && $purchaseRequest->status === \App\Enums\PurchaseRequestStatus::ForBudgetProcessing;
         $shouldAutoOpenPurchaseOrderPreview = ! session('workflow_submission_notice')
             && (int) session('purchase_order_created') === $purchaseRequest->purchaseOrder?->id;
@@ -224,6 +223,11 @@
         if ($requestStageReceipt && ! in_array($requestStageReceipt['action'], ['SUBMITTED_FOR_SCREENING', 'RESUBMITTED_FOR_SCREENING'], true)) {
             // Like the PO stages, the closed page shows only the hand-off message.
             $handoffReceipt = ['title' => $requestStageReceipt['title'], 'message' => $requestStageReceipt['message']];
+        }
+        // A completion receipt belongs to the earlier task. It cannot replace
+        // an action authorized for this workspace at the request's current stage.
+        if (\App\Support\WorkflowAction::canAct(auth()->user(), $purchaseRequest)) {
+            $handoffReceipt = null;
         }
     @endphp
 
@@ -469,51 +473,7 @@
             <div class="section-kicker">Request contents</div>
             <div class="fw-semibold">Requested Items</div>
         </div>
-        <div class="table-responsive">
-            <table class="table align-middle mb-0 request-items-table">
-                @php
-                    $hasItemEstimates = $purchaseRequest->items->contains(fn ($item) => $item->quantity !== null || $item->unit !== null || $item->estimated_unit_price !== null);
-                    $vatQuotations = $purchaseRequest->quotations->sortByDesc(fn ($quotation) => [$quotation->is_approved ? 2 : 0, $quotation->is_recommended ? 1 : 0, $quotation->id]);
-                @endphp
-                <thead class="table-light"><tr><th>Description</th><th>Quotation</th>@if($hasItemEstimates)<th class="text-end">Quantity</th><th>Unit</th><th class="text-end">Unit Price</th><th>VAT Type</th><th class="text-end">Total</th>@endif</tr></thead>
-                <tbody>
-                @foreach($purchaseRequest->items as $item)
-                    @php
-                        $itemQuotation = $vatQuotations->first(fn ($quotation) => filled($quotation->purchase_request_item_id) && (int) $quotation->purchase_request_item_id === (int) $item->id)
-                            ?? $vatQuotations->first(fn ($quotation) => blank($quotation->purchase_request_item_id))
-                            ?? $vatQuotations->first();
-                        $vatTreatment = $itemQuotation?->vatBreakdown()['treatment'] ?? null;
-                        $vatLabel = match ($vatTreatment) {
-                            'EXEMPT' => 'Non-Vat',
-                            'EXCLUSIVE' => 'VAT (12%)',
-                            'INCLUSIVE' => 'VAT Inclusive',
-                            default => '—',
-                        };
-                    @endphp
-                    <tr>
-                        <td>
-                            <div class="request-item-title">{{ $item->description }}</div>
-                            @if($item->reference_url)
-                                <div class="request-item-link"><x-ui.icon name="link" size="13" /><a href="{{ $item->reference_url }}" target="_blank" rel="noopener noreferrer">Product reference</a></div>
-                            @endif
-                            @foreach($item->attachments->sortBy(fn ($attachment) => [$attachment->category === \App\Models\PurchaseRequestItem::ATTACHMENT_EMAIL_APPROVAL ? 0 : ($attachment->category === \App\Models\PurchaseRequestItem::ATTACHMENT_QUOTATION ? 1 : 2), $attachment->id]) as $attachment)
-                                <div class="request-item-link"><x-attachment-link :attachment="$attachment" :label="\App\Models\PurchaseRequestItem::attachmentLabel($attachment->category)" thumbnail /></div>
-                            @endforeach
-                        </td>
-                        <td>{{ $item->brand_specifications ?: '—' }}</td>
-                        @if($hasItemEstimates)
-                            <td class="text-end">{{ $item->quantity === null ? '—' : number_format((float) $item->quantity, 2) }}</td>
-                            <td>{{ $item->unit ?: '—' }}</td>
-                            <td class="text-end text-nowrap">{{ $item->estimated_unit_price === null ? '—' : '₱ '.number_format((float) $item->estimated_unit_price, 2) }}</td>
-                            <td class="text-nowrap">{{ $vatLabel }}</td>
-                            <td class="text-end text-nowrap fw-semibold">{{ $item->estimated_total === null ? '—' : '₱ '.number_format((float) $item->estimated_total, 2) }}</td>
-                        @endif
-                    </tr>
-                @endforeach
-                </tbody>
-                @if($hasItemEstimates && $purchaseRequest->total_amount !== null)<tfoot><tr><th class="text-end" colspan="6">Request estimate</th><th class="text-end text-nowrap request-grand-total">₱ {{ number_format((float) $purchaseRequest->total_amount, 2) }}</th></tr></tfoot>@endif
-            </table>
-        </div>
+        @include('purchase-requests.partials.requested-items')
     </div>
 
 
@@ -547,7 +507,7 @@
                     <div><dt>Decision Date</dt><dd>{{ $purchaseRequest->screening->decided_at->format('M d, Y g:i A') }}</dd></div>
                     <div class="screening-fact--wide"><dt>Evidence</dt><dd>{{ $purchaseRequest->screening->evidence ?: 'N/A' }}</dd></div>
                     @foreach($purchaseRequest->screening->attachments as $attachment)
-                        <div class="screening-fact--wide screening-attachment"><dt>Attachment</dt><dd><x-attachment-link :attachment="$attachment" thumbnail /></dd></div>
+                        <div class="screening-fact--wide screening-attachment"><dt>{{ $attachment->category === 'screening_email_evidence' ? 'Email evidence' : 'Attachment' }}</dt><dd><x-attachment-link :attachment="$attachment" thumbnail /></dd></div>
                     @endforeach
                 </dl>
                 @if($purchaseRequest->screening->assets->isNotEmpty())
@@ -590,7 +550,7 @@
                     @foreach($quotations as $quotation)
                         @php ($quotationDestination = $quotation->quotationDestination()); @endphp
                         <tr @class(['quotation-row--recommended' => $quotation->is_recommended])>
-                            <td class="text-nowrap">Q-{{ str_pad((string) $quotation->id, 5, '0', STR_PAD_LEFT) }}<div class="small text-muted">{{ $purchaseRequest->request_type }}</div></td><td class="quotation-supplier-name">{{ $quotation->supplier->name }}</td>
+                            <td class="text-nowrap">Q-{{ str_pad((string) $quotation->id, 5, '0', STR_PAD_LEFT) }}<div class="small text-muted">{{ $quotation->sourceLabel() }}</div></td><td class="quotation-supplier-name">{{ $quotation->supplier->name }}</td>
                             <td>{{ $quotation->item?->description ?? $quotation->item_or_service }}</td>
                             <td class="text-nowrap quotation-price">₱ {{ number_format($quotation->vatBreakdown()['total'], 2) }}</td>
                             <td>{{ $quotation->delivery_lead_time ?: '—' }}</td>
@@ -619,7 +579,7 @@
                                     @if($quotation->is_approved)<span class="badge text-bg-success">Approved</span>@else<span class="text-muted">Pending approval</span>@endif
                                 </div>
                             </td>
-                            <td class="text-nowrap"><button class="btn btn-sm btn-outline-secondary" type="button" data-bs-toggle="modal" data-bs-target="#quotation-preview-{{ $quotation->id }}">Preview</button>@if(auth()->id() === $quotation->created_by && ! $quotation->is_approved)<button class="btn btn-sm btn-outline-primary" type="button" data-bs-toggle="modal" data-bs-target="#quotation-edit-{{ $quotation->id }}">Edit</button>@endif</td>
+                            <td class="text-nowrap"><button class="btn btn-sm btn-outline-secondary" type="button" data-bs-toggle="modal" data-bs-target="#quotation-preview-{{ $quotation->id }}">Preview</button>@if(auth()->id() === $quotation->created_by && $quotation->belongsToWorkspace(auth()->user()) && ! $quotation->is_approved)<button class="btn btn-sm btn-outline-primary" type="button" data-bs-toggle="modal" data-bs-target="#quotation-edit-{{ $quotation->id }}">Edit</button>@endif</td>
                         </tr>
                     @endforeach
                     </tbody>
@@ -729,11 +689,11 @@
                             <section class="quotation-details-modal__metadata" aria-label="Quotation metadata"><div class="quotation-details-modal__metadata-item quotation-details-modal__metadata-item--item"><span class="quotation-details-modal__metadata-title">Quoted item</span><strong>{{ $quotedItemLabel }}</strong></div><div class="quotation-details-modal__metadata-item"><x-ui.icon name="users" size="25" /><div><span class="quotation-details-modal__metadata-title">Supplier</span><strong>{{ $quotation->supplier?->name ?? 'Unavailable supplier' }}</strong></div></div><div class="quotation-details-modal__metadata-item"><x-ui.icon name="calendar" size="25" /><div><span class="quotation-details-modal__metadata-title">Submitted</span><strong>{{ $submittedDate }}</strong><small>by {{ $submittedBy }}</small></div></div></section>
                             <div class="quotation-details-modal__grid">
                                 <section class="quotation-details-modal__financial" aria-labelledby="financial-summary-{{ $quotation->id }}"><h3 id="financial-summary-{{ $quotation->id }}">Financial Summary</h3>
-                                    <dl class="quotation-details-modal__details-list quotation-details-modal__financial-list"><div><dt><x-ui.icon name="wallet" size="22" />Net of VAT</dt><dd>&#8369; {{ number_format($quotationBreakdown['base'], 2) }}</dd></div><div><dt><x-ui.icon name="currency" size="22" />{{ $vatLabel }}</dt><dd>&#8369; {{ number_format($quotationBreakdown['vat'], 2) }}@if($quotationBreakdown['rate'] > 0) <small>({{ rtrim(rtrim(number_format($quotationBreakdown['rate'], 2, '.', ''), '0'), '.') }}%)</small>@endif</dd></div><div class="quotation-details-modal__total"><dt><x-ui.icon name="currency" size="22" />Total</dt><dd>&#8369; {{ number_format($quotationBreakdown['total'], 2) }}</dd></div></dl>
+                                    <dl class="quotation-details-modal__details-list quotation-details-modal__financial-list"><div><dt><x-ui.icon name="wallet" size="22" />Item amount (net)</dt><dd>&#8369; {{ number_format($quotationBreakdown['base'] - (float) $quotation->shipping_fee, 2) }}</dd></div><div><dt>Shipping fee</dt><dd>&#8369; {{ number_format((float) $quotation->shipping_fee, 2) }}</dd></div><div><dt><x-ui.icon name="currency" size="22" />{{ $vatLabel }}</dt><dd>&#8369; {{ number_format($quotationBreakdown['vat'], 2) }}@if($quotationBreakdown['rate'] > 0) <small>({{ rtrim(rtrim(number_format($quotationBreakdown['rate'], 2, '.', ''), '0'), '.') }}%)</small>@endif</dd></div><div class="quotation-details-modal__total"><dt><x-ui.icon name="currency" size="22" />Total</dt><dd>&#8369; {{ number_format($quotationBreakdown['total'], 2) }}</dd></div></dl>
                                     <dl class="quotation-details-modal__details-list quotation-details-modal__terms-list"><div><dt><x-ui.icon name="hourglass" size="21" />Lead time</dt><dd>{{ $quotation->delivery_lead_time ?: 'Not provided' }}</dd></div><div><dt><x-ui.icon name="shield-check" size="21" />Warranty</dt><dd>{{ $quotation->warranty ?: 'Not provided' }}</dd></div><div><dt><x-ui.icon name="receive" size="21" />Delivery terms</dt><dd>{{ $quotation->delivery_terms ?: 'Not provided' }}</dd></div><div><dt><x-ui.icon name="check-circle" size="21" />Brand / quality</dt><dd>{{ $quotation->brand_quality ?: 'Not provided' }}</dd></div></dl>
                                     <dl class="quotation-details-modal__details-list quotation-details-modal__notes-list"><div><dt><x-ui.icon name="building" size="21" />Supplier bank details</dt><dd class="text-break">{{ $quotation->bank_details ?: 'Not provided' }}</dd></div><div><dt><x-ui.icon name="receipt" size="21" />Remarks</dt><dd>{{ $quotation->remarks ?: 'N/A' }}</dd></div></dl>
                                 </section>
-                                <aside class="quotation-details-modal__summary-card" aria-labelledby="quotation-summary-{{ $quotation->id }}"><div class="quotation-details-modal__summary-heading"><span><x-ui.icon name="receipt" size="23" /></span><h3 id="quotation-summary-{{ $quotation->id }}">Summary</h3></div><dl class="quotation-details-modal__summary-list"><div><dt>Supplier</dt><dd>{{ $quotation->supplier?->name ?? 'Unavailable supplier' }}</dd></div><div><dt>Quoted item</dt><dd>{{ $quotedItemLabel }}</dd></div><div><dt>Net of VAT</dt><dd>&#8369; {{ number_format($quotationBreakdown['base'], 2) }}</dd></div><div><dt>{{ $vatLabel }}</dt><dd>&#8369; {{ number_format($quotationBreakdown['vat'], 2) }}</dd></div><div class="quotation-details-modal__summary-total"><dt>Total</dt><dd>&#8369; {{ number_format($quotationBreakdown['total'], 2) }}</dd></div><div><dt>Lead time</dt><dd>{{ $quotation->delivery_lead_time ?: 'Not provided' }}</dd></div><div><dt>Warranty</dt><dd>{{ $quotation->warranty ?: 'Not provided' }}</dd></div><div><dt>Delivery terms</dt><dd>{{ $quotation->delivery_terms ?: 'Not provided' }}</dd></div><div><dt>Brand / quality</dt><dd>{{ $quotation->brand_quality ?: 'Not provided' }}</dd></div><div><dt>Supplier bank details</dt><dd class="text-break">{{ $quotation->bank_details ?: 'Not provided' }}</dd></div><div><dt>Remarks</dt><dd>{{ $quotation->remarks ?: 'N/A' }}</dd></div></dl><div class="quotation-details-modal__notice"><x-ui.icon name="exclamation-circle" size="24" /><div><strong>This quotation is for reference only.</strong><span>Purchasing recommendation: {{ $recommendationLabel }}</span></div></div></aside>
+                                <aside class="quotation-details-modal__summary-card" aria-labelledby="quotation-summary-{{ $quotation->id }}"><div class="quotation-details-modal__summary-heading"><span><x-ui.icon name="receipt" size="23" /></span><h3 id="quotation-summary-{{ $quotation->id }}">Summary</h3></div><dl class="quotation-details-modal__summary-list"><div><dt>Supplier</dt><dd>{{ $quotation->supplier?->name ?? 'Unavailable supplier' }}</dd></div><div><dt>Quoted item</dt><dd>{{ $quotedItemLabel }}</dd></div><div><dt>Shipping fee</dt><dd>&#8369; {{ number_format((float) $quotation->shipping_fee, 2) }}</dd><dt>Net including shipping</dt><dd>&#8369; {{ number_format($quotationBreakdown['base'], 2) }}</dd></div><div><dt>{{ $vatLabel }}</dt><dd>&#8369; {{ number_format($quotationBreakdown['vat'], 2) }}</dd></div><div class="quotation-details-modal__summary-total"><dt>Total</dt><dd>&#8369; {{ number_format($quotationBreakdown['total'], 2) }}</dd></div><div><dt>Lead time</dt><dd>{{ $quotation->delivery_lead_time ?: 'Not provided' }}</dd></div><div><dt>Warranty</dt><dd>{{ $quotation->warranty ?: 'Not provided' }}</dd></div><div><dt>Delivery terms</dt><dd>{{ $quotation->delivery_terms ?: 'Not provided' }}</dd></div><div><dt>Brand / quality</dt><dd>{{ $quotation->brand_quality ?: 'Not provided' }}</dd></div><div><dt>Supplier bank details</dt><dd class="text-break">{{ $quotation->bank_details ?: 'Not provided' }}</dd></div><div><dt>Remarks</dt><dd>{{ $quotation->remarks ?: 'N/A' }}</dd></div></dl><div class="quotation-details-modal__notice"><x-ui.icon name="exclamation-circle" size="24" /><div><strong>This quotation is for reference only.</strong><span>Purchasing recommendation: {{ $recommendationLabel }}</span></div></div></aside>
                             </div>
                         </div>
                         <div class="modal-footer quotation-details-modal__footer">@if($quotationDestination)<a class="btn btn-outline-primary quotation-details-modal__download" href="{{ $quotationDestination }}" download><x-ui.icon name="receipt" size="17" />Download PDF</a>@else<button class="btn btn-outline-secondary quotation-details-modal__download" type="button" disabled><x-ui.icon name="receipt" size="17" />Download PDF</button>@endif<div class="quotation-details-modal__footer-actions">@if($quotationDestination)<a class="btn btn-primary" href="{{ $quotationDestination }}" target="_blank" rel="noopener noreferrer">Open Quotation <span aria-hidden="true">↗</span></a>@else<span class="small text-muted">No quotation document provided.</span>@endif<button class="btn btn-outline-secondary" type="button" data-bs-dismiss="modal">Close</button></div></div>
@@ -754,7 +714,7 @@
 
     @endif
 
-    @if(! $poFocus && ! $purchaseRequest->purchaseOrder && ! $purchaseRequest->skippedPurchaseOrder() && $purchaseRequest->status === \App\Enums\PurchaseRequestStatus::ForBudgetProcessing)
+    @if(! $poFocus && ! $purchaseRequest->purchaseOrder && $purchaseRequest->status === \App\Enums\PurchaseRequestStatus::ForBudgetProcessing)
         @can('prepare', \App\Models\PurchaseOrder::class)
             <section class="card border-0 shadow-sm mb-3" id="purchase-order-actions" aria-labelledby="purchase-order-actions-heading">
                 <div class="card-header bg-white fw-semibold" id="purchase-order-actions-heading">Create Purchase Order</div>
@@ -764,7 +724,7 @@
                         <input type="hidden" name="_validation_context" value="purchase-order">
                         <div class="row g-3 align-items-end">
                             <div class="col-md-3">
-                                <label class="form-label" for="expected_delivery_date">Expected Delivery Date</label>
+                                <label class="form-label">Lead time (PO Team)</label><input class="form-control mb-2" name="delivery_lead_time" maxlength="255" value="{{ old('delivery_lead_time') }}"><label class="form-label" for="expected_delivery_date">Expected Delivery Date</label>
                                 <input class="form-control" id="expected_delivery_date" name="expected_delivery_date" type="date" value="{{ $purchaseRequest->required_date?->addDays(7)->format('Y-m-d') }}">
                             </div>
                             <div class="col-md-6">
@@ -777,7 +737,6 @@
                             <button class="btn btn-primary" type="submit">Generate Purchase Order</button>
                         </div>
                     </form>
-                    @include('purchase-requests.partials.skip-purchase-order')
                 </div>
             </section>
         @endcan
@@ -787,12 +746,12 @@
     @if($purchaseRequest->skippedPurchaseOrder())
         <div class="alert alert-light border mb-3 no-print" role="status">
             <strong>No Purchase Order.</strong>
-            {{ $purchaseRequest->purchaseOrderSkipper?->name ?? 'Purchasing' }} sent this request to Budget without a PO on {{ $purchaseRequest->purchase_order_skipped_at->format('M j, Y g:i A') }}. Budget and payment use the approved quotation amount.
+            {{ $purchaseRequest->purchaseOrderSkipper?->name ?? 'Purchasing' }} sent this request to Budget without a PO on {{ $purchaseRequest->purchase_order_skipped_at->format('M j, Y g:i A') }}. A Purchase Order is required before preparing a new Budget Request.
         </div>
     @endif
 
-    @can('manageBudget', $purchaseRequest)
-        @if(! $poFocus && $purchaseRequest->status === \App\Enums\PurchaseRequestStatus::ForBudgetProcessing && ($purchaseRequest->purchaseOrder || $purchaseRequest->skippedPurchaseOrder()) && ! $purchaseRequest->budgetRequest)
+    @can('prepareBudgetRequest', $purchaseRequest)
+        @if(! $poFocus && $purchaseRequest->status === \App\Enums\PurchaseRequestStatus::ForBudgetProcessing && $purchaseRequest->purchaseOrder && ! $purchaseRequest->budgetRequest)
             <div class="card action-panel mb-3 no-print">
                 <div class="card-header fw-semibold" id="budget-request-actions">Create Budget Request</div>
                 <div class="card-body d-flex flex-wrap align-items-center justify-content-between gap-3">
@@ -965,7 +924,7 @@
                         <div class="col-md-4"><label class="form-label" for="edit_po_account_number">Payment account number <span class="text-danger">*</span></label><input class="form-control @error('account_number') is-invalid @enderror" id="edit_po_account_number" name="account_number" value="{{ old('account_number', $po->account_number) }}" required>@error('account_number')<div class="invalid-feedback">{{ $message }}</div>@enderror</div>
                         <div class="col-md-4"><label class="form-label" for="edit_po_account_name">Payee account name</label><input class="form-control @error('account_name') is-invalid @enderror" id="edit_po_account_name" name="account_name" value="{{ old('account_name', $po->account_name ?: $po->supplier?->name) }}" readonly><small class="text-muted">Saved supplier value.</small>@error('account_name')<div class="invalid-feedback">{{ $message }}</div>@enderror</div>
                         <div class="col-md-4"><label class="form-label" for="edit_po_payment_terms">Payment terms</label><input class="form-control @error('payment_terms') is-invalid @enderror" id="edit_po_payment_terms" name="payment_terms" value="{{ old('payment_terms', $po->payment_terms) }}"><small class="text-muted">Saved from the approved quotation when available.</small>@error('payment_terms')<div class="invalid-feedback">{{ $message }}</div>@enderror</div>
-                        <div class="col-md-4"><label class="form-label" for="edit_po_expected_delivery">Expected delivery</label><input class="form-control" id="edit_po_expected_delivery" name="expected_delivery_date" type="date" value="{{ old('expected_delivery_date', $po->expected_delivery_date?->format('Y-m-d')) }}"></div>
+                        <div class="col-md-4"><label class="form-label">Lead time</label><input class="form-control mb-2" name="delivery_lead_time" value="{{ old('delivery_lead_time', $po->delivery_lead_time) }}" maxlength="255"><label class="form-label" for="edit_po_expected_delivery">Expected delivery</label><input class="form-control" id="edit_po_expected_delivery" name="expected_delivery_date" type="date" value="{{ old('expected_delivery_date', $po->expected_delivery_date?->format('Y-m-d')) }}"></div>
                         <div class="col-md-4"><label class="form-label" for="edit_po_transaction_type">Type of transaction</label><select class="form-select" id="edit_po_transaction_type" name="transaction_type">@foreach(['ONLINE' => 'Online Transaction', 'CASH' => 'Cash Transaction', 'CHECK' => 'Check Transaction'] as $value => $label)<option value="{{ $value }}" @selected(old('transaction_type', $po->budget_transaction_type) === $value)>{{ $label }}</option>@endforeach</select></div>
                         <div class="col-md-4"><label class="form-label" for="edit_po_fund_source">Fund source</label><select class="form-select" id="edit_po_fund_source" name="fund_source">@foreach(['MAIN_FUND' => 'Main Fund', 'CAMPAIGN_FUND' => 'Campaign Fund', 'OTHER' => 'Other'] as $value => $label)<option value="{{ $value }}" @selected(old('fund_source', $po->budget_fund_source) === $value)>{{ $label }}</option>@endforeach</select></div>
                         <div class="col-md-4"><label class="form-label" for="edit_po_payable_on">When can pay</label><input class="form-control" id="edit_po_payable_on" name="payable_on" type="date" value="{{ old('payable_on', $po->budget_payable_on?->format('Y-m-d')) }}"></div>
@@ -1182,7 +1141,7 @@
                                         <x-ui.icon name="receipt" size="22" />
                                         <span><strong>Choose files</strong> or drop them here</span>
                                         <small>Official receipt, deposit slip, transfer screenshot or check photo · JPG, PNG, WEBP or PDF · up to 5 files, 10 MB each</small>
-                                        <input class="payment-dropzone-input" id="payment-receipts" type="file" name="receipts[]" accept=".jpg,.jpeg,.png,.webp,.pdf" multiple required data-payment-receipts>
+                                        <input class="payment-dropzone-input" id="payment-receipts" type="file" data-max-files="5" data-max-file-size="10485760" name="receipts[]" accept=".jpg,.jpeg,.png,.webp,.pdf" multiple required data-payment-receipts>
                                     </label>
                                     <ul class="payment-receipt-list list-unstyled" data-payment-receipt-list aria-live="polite"></ul>
                                     @error('receipts')<div class="field-validation-message">{{ $message }}</div>@enderror
@@ -1347,6 +1306,7 @@
                 @csrf<input type="hidden" name="_validation_context" value="screening-unavailable"><input type="hidden" name="decision" value="UNAVAILABLE">
                 <div class="modal-header"><h2 class="modal-title fs-5">Inventory Unavailable</h2><button class="btn-close" type="button" data-bs-dismiss="modal"></button></div>
                 <div class="modal-body">
+                    @include('purchase-requests.partials.screening-email-evidence', ['evidenceId' => 'unavailable-email-evidence'])
                     <div class="mb-3"><label class="form-label" for="unavailable-evidence">Screening remarks <span class="text-muted fw-normal">(optional)</span></label><textarea class="form-control" id="unavailable-evidence" name="evidence" rows="4" maxlength="5000"></textarea></div>
                     <section class="approval-signature-pad mt-3" data-signature-pad aria-labelledby="unavailable-signature-heading">
                         <span class="approval-signature-box__label" id="unavailable-signature-heading">Electronic signature</span>
@@ -1358,7 +1318,7 @@
                         <div class="field-validation-message" data-signature-client-error hidden>Draw your signature before confirming this decision.</div>
                         @error('signature_data')<div class="field-validation-message">{{ $message }}</div>@enderror
                     </section>
-                    <div><label class="form-label" for="quotation-evidence">Quotation or canvassing evidence (optional)</label><input class="form-control" id="quotation-evidence" name="quotation_evidence" type="file" accept=".pdf,.jpg,.jpeg,.png,.csv,.xls,.xlsx"></div>
+                    <div><label class="form-label" for="quotation-evidence">Quotation or canvassing evidence (optional)</label><input class="form-control" id="quotation-evidence" name="quotation_evidence[]" type="file" multiple data-max-file-size="10485760" accept=".pdf,.jpg,.jpeg,.png,.webp,.csv,.xls,.xlsx,.doc,.docx"></div>
                 </div>
                 <div class="modal-footer"><button class="btn btn-outline-secondary" type="button" data-bs-dismiss="modal">Cancel</button><button class="btn btn-danger" type="submit">Add a Quotation</button></div>
             </form></div>
@@ -1371,7 +1331,8 @@
                     <div class="modal-header"><h2 class="modal-title fs-5">Import Premises Excel Export</h2><button class="btn-close" type="button" data-bs-dismiss="modal"></button></div>
                     <div class="modal-body">
                         <p class="small text-muted">Export the Excel sheet as CSV. Required columns: asset_tag, item_code, description, serial_number, location, release_date, recipient.</p>
-                        <label class="form-label" for="premises-import">Premises asset CSV</label><input class="form-control" id="premises-import" name="premises_import" type="file" accept=".csv" required>
+                        @include('purchase-requests.partials.screening-email-evidence', ['evidenceId' => 'import-email-evidence'])
+                        <label class="form-label" for="premises-import">Premises asset CSV</label><input class="form-control" id="premises-import" name="premises_import" type="file" data-single-import accept=".csv" required>
                         <x-workflow-signature-pad
                             id="premises-import-signature"
                             label="Screening signature"
@@ -1457,12 +1418,32 @@
         }
 
         function syncBulkTotal(row) {
-            let total = 0;
+            const round = value => Math.round((value + Number.EPSILON) * 100) / 100;
+            const format = value => value.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+            const bulk = document.querySelector('input[name="quotation_mode"]:checked')?.value === 'bulk';
+            const treatment = row.querySelector('[name$="[vat_treatment]"]')?.value || 'EXEMPT';
+            let itemAmount = 0;
+            let vat = 0;
+            const addAmount = amount => {
+                const base = treatment === 'INCLUSIVE' ? round(amount / 1.12) : amount;
+                itemAmount += base;
+                vat += treatment === 'EXCLUSIVE' ? round(amount * 0.12) : (treatment === 'INCLUSIVE' ? round(amount - base) : 0);
+            };
+            let bulkAmount = 0;
             row.querySelectorAll('[data-quoted-item]').forEach((item) => {
-                total += Number(item.querySelector('.bulk-item-quantity')?.value || 0) * Number(item.querySelector('.bulk-item-price')?.value || 0);
+                const amount = round(Number(item.querySelector('.bulk-item-quantity')?.value || 0) * Number(item.querySelector('.bulk-item-price')?.value || 0));
+                const output = item.querySelector('[data-item-total]');
+                if (output) output.textContent = format(amount);
+                bulkAmount += amount;
+                if (bulk) addAmount(amount);
             });
-            const output = row.querySelector('[data-bulk-total]');
-            if (output) output.textContent = total.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+            if (!bulk) addAmount(round(Number(row.querySelector('[name$="[quoted_amount]"]')?.value || 0)));
+            const shipping = round(Number(row.querySelector('[name$="[shipping_fee]"]')?.value || 0));
+            const values = { 'bulk-total': bulkAmount, 'quote-items-total': itemAmount, 'quote-vat': vat, 'quote-shipping': shipping, 'quote-total': round(itemAmount + vat + shipping) };
+            Object.entries(values).forEach(([key, value]) => {
+                const output = row.querySelector(`[data-${key}]`);
+                if (output) output.textContent = format(value);
+            });
         }
 
         function syncQuotedItemActions(row) {
@@ -1577,23 +1558,24 @@
                 syncBulkTotal(button.closest('[data-quotation-row]'));
                 return;
             }
+            const quotationRow = button.closest('[data-quotation-row]');
             button.closest('[data-quoted-item]').remove();
             items.querySelectorAll('[data-quoted-item]').forEach((item, itemIndex) => {
                 item.querySelectorAll('[name]').forEach((element) => {
                     element.name = element.name.replace(/\[items\]\[\d+\]/, `[items][${itemIndex}]`);
                 });
             });
-            const quotationRow = button.closest('[data-quotation-row]');
             syncQuotedItemActions(quotationRow);
             syncBulkTotal(quotationRow);
         });
 
         container.addEventListener('input', event => {
-            if (event.target.matches('.bulk-item-quantity, .bulk-item-price')) syncBulkTotal(event.target.closest('[data-quotation-row]'));
+            if (event.target.matches('.bulk-item-quantity, .bulk-item-price, [name$="[quoted_amount]"], [name$="[shipping_fee]"], [name$="[vat_treatment]"]')) syncBulkTotal(event.target.closest('[data-quotation-row]'));
         });
 
         document.querySelectorAll('input[name="quotation_mode"]').forEach((radio) => radio.addEventListener('change', syncQuotationMode));
         container.addEventListener('change', event => {
+            if (event.target.matches('[name$="[vat_treatment]"], [name$="[quoted_amount]"], [name$="[shipping_fee]"]')) syncBulkTotal(event.target.closest('[data-quotation-row]'));
             if (! event.target.matches('[data-recommended-quotation]') || ! event.target.checked) return;
             container.querySelectorAll('[data-recommended-quotation]').forEach((checkbox) => {
                 if (checkbox !== event.target) checkbox.checked = false;
@@ -1605,6 +1587,16 @@
             const errorList = quotationForm.querySelector('[data-quotation-error-list]');
             const errors = [];
             let firstInvalid = null;
+            const priority = quotationForm.querySelector('[name="priority_level"]');
+            if (priority && !priority.value) {
+                event.preventDefault();
+                priority.classList.add('is-invalid');
+                priority.setCustomValidity('Select a priority level before passing this request to the PO team.');
+                priority.reportValidity();
+                priority.addEventListener('change', () => priority.setCustomValidity(''), { once: true });
+                return;
+            }
+
 
             quotationForm.querySelectorAll('[data-quotation-field-error]').forEach((message) => message.remove());
             quotationForm.querySelectorAll('.is-invalid').forEach((field) => {
@@ -1614,9 +1606,9 @@
 
             const rows = [...container.querySelectorAll('[data-quotation-row]')];
             const activeRows = rows.filter((row) => row.querySelector('[name$="[supplier_name]"]')?.value.trim()
-                || row.querySelector('input[type="file"]')?.files.length
+                || [...row.querySelectorAll('input[type="file"]')].some(input => input.files.length)
                 || row.querySelector('[name$="[quoted_amount]"]')?.value.trim()
-                || row.querySelector('[name$="[delivery_lead_time]"]')?.value.trim()
+                || (Number(row.querySelector('[name$="[shipping_fee]"]')?.value) > 0)
                 || row.querySelector('[name$="[warranty]"]')?.value.trim()
                 || row.querySelector('[name$="[quotation_url]"]')?.value.trim()
                 || row.querySelector('[name$="[bank_details]"]')?.value.trim()

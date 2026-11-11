@@ -83,8 +83,8 @@
             </div>
             <div class="col-md-6 request-detail-field">
                 <span class="request-field-icon" aria-hidden="true"><x-ui.icon name="calendar" size="25" /></span>
-                <label class="form-label" for="required_date">Required date <span class="text-danger">*</span></label>
-                <input class="form-control @error('required_date') is-invalid @enderror" id="required_date" name="required_date" type="date" value="{{ old('required_date', isset($purchaseRequest) ? $purchaseRequest->required_date->format('Y-m-d') : '') }}" required>
+                <label class="form-label" for="required_date">Required date (optional)</label>
+                <input class="form-control @error('required_date') is-invalid @enderror" id="required_date" name="required_date" type="date" value="{{ old('required_date', isset($purchaseRequest) ? $purchaseRequest->required_date?->format('Y-m-d') : '') }}">
                 @error('required_date')<div class="invalid-feedback">{{ $message }}</div>@enderror
             </div>
             @if($editing || ! auth()->user()->hasAnyRole([\App\Enums\RoleSlug::Requestor->value, \App\Enums\RoleSlug::TeamLeader->value]))
@@ -249,8 +249,8 @@
                             @error("items.$index.unit")<div class="invalid-feedback">{{ $message }}</div>@enderror
                         </div>
                         <div class="col-12">
-                            <label class="form-label d-flex align-items-center gap-1" for="item-{{ $index }}-quotation-file"><x-ui.icon name="paperclip" size="16" />Quotation file <span class="text-danger">*</span></label>
-                            <input class="form-control form-control-sm @error("items.$index.quotation_file") is-invalid @enderror" id="item-{{ $index }}-quotation-file" name="items[{{ $index }}][quotation_file]" type="file" accept=".pdf,.jpg,.jpeg,.png,.webp,.doc,.docx,.xls,.xlsx" data-quotation-file data-file-label="quotation file" @if($quotationFiles->isNotEmpty()) data-on-file="1" @endif>
+                            <label class="form-label d-flex align-items-center gap-1" for="item-{{ $index }}-quotation-file"><x-ui.icon name="paperclip" size="16" />Quotation file (optional)</label>
+                            <input class="form-control form-control-sm @error("items.$index.quotation_file") is-invalid @enderror" id="item-{{ $index }}-quotation-file" name="items[{{ $index }}][quotation_file][]" type="file" multiple accept=".pdf,.jpg,.jpeg,.png,.webp,.doc,.docx,.xls,.xlsx" data-quotation-file data-file-label="quotation file" @if($quotationFiles->isNotEmpty()) data-on-file="1" @endif>
                             <div class="form-text">Supplier quotation. PDF, image, Word or Excel, up to 5 MB.</div>
                             <div class="attachment-preview mt-2" data-attachment-preview aria-live="polite"></div>
                             @error("items.$index.quotation_file")<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
@@ -260,8 +260,8 @@
                         </div>
                         <div class="col-md-6">
                             <label class="form-label d-flex align-items-center gap-1" for="item-{{ $index }}-attachment"><x-ui.icon name="paperclip" size="16" />Email approval <span class="text-danger">*</span></label>
-                            <input class="form-control form-control-sm @error("items.$index.attachment") is-invalid @enderror" id="item-{{ $index }}-attachment" name="items[{{ $index }}][attachment]" type="file" accept=".pdf,.jpg,.jpeg,.png" @if($emailApprovals->isEmpty()) data-submit-required @endif>
-                            <div class="form-text">Screenshot or PDF of the approved email. PDF/JPG/PNG, up to 5 MB.</div>
+                            <input class="form-control form-control-sm @error("items.$index.attachment") is-invalid @enderror" id="item-{{ $index }}-attachment" name="items[{{ $index }}][attachment][]" type="file" multiple accept=".pdf,.jpg,.jpeg,.png,.webp,.eml,.msg" @if($emailApprovals->isEmpty()) data-submit-required @endif>
+                            <div class="form-text">Approved emails or screenshots. EML/MSG/PDF or images, up to 10 files, 5 MB each.</div>
                             <div class="attachment-preview mt-2" data-attachment-preview aria-live="polite"></div>
                             @error("items.$index.attachment")<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
                             @if($emailApprovals->isNotEmpty())
@@ -270,7 +270,7 @@
                         </div>
                         <div class="col-md-6">
                             <label class="form-label d-flex align-items-center gap-1" for="item-{{ $index }}-picture"><x-ui.icon name="paperclip" size="16" />Item picture <span class="text-muted">(optional)</span></label>
-                            <input class="form-control form-control-sm @error("items.$index.picture") is-invalid @enderror" id="item-{{ $index }}-picture" name="items[{{ $index }}][picture]" type="file" accept=".jpg,.jpeg,.png,.webp" data-file-label="item picture">
+                            <input class="form-control form-control-sm @error("items.$index.picture") is-invalid @enderror" id="item-{{ $index }}-picture" name="items[{{ $index }}][picture][]" type="file" multiple accept=".jpg,.jpeg,.png,.webp" data-file-label="item picture">
                             <div class="form-text">Photo of the item. JPG/PNG/WEBP, up to 5 MB.</div>
                             <div class="attachment-preview mt-2" data-attachment-preview aria-live="polite"></div>
                             @error("items.$index.picture")<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
@@ -397,9 +397,9 @@
             <div class="col-lg-6"><label class="form-label" for="item-__INDEX__-description">Item description <span class="text-danger">*</span></label><input class="form-control" id="item-__INDEX__-description" name="items[__INDEX__][description]" maxlength="2000" placeholder="e.g. Wireless presentation speaker" required></div>
             <div class="col-6 col-lg-3"><label class="form-label" for="item-__INDEX__-quantity">Quantity <span class="text-danger">*</span></label><div class="input-group quantity-stepper"><button class="btn btn-outline-secondary" type="button" data-quantity-step="-1" aria-label="Decrease quantity" tabindex="-1">&minus;</button><input class="form-control item-quantity text-center" id="item-__INDEX__-quantity" name="items[__INDEX__][quantity]" type="number" min="0.01" step="any" inputmode="decimal" value="1" placeholder="0" data-submit-required><button class="btn btn-outline-secondary" type="button" data-quantity-step="1" aria-label="Increase quantity" tabindex="-1">+</button></div></div>
             <div class="col-6 col-lg-3"><label class="form-label" for="item-__INDEX__-unit">Unit</label><select class="form-select" id="item-__INDEX__-unit" name="items[__INDEX__][unit]"><option value="">Select unit</option>@foreach($units as $unitValue => $unitLabel)<option value="{{ $unitValue }}">{{ $unitLabel }}</option>@endforeach</select></div>
-            <div class="col-12"><label class="form-label d-flex align-items-center gap-1" for="item-__INDEX__-quotation-file"><x-ui.icon name="paperclip" size="16" />Quotation file <span class="text-danger">*</span></label><input class="form-control form-control-sm" id="item-__INDEX__-quotation-file" name="items[__INDEX__][quotation_file]" type="file" accept=".pdf,.jpg,.jpeg,.png,.webp,.doc,.docx,.xls,.xlsx" data-quotation-file data-file-label="quotation file"><div class="form-text">Supplier quotation. PDF, image, Word or Excel, up to 5 MB.</div><div class="attachment-preview mt-2" data-attachment-preview aria-live="polite"></div></div>
-            <div class="col-md-6"><label class="form-label d-flex align-items-center gap-1" for="item-__INDEX__-attachment"><x-ui.icon name="paperclip" size="16" />Email approval <span class="text-danger">*</span></label><input class="form-control form-control-sm" id="item-__INDEX__-attachment" name="items[__INDEX__][attachment]" type="file" accept=".pdf,.jpg,.jpeg,.png" data-submit-required><div class="form-text">Screenshot or PDF of the approved email. PDF/JPG/PNG, up to 5 MB.</div><div class="attachment-preview mt-2" data-attachment-preview aria-live="polite"></div></div>
-            <div class="col-md-6"><label class="form-label d-flex align-items-center gap-1" for="item-__INDEX__-picture"><x-ui.icon name="paperclip" size="16" />Item picture <span class="text-muted">(optional)</span></label><input class="form-control form-control-sm" id="item-__INDEX__-picture" name="items[__INDEX__][picture]" type="file" accept=".jpg,.jpeg,.png,.webp" data-file-label="item picture"><div class="form-text">Photo of the item. JPG/PNG/WEBP, up to 5 MB.</div><div class="attachment-preview mt-2" data-attachment-preview aria-live="polite"></div></div>
+            <div class="col-12"><label class="form-label d-flex align-items-center gap-1" for="item-__INDEX__-quotation-file"><x-ui.icon name="paperclip" size="16" />Quotation file (optional)</label><input class="form-control form-control-sm" id="item-__INDEX__-quotation-file" name="items[__INDEX__][quotation_file][]" type="file" multiple accept=".pdf,.jpg,.jpeg,.png,.webp,.doc,.docx,.xls,.xlsx" data-quotation-file data-file-label="quotation file"><div class="form-text">Supplier quotation. PDF, image, Word or Excel, up to 5 MB.</div><div class="attachment-preview mt-2" data-attachment-preview aria-live="polite"></div></div>
+            <div class="col-md-6"><label class="form-label d-flex align-items-center gap-1" for="item-__INDEX__-attachment"><x-ui.icon name="paperclip" size="16" />Email approval <span class="text-danger">*</span></label><input class="form-control form-control-sm" id="item-__INDEX__-attachment" name="items[__INDEX__][attachment][]" type="file" multiple accept=".pdf,.jpg,.jpeg,.png,.webp,.eml,.msg" data-submit-required><div class="form-text">Approved emails or screenshots. EML/MSG/PDF or images, up to 10 files, 5 MB each.</div><div class="attachment-preview mt-2" data-attachment-preview aria-live="polite"></div></div>
+            <div class="col-md-6"><label class="form-label d-flex align-items-center gap-1" for="item-__INDEX__-picture"><x-ui.icon name="paperclip" size="16" />Item picture <span class="text-muted">(optional)</span></label><input class="form-control form-control-sm" id="item-__INDEX__-picture" name="items[__INDEX__][picture][]" type="file" multiple accept=".jpg,.jpeg,.png,.webp" data-file-label="item picture"><div class="form-text">Photo of the item. JPG/PNG/WEBP, up to 5 MB.</div><div class="attachment-preview mt-2" data-attachment-preview aria-live="polite"></div></div>
             @if($editing)
             <div class="col-7 col-md-3"><label class="form-label" for="item-__INDEX__-price">Estimated unit price</label><div class="input-group"><span class="input-group-text">&#8369;</span><input class="form-control item-price" id="item-__INDEX__-price" name="items[__INDEX__][estimated_unit_price]" type="number" min="0" step="0.01" inputmode="decimal"></div></div>
             @endif
@@ -474,16 +474,9 @@
             return field.type === 'file' ? field.files.length > 0 : field.value.trim() !== '' && (field.type !== 'number' || Number(field.value) > 0);
         }
 
-        // A quotation file may be uploaded now or already saved on this item.
-        function quotationIsProvided(row) {
-            const file = row.querySelector('[data-quotation-file]');
-            return (file?.files.length ?? 0) > 0 || file?.dataset.onFile === '1';
-        }
-
         function itemIsComplete(row) {
             const description = row.querySelector('[name$="[description]"]').value.trim();
             return description !== ''
-                && quotationIsProvided(row)
                 && [...row.querySelectorAll('[data-submit-required]')].every(submitFieldIsFilled);
         }
 
@@ -501,8 +494,8 @@
                 itemsFeedback.querySelector('span').textContent = 'Add an item to submit this purchase request.';
                 readiness.textContent = 'Add an item to submit, or save your progress as a draft.';
             } else if (! completeItems) {
-                itemsFeedback.querySelector('span').textContent = 'Give every item a description, quantity, quotation file, and email approval to enable submission. The item picture is optional. You can still save a draft.';
-                readiness.textContent = 'Complete each item\'s description, quantity, quotation, and email approval to enable submission.';
+                itemsFeedback.querySelector('span').textContent = 'Give every item a description, quantity, and email approval to enable submission. The item picture is optional. You can still save a draft.';
+                readiness.textContent = 'Complete each item\'s description, quantity, and email approval to enable submission.';
             } else {
                 readiness.textContent = 'Your item list is ready. Submit it to IT / Premises screening or save it as a draft.';
             }
@@ -610,15 +603,7 @@
                         showClientError(field);
                     }
                 });
-                currentRows.forEach((row) => {
-                    const file = row.querySelector('[data-quotation-file]');
-                    if (! file) return;
-                    clearClientError(file);
-                    if (! quotationIsProvided(row)) {
-                        file.setCustomValidity('Attach the quotation file.');
-                        showClientError(file);
-                    }
-                });
+
             }
             if (action === 'submit' && (currentRows.length < 1 || ! currentRows.every(itemIsComplete))) {
                 itemsFeedback.classList.remove('d-none');

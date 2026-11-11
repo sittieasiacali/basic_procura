@@ -406,12 +406,44 @@ class PurchaseOrderCheckerFlowTest extends TestCase
             ->assertJsonPath('orders.0.po_number', $order->po_number)->assertJsonPath('queued_count', 1);
     }
 
+    public function test_president_only_reviews_suppliers_and_cannot_create_purchase_orders(): void
+    {
+        $president = $this->user(RoleSlug::President);
+        $pending = $this->awaitingOrder();
+        $review = $pending->replicate();
+        $review->request_number = 'PRESIDENT-REVIEW-001';
+        $review->status = PurchaseRequestStatus::ForSupplierApproval;
+        $review->selected_supplier_id = null;
+        $review->save();
+        // Even an older preparer assignment cannot grant preparation in the President workspace.
+        PoRoleAssignment::where('stage', PurchaseOrderApprovalStage::PreparedBy->value)->update(['user_id' => $president->id]);
+        $this->assertFalse($president->hasPoRole(PurchaseOrderApprovalStage::PreparedBy));
+        $this->assertFalse($president->can('prepare', PurchaseOrder::class));
+        $this->actingAs($president)->get(route('dashboard'))->assertOk()
+            ->assertDontSee('Create purchase order')
+            ->assertViewHas('myActions', fn ($actions) => $actions->count() === 1
+                && $actions->first()['request']->is($review)
+                && $actions->first()['label'] === 'Review supplier selection');
+        $this->get(route('purchase-requests.show', $pending))->assertOk()->assertDontSee('data-po-create-form', false);
+        $this->post(route('purchase-orders.store', $pending))->assertForbidden();
+        $this->assertDatabaseCount('purchase_orders', 0);
+
+        // A separate Purchasing assignment is usable only after switching workspace.
+        $teamRole = Role::where('slug', RoleSlug::PurchasingTeam->value)->firstOrFail();
+        $president->roles()->attach($teamRole);
+        $this->withSession(['workspace_role_id' => $president->role_id])
+            ->get(route('purchase-requests.show', $pending))->assertOk()->assertDontSee('data-po-create-form', false);
+        $this->post(route('purchase-orders.store', $pending))->assertForbidden();
+        $this->withSession(['workspace_role_id' => $teamRole->id])
+            ->get(route('purchase-requests.show', $pending))->assertOk()->assertSee('data-po-create-form', false);
+    }
+
     private function user(RoleSlug $role): User
     {
         return User::factory()->create(['role_id' => Role::where('slug', $role->value)->value('id')]);
     }
 
-    private function createOrder(): PurchaseOrder
+    private function awaitingOrder(): PurchaseRequest
     {
         $campaign = Campaign::create(['name' => 'Checker flow campaign', 'account_number' => 'FLOW-001', 'is_active' => true]);
         $requestor = $this->user(RoleSlug::Requestor);
@@ -435,12 +467,22 @@ class PurchaseOrderCheckerFlowTest extends TestCase
             'purchase_request_item_id' => $item->id, 'item_or_service' => $item->description,
             'price' => 100, 'is_approved' => true, 'approved_at' => now(),
         ]);
-        $this->actingAs($this->preparer)->post(route('purchase-orders.store', $request), [
+        return $request;
+    }
+
+    private function createOrder(): PurchaseOrder
+    {
+        $request = $this->awaitingOrder();
+        $supplier = $request->selectedSupplier;
+        $actor = $this->preparer;
+        $this->actingAs($actor)->get(route('purchase-requests.show', $request))->assertOk()
+            ->assertSee('data-po-create-form', false);
+        $this->post(route('purchase-orders.store', $request), [
             'expected_delivery_date' => now()->addWeek()->toDateString(),
             'payable_on' => now()->toDateString(), 'account_number' => 'SUPPLIER-001',
             'account_name' => $supplier->name, 'payment_terms' => 'On delivery',
             'payment_details' => 'Bank transfer', 'remarks' => 'Prepared for checking.',
-            ...$this->workflowSignature($this->preparer),
+            ...$this->workflowSignature($actor),
         ])->assertSessionHasNoErrors()->assertRedirect();
 
         return $request->purchaseOrder()->firstOrFail();

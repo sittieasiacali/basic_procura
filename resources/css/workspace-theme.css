@@ -1,0 +1,458 @@
+@import './inventory-theme.css';
+
+/* ASI brand palette and typography from ui-kit, with the user-requested role sidebar. */
+@media screen {
+    body.workspace-theme {
+        --asi-font-heading: var(--asi-font-body);
+        --asi-navy: #160D76;
+        --asi-blue: #4094D9;
+        --asi-border: #DEDFE8;
+        --asi-shadow-card: none;
+        --bs-primary: #160D76;
+        --bs-primary-rgb: 22, 13, 118;
+        --glass-shadow: none;
+        --glass-glow: none;
+        background: #f7f8fa !important;
+        color: #222222;
+    }
+
+    .workspace-theme .workspace-sidebar {
+        --bs-offcanvas-width: 232px;
+        background: #fff !important;
+        border-right: 1px solid rgb(22 13 118 / 18%);
+        display: flex;
+        flex-direction: column;
+        padding: 24px 16px 18px;
+    }
+
+    .workspace-sidebar-brand { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+    .workspace-sidebar-brand img { display: block; width: 180px; max-width: 100%; height: 48px; object-fit: contain; }
+    .workspace-sidebar-role { display: grid; gap: 4px; margin: 24px 8px 18px; padding-bottom: 20px; border-bottom: 1px solid rgb(22 13 118 / 18%); font-size: .75rem; color: #5D616B; }
+    .workspace-sidebar-role strong { font-size: .8rem; color: #160D76; overflow-wrap: anywhere; }
+    .workspace-sidebar-links { display: grid; align-content: start; gap: 8px; overflow-y: auto; padding: 2px; }
+    .workspace-sidebar-link {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        min-height: 40px;
+        padding: 9px 13px;
+        border: 1px solid rgb(22 13 118 / 50%);
+        border-radius: 999px;
+        background: #fff;
+        color: #160D76;
+        font-size: .875rem;
+        line-height: 1.3;
+        text-align: left;
+        text-decoration: none;
+    }
+    .workspace-sidebar-link svg { flex-shrink: 0; }
+    .workspace-sidebar-link:hover { background: #ECF5FC; border-color: #4094D9; color: #160D76; }
+    .workspace-sidebar-link.is-active { background: #160D76; color: #fff; border-color: #160D76; font-weight: 700; }
+    .workspace-sidebar-link.is-active:hover { background: #100854; border-color: #100854; }
+    .workspace-sidebar-footer { margin-top: auto; padding-top: 24px; }
+    .workspace-sidebar-link:focus-visible, .workspace-menu-toggle:focus-visible { outline: 3px solid #4094D9; outline-offset: 3px; }
+    .workspace-skip-link { position: fixed; top: -100px; left: 250px; z-index: 1100; padding: 12px; background: #fff; color: #222; }
+    .workspace-skip-link:focus { top: 10px; }
+    .workspace-menu-toggle { border: 1px solid #aaa; background: #fff; border-radius: 8px; padding: 6px 10px; margin-right: 10px; }
+    .workspace-welcome { flex: 1; min-width: 0; font-size: .82rem; color: #222222; }
+    .workspace-date { display: inline-block; margin-left: 12px; padding: 4px 8px; border-radius: 6px; background: #ECF5FC; color: #5D616B; font-size: .7rem; }
+
+    .workspace-theme .app-navbar.app-navbar--workspace {
+        min-height: 72px;
+        border: 0 !important;
+        border-bottom: 1px solid #ededeb !important;
+        background: #fff !important;
+        box-shadow: none;
+        backdrop-filter: none;
+    }
+    .workspace-theme .app-navbar .navbar-collapse { display: flex !important; flex: 0 0 auto; width: auto; max-height: none; padding: 0; overflow: visible; }
+    .workspace-theme .app-navbar .navbar-tool,
+    .workspace-theme .app-navbar .user-menu-button { color: #160D76; }
+    .workspace-theme .user-avatar { background: #ECF5FC; color: #160D76; box-shadow: none; }
+    .workspace-theme .user-menu-name { color: #333; }
+    .workspace-theme .user-menu-role { color: #5D616B; }
+
+    .workspace-theme .app-main { width: auto; max-width: none; padding: 26px 28px 48px; }
+    .workspace-theme .app-main :is(.page-header, .dashboard-page-header, .procura-form-header) {
+        background: transparent !important;
+        border: 0;
+        border-radius: 0;
+        box-shadow: none;
+        color: #222222;
+        padding: 0 0 20px;
+        margin-bottom: 20px;
+        min-height: 0;
+    }
+    .workspace-theme .app-main :is(.page-header, .dashboard-page-header, .procura-form-header)::after,
+    .workspace-theme .app-main .dashboard-page-header::before { display: none; }
+    .workspace-theme .app-main :is(.page-header, .dashboard-page-header, .procura-form-header) :is(h1, h2, p, .section-kicker, .page-eyebrow, .dashboard-breadcrumb, .dashboard-breadcrumb span, .request-breadcrumb, .request-breadcrumb a) {
+        color: #222222;
+        text-shadow: none;
+    }
+    .workspace-theme .app-main h1 { font-family: var(--asi-font-heading); font-size: clamp(1.5rem, 2vw, 2rem); font-weight: 700; }
+    .workspace-theme .app-main :is(h2, h3) { font-family: var(--asi-font-heading); color: var(--asi-navy); }
+    .workspace-theme .app-main .dashboard-kpi-value { font-family: var(--asi-font-body); font-variant-numeric: tabular-nums; }
+    .workspace-theme .dashboard-breadcrumb { display: none; }
+    .workspace-theme .dashboard-greeting { margin-top: 8px; font-size: .85rem; }
+    .workspace-theme .app-main .dashboard-context-bar { background: #ECF5FC; border: 0; box-shadow: none; }
+    .workspace-theme .app-main .card {
+        background: #fff;
+        border: 1px solid #333333;
+        border-radius: 14px;
+        --bs-card-border-radius: 14px;
+        --bs-card-inner-border-radius: 13px;
+        box-shadow: none;
+    }
+    .workspace-theme .app-main .card > :is(.card-header, .card-footer) { background: transparent; border-color: #DEDFE8; }
+    .workspace-theme .app-main .dashboard-panel > .card-header h2 { color: #160D76; background: transparent; }
+    .workspace-theme .app-main :is(.dashboard-kpi, .dashboard-request-card) { background: #fff; box-shadow: none; transform: none; }
+    .workspace-theme .app-main :is(.dashboard-kpi, .dashboard-request-card)::before,
+    .workspace-theme .app-main :is(.dashboard-kpi, .dashboard-request-card)::after { display: none; }
+    .workspace-theme .app-main .dashboard-kpi-value { color: #222222; font-size: 2rem; }
+    .workspace-theme .app-main .dashboard-kpi .kpi-icon { background: #ECF5FC; color: #160D76; box-shadow: none; border: 0; }
+    .workspace-theme .app-main .btn { border-radius: 999px; box-shadow: none; }
+    .workspace-theme .app-main :is(.btn-primary, .btn-warning),
+    .workspace-theme .app-main :is(.page-header, .dashboard-page-header, .procura-form-header) .btn-primary {
+        background: #160D76;
+        border: 1px solid #160D76;
+        color: #FFFFFA;
+        box-shadow: none;
+    }
+    .workspace-theme .app-main :is(.btn-primary, .btn-warning):hover { background: #100854; color: #FFFFFA; }
+    .workspace-theme .app-main .btn-outline-primary,
+    .workspace-theme .app-main :is(.page-header, .dashboard-page-header, .procura-form-header) .btn-outline-primary {
+        background: #fff; border: 1px solid #160D76; color: #160D76;
+    }
+    .workspace-theme .app-main .btn-outline-primary:hover { background: #ECF5FC; color: #222222; }
+    .workspace-theme .app-main :is(.form-control, .form-select) { background-color: #fff; border-color: #858493; box-shadow: none; }
+    .workspace-theme .app-main :is(.form-control, .form-select):focus { border-color: #160D76; box-shadow: 0 0 0 3px rgb(22 13 118 / 18%); }
+    .workspace-theme .app-main .table { --bs-table-bg: #fff; --bs-table-hover-bg: #ECF5FC; }
+    .workspace-theme .app-main .card .table > thead > tr > th { background: #ECF5FC; color: #222222; border-bottom-color: #DEDFE8; }
+    .workspace-theme .app-main .dashboard-creator-tab { background: #fff; border: 1px solid #DEDFE8; box-shadow: none; }
+    .workspace-theme .app-main .dashboard-creator-tab.is-active { background: #ECF5FC; border-color: #4094D9; color: #160D76; box-shadow: none; }
+    .workspace-theme .app-main .dashboard-creator-tab.is-active :is(.dashboard-creator-tab-label, .dashboard-creator-tab-step, .dashboard-creator-tab-hint) { color: #160D76; }
+    .workspace-theme .app-main .dashboard-creator-tab.is-active .dashboard-creator-tab-icon { background: #160D76; color: #FFFFFA; box-shadow: none; }
+    .workspace-theme .app-main :is(.nav-pills .nav-link.active, .pagination .page-item.active .page-link) { background: #160D76; border-color: #4094D9; color: #FFFFFA; }
+
+    @media (min-width: 992px) {
+        .workspace-theme .workspace-sidebar { position: fixed; inset: 0 auto 0 0; width: 232px; height: 100dvh; z-index: 1030; }
+        .workspace-theme:not(.workspace-theme--without-navigation) :is(.app-navbar, .app-main) { margin-left: 232px; }
+    }
+    @media (max-width: 991.98px) {
+        .workspace-theme .workspace-sidebar { overflow-y: auto; }
+        .workspace-theme .app-main { padding: 20px 16px 36px; }
+        .workspace-date { display: none; }
+        .workspace-welcome { font-size: .75rem; }
+        .workspace-theme .app-navbar .user-menu-name { max-width: 150px; }
+        .workspace-skip-link { left: 10px; }
+    }
+    @media (max-width: 575.98px) {
+        .workspace-welcome { flex: 1; }
+        .workspace-welcome strong { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .workspace-theme .app-navbar .user-menu-details { display: none !important; }
+        .workspace-theme .app-navbar .container-fluid { flex-wrap: nowrap; }
+    }
+    .is-embedded .workspace-sidebar,
+    .is-embedded .workspace-skip-link { display: none !important; }
+    .is-embedded .workspace-theme .app-main { margin-left: 0 !important; width: 100%; padding: 16px; }
+}
+@media print {
+    .workspace-sidebar, .workspace-skip-link, .workspace-menu-toggle { display: none !important; }
+}
+
+/* Flat, outlined cards with consistent spacing across dashboard roles. */
+@media screen {
+    .workspace-theme .app-main { min-width: 0; }
+    .workspace-theme .dashboard-page { --dashboard-border: #dedfe8; --dashboard-shadow: none; min-width: 0; gap: 20px; }
+    .workspace-theme .app-main .dashboard-page-header { margin-bottom: 0; padding-bottom: 4px; }
+    .workspace-theme .app-main .dashboard-page .workspace-details { margin: 0; }
+    .workspace-theme .app-main .dashboard-page-header h1 { letter-spacing: -.035em; }
+    .workspace-theme .app-main .dashboard-page :is(.dashboard-panel, .dashboard-request-card, .dashboard-kpi) {
+        background: #fff;
+        box-shadow: none !important;
+    }
+    .workspace-theme .app-main .dashboard-page .dashboard-panel { border-color: var(--asi-container-border) !important; }
+    .workspace-theme .app-main .dashboard-page .dashboard-panel > .card-header {
+        flex-wrap: wrap;
+        align-items: center;
+        padding: 20px 22px !important;
+        background: #fff !important;
+    }
+    .workspace-theme .app-main .dashboard-panel > .card-header > div { min-width: 0; }
+    .workspace-theme .app-main .dashboard-panel > .card-header h2 {
+        font-size: 1.05rem;
+        font-weight: 700;
+        line-height: 1.4;
+        letter-spacing: -.02em;
+    }
+    .workspace-theme .app-main .dashboard-panel > .card-header p { font-size: .8125rem; line-height: 1.6; color: #656978; }
+    .workspace-theme .app-main .dashboard-page .dashboard-request-list {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 16px;
+        padding: 20px;
+        background: #fff;
+    }
+    .workspace-theme .dashboard-request-list > .empty-state { grid-column: 1 / -1; }
+    .workspace-theme .app-main .dashboard-page .dashboard-request-card {
+        min-width: 0;
+        min-height: 220px;
+        padding: 20px;
+        border-color: #555568 !important;
+        border-radius: 16px;
+        gap: 0;
+    }
+    .workspace-theme .app-main .dashboard-request-card-topline { flex-wrap: wrap; gap: 8px; }
+    .workspace-theme .app-main .dashboard-request-card .request-number { font-size: .75rem; font-weight: 700; letter-spacing: .02em; overflow-wrap: anywhere; }
+    .workspace-theme .app-main .dashboard-request-card .badge { max-width: 100%; white-space: normal; line-height: 1.4; text-align: left; }
+    .workspace-theme .app-main .dashboard-request-card > .badge { align-self: flex-start; margin-top: 8px; }
+    .workspace-theme .app-main .dashboard-request-card .request-title {
+        display: block;
+        overflow: visible;
+        margin: 14px 0 8px;
+        font-size: .9375rem;
+        line-height: 1.5;
+        font-weight: 600;
+        color: #222222;
+        overflow-wrap: anywhere;
+    }
+    .workspace-theme .app-main .dashboard-request-card .request-metadata {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 4px 6px;
+        margin: 0 0 18px;
+        color: #656978;
+        font-size: .75rem;
+        line-height: 1.6;
+        overflow-wrap: anywhere;
+    }
+    .workspace-theme .app-main .dashboard-request-card .request-metadata > span:last-child { flex-basis: 100%; }
+    .workspace-theme .app-main .dashboard-request-card .request-metadata > span[aria-hidden]:nth-last-child(2) { display: none; }
+    .workspace-theme .app-main .dashboard-request-card-footer { margin-top: auto; padding-top: 14px; border-color: #ededf2; gap: 8px; }
+    .workspace-theme .app-main .dashboard-request-card-footer .dashboard-row-action {
+        flex: 1 1 auto;
+        max-width: 100%;
+        min-height: 40px;
+        padding: 8px 12px;
+        white-space: normal;
+        line-height: 1.4;
+        overflow: visible;
+        background: #160D76;
+        border-color: #160D76;
+        color: #fff;
+    }
+    .workspace-theme .app-main .dashboard-request-card-footer .dashboard-row-action:hover { background: #100854; border-color: #100854; }
+    .workspace-theme .app-main .dashboard-request-view-link { display: inline-flex; align-items: center; justify-content: center; min-height: 40px; padding: 8px 12px; border: 1px solid #555568; border-radius: 999px; color: #160D76; font-size: .75rem; text-decoration: none; }
+    .workspace-theme .app-main .dashboard-request-view-link:hover { background: #ECF5FC; }
+    .workspace-theme .app-main .withdrawal-panel { border-left: 3px solid #F08530 !important; }
+    .workspace-theme .app-main .dashboard-workflow-filters { margin-bottom: 0 !important; box-shadow: none !important; border-color: var(--asi-container-border); }
+    .workspace-theme .app-main .withdrawal-list-item { padding: 18px 22px; gap: 16px; }
+    .workspace-theme .withdrawal-list-main { min-width: 0; flex: 1 1 260px; overflow-wrap: anywhere; }
+    .workspace-theme .withdrawal-list-reason { color: #656978; margin-top: 6px; }
+    .workspace-theme .app-navbar .navbar-tools { gap: 8px; flex-wrap: nowrap; }
+    .workspace-theme .workspace-menu-toggle { display: inline-grid; place-items: center; flex-shrink: 0; width: 44px; height: 44px; padding: 0; color: #160D76; border-color: #dedfe8; }
+    .workspace-theme .workspace-sidebar-link { min-height: 44px; }
+    .workspace-theme .workspace-sidebar-footer { padding-bottom: env(safe-area-inset-bottom, 0px); }
+
+    @media (min-width: 992px) {
+        .workspace-theme .workspace-menu-toggle { display: none; }
+    }
+    @media (min-width: 576px) and (max-width: 1399.98px) {
+        .workspace-theme .app-main .dashboard-page .dashboard-request-list { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    }
+    @media (max-width: 767.98px) {
+        .workspace-theme .app-navbar .user-menu-details { display: none !important; }
+        .workspace-theme .app-navbar .user-menu-button { padding: 2px; gap: 4px; }
+        .workspace-theme .app-navbar .navbar-tool { width: 44px; height: 44px; }
+        .workspace-theme .app-navbar .container-fluid { flex-wrap: nowrap; gap: 8px; }
+        .workspace-theme .workspace-menu-toggle { margin-right: 0; }
+        .workspace-theme .app-navbar .dropdown-menu { max-width: calc(100vw - 24px); overflow-wrap: anywhere; }
+        .workspace-theme .app-main .dashboard-page-header { gap: 16px; }
+        .workspace-theme .app-main .dashboard-panel > .card-header { padding: 16px !important; gap: 8px; }
+        .workspace-theme .app-main .withdrawal-list-item { padding: 16px; }
+    }
+    @media (max-width: 575.98px) {
+        .workspace-theme .app-main { padding: 20px 12px 32px; }
+        .workspace-theme .app-navbar.app-navbar--workspace { min-height: 68px; }
+        .workspace-theme .workspace-welcome { line-height: 1.6; }
+        .workspace-theme .app-main .dashboard-page .dashboard-request-list { grid-template-columns: minmax(0, 1fr); padding: 12px; gap: 12px; }
+        .workspace-theme .app-main .dashboard-page .dashboard-request-card { min-height: 0; padding: 16px; }
+        .workspace-theme .app-main .dashboard-request-card-footer :is(.dashboard-row-action, .dashboard-request-view-link, .dashboard-unclaim-button) { min-height: 44px; }
+        .workspace-theme .app-main .withdrawal-list-item > .btn { width: 100%; min-height: 44px; justify-content: center; white-space: normal !important; }
+        .workspace-theme .app-main .dashboard-page-header .page-actions { width: 100%; flex-wrap: wrap; }
+        .workspace-theme .dashboard-filter-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+        .workspace-theme .dashboard-filter-fields > :is(.dashboard-filter-search, .dashboard-filter-actions) { grid-column: 1 / -1; }
+        .workspace-theme .dashboard-filter-field { min-width: 0; }
+        .workspace-theme .dashboard-filter-field:has(select) { grid-column: 1 / -1; }
+        .workspace-theme .dashboard-filter-fields :is(.form-control, .form-select) { width: 100%; min-width: 0; min-height: 44px; font-size: 1rem; }
+        .workspace-theme .dashboard-filter-actions .btn { min-height: 44px; }
+    }
+}
+
+@media screen {
+    .workspace-theme .workspace-details { margin: -8px 0 20px; }
+    .workspace-theme .workspace-details > summary { width: fit-content; cursor: pointer; color: #5D616B; font-size: .78rem; padding: 6px 0; }
+    .workspace-theme .workspace-details[open] > summary { margin-bottom: 8px; }
+    .workspace-theme .workspace-details .dashboard-context-bar { margin-bottom: 0; }
+    .workspace-theme .app-main .dashboard-page .card,
+    .workspace-theme .app-main .dashboard-page .dashboard-creator-tabs,
+    .workspace-theme .app-main .dashboard-page .dashboard-request-card {
+        border: 1px solid #333333;
+        border-radius: 14px;
+        box-shadow: none;
+    }
+    .workspace-theme .app-main .dashboard-page .dashboard-kpi { border-color: #333333; }
+    .workspace-theme .app-main .dashboard-page .dashboard-panel > .card-header { background: #fff; }
+    .workspace-theme .app-main .dashboard-page .dashboard-creator-section { background: #FFFFFA; border-color: #DEDFE8; box-shadow: none; }
+    .workspace-theme .app-main .dashboard-page .dashboard-creator-tab-hint { display: none; }
+    .workspace-theme .app-navbar .user-avatar { background: #ECF5FC; color: #160D76; }
+    @media (max-width: 575.98px) {
+        .workspace-theme .dashboard-kpi-grid > div { width: 50%; }
+        .workspace-theme .dashboard-kpi .card-body { padding: 12px; }
+        .workspace-theme .dashboard-kpi .kpi-label { font-size: .75rem; }
+        .workspace-theme .dashboard-kpi .kpi-icon { display: none; }
+        .workspace-theme .app-main .dashboard-kpi-value { font-size: 1.6rem; }
+    }
+}
+
+@media screen {
+    .workspace-theme {
+        --asi-orange: #F08530;
+        --asi-paper: #FFFFFA;
+        --asi-canvas: #FFFFFA;
+        --asi-ink: #222222;
+    }
+    .workspace-sidebar-brand > a { padding: 6px 8px; background: #fff; border-radius: 8px; }
+    .workspace-sidebar-brand img { width: 164px; height: 44px; }
+    .workspace-theme .app-main h1 { color: #160D76; }
+    .workspace-theme .app-main :is(.page-header, .dashboard-page-header, .procura-form-header) :is(h1, h2) { color: #160D76; }
+    .workspace-theme .app-main .btn-warning { background: #F08530; border-color: #F08530; color: #222222; }
+    .workspace-theme .app-main .btn-warning:hover { background: #ed9b5d; border-color: #ed9b5d; color: #222222; }
+    .workspace-theme .app-main :is(.btn, .form-control, .form-select):focus-visible { outline: 2px solid #160D76; outline-offset: 3px; }
+    .workspace-theme .app-main .dashboard-page .dashboard-creator-tab.is-active { border-left: 3px solid #F08530; }
+    .workspace-theme .workspace-details > summary { font-size: .875rem; }
+}
+
+/* Reference-inspired light dashboard. Presentation only; all controls keep their behavior. */
+@media screen {
+    body.workspace-theme {
+        --asi-container-border: #b9c5d8;
+        --asi-container-divider: #e0e6f0;
+        background: #f3f6fb !important;
+    }
+    .workspace-theme .app-main .dashboard-page {
+        font-family: var(--asi-font-body);
+        --dashboard-border: #b9c5d8;
+        gap: 18px;
+    }
+    .workspace-theme .app-main .dashboard-page :is(h1, h2, h3, .kpi-label) { font-family: var(--asi-font-body); }
+    .workspace-theme .app-main .dashboard-page .card,
+    .workspace-theme .app-main .dashboard-page .dashboard-request-card { border-radius: 18px; }
+    .workspace-theme .app-main .dashboard-page-header h1 { font-size: clamp(1.35rem, 2vw, 1.8rem); font-weight: 700; }
+    .workspace-theme .app-main .dashboard-greeting { color: #67738a; }
+
+    .workspace-theme .app-main .dashboard-page--it .dashboard-page-header {
+        flex-direction: column;
+        align-items: flex-start;
+        justify-content: center;
+        gap: 18px;
+        min-height: 260px;
+        padding: 32px;
+        border: 1px solid var(--asi-container-border);
+        border-radius: 22px;
+        background:
+            linear-gradient(90deg, #eef4ff 0%, rgb(238 244 255 / 95%) 25%, rgb(238 244 255 / 0%) 55%),
+            var(--dashboard-header-image) right center / auto 120% no-repeat,
+            #eef4ff !important;
+    }
+    .workspace-theme .app-main .dashboard-page--it .dashboard-heading-block { max-width: 48%; flex-basis: auto; }
+    .workspace-theme .app-main .dashboard-page--it .dashboard-page-header h1 { color: #160D76; font-size: clamp(1.7rem, 2.6vw, 2.4rem); letter-spacing: -.045em; }
+    .workspace-theme .app-main .dashboard-page--it .dashboard-page-header .dashboard-greeting { margin-bottom: 0; color: #465575; font-size: .875rem; line-height: 1.6; }
+    .workspace-theme .app-main .dashboard-page--it .dashboard-header-actions { width: auto; max-width: 48%; }
+    .workspace-theme .app-main .dashboard-page--it .dashboard-header-actions .btn { min-height: 42px; padding: 10px 18px; background: #160D76; border-color: #160D76; color: #fff; font-size: .75rem; }
+    .workspace-theme .app-main .dashboard-page--it .dashboard-header-actions .btn:hover { background: #2848a6; border-color: #2848a6; }
+
+    .workspace-theme .workspace-sidebar { border-right-color: #e0e6f0; }
+    .workspace-theme .workspace-sidebar-role { border-color: #e0e6f0; }
+    .workspace-theme .workspace-sidebar-link { border-color: #cad3e4; font-weight: 500; }
+    .workspace-theme .workspace-sidebar-link.is-active { background: linear-gradient(115deg, #160D76, #2848a6); border-color: #160D76; font-weight: 600; }
+    .workspace-theme .workspace-sidebar-link.is-active:hover { background: #100854; }
+    .workspace-theme .app-navbar .user-avatar { border: 1px solid #dbe7fa; background: #eef5ff; }
+    .workspace-theme .workspace-date { background: #f0f4fa; color: #63718a; }
+
+    .workspace-theme .app-main .dashboard-page .dashboard-kpi { min-height: 142px; overflow: hidden; }
+    .workspace-theme .app-main .dashboard-page .dashboard-kpi .card-body { padding: 20px; gap: 18px; }
+    .workspace-theme .app-main .dashboard-page .dashboard-kpi .kpi-label { color: #58657e !important; font-size: .75rem !important; font-weight: 600 !important; line-height: 1.5; }
+    .workspace-theme .app-main .dashboard-page .dashboard-kpi-value { font-size: clamp(2rem, 2.8vw, 2.8rem); font-weight: 600; letter-spacing: -.055em; color: #17264a; }
+    .workspace-theme .app-main .dashboard-page .dashboard-kpi .kpi-icon { width: 34px; height: 34px; border-radius: 50%; background: #edf3ff; color: #2955b4; }
+    .workspace-theme .app-main .dashboard-page .dashboard-kpi-grid > div:first-child .dashboard-kpi {
+        background: radial-gradient(ellipse at 100% 0%, rgb(64 148 217 / 65%), transparent 75%), linear-gradient(120deg, #160D76, #254eb8);
+        border-color: #2848a6 !important;
+    }
+    .workspace-theme .app-main .dashboard-page .dashboard-kpi-grid > div:first-child .kpi-label { color: #e8f0ff !important; }
+    .workspace-theme .app-main .dashboard-page .dashboard-kpi-grid > div:first-child .dashboard-kpi-value { color: #fff; }
+    .workspace-theme .app-main .dashboard-page .dashboard-kpi-grid > div:first-child .kpi-icon { background: rgb(255 255 255 / 16%); color: #fff; }
+    .workspace-theme .app-main .dashboard-page .dashboard-kpi--success .kpi-icon { background: #e8f7f0; color: #237a57; }
+    .workspace-theme .app-main .dashboard-page .dashboard-kpi--warning .kpi-icon { background: #fff2e6; color: #a95614; }
+
+    .workspace-theme .app-main .dashboard-page .dashboard-workflow-filters { padding: 18px 20px; background: #fff; gap: 16px 24px; }
+    .workspace-theme .dashboard-filter-heading-icon { border-radius: 50%; background: #edf3ff; color: #2955b4; }
+    .workspace-theme .dashboard-filter-heading h2 { font-size: .875rem; font-weight: 700; color: #253559; }
+    .workspace-theme .dashboard-filter-heading p { font-size: .75rem; color: #67738a; }
+    .workspace-theme .dashboard-filter-field label { font-size: .65rem; font-weight: 600; letter-spacing: .055em; color: #63718a; }
+    .workspace-theme .app-main .dashboard-page :is(.form-control, .form-select) { border-color: #ccd5e4; border-radius: 10px; color: #253559; }
+    .workspace-theme .app-main .dashboard-page :is(.form-control, .form-select):focus { border-color: #4094D9; box-shadow: 0 0 0 3px rgb(64 148 217 / 12%); }
+    .workspace-theme .app-main .dashboard-page .btn-primary { background: linear-gradient(110deg, #160D76, #2859ba); border-color: #2848a6; }
+    .workspace-theme .app-main .dashboard-page .btn-primary:hover { background: #160D76; }
+
+    .workspace-theme .app-main .dashboard-page .dashboard-panel > .card-header { padding: 18px 20px !important; border-bottom-color: #e0e6f0; }
+    .workspace-theme .app-main .dashboard-page .dashboard-panel > .card-header h2 { font-size: .9375rem; color: #253559; letter-spacing: -.015em; }
+    .workspace-theme .app-main .dashboard-page .dashboard-panel > .card-header p { font-size: .75rem; color: #67738a; }
+    .workspace-theme .app-main .dashboard-page .withdrawal-panel { border-left: 3px solid #F08530 !important; }
+    .workspace-theme .app-main .dashboard-page .withdrawal-panel > .card-header { background: #fffaf5 !important; }
+    .workspace-theme .app-main .withdrawal-list-item { padding: 16px 20px; font-size: .8125rem; }
+
+    .workspace-theme .app-main .dashboard-page .dashboard-request-list { padding: 16px; gap: 14px; background: #fbfcff; }
+    .workspace-theme .app-main .dashboard-page .dashboard-request-card { min-height: 212px; padding: 18px; border-color: #b9c5d8 !important; }
+    .workspace-theme .app-main .dashboard-page .dashboard-request-card:hover { border-color: #4094D9 !important; }
+    .workspace-theme .app-main .dashboard-request-card .request-number { color: #345ca5; font-size: .6875rem; letter-spacing: .04em; }
+    .workspace-theme .app-main .dashboard-request-card .request-title { margin: 12px 0 8px; font-size: .875rem; color: #253559; font-weight: 600; }
+    .workspace-theme .app-main .dashboard-request-card .request-metadata { color: #67738a; font-size: .6875rem; line-height: 1.65; margin-bottom: 16px; }
+    .workspace-theme .app-main .dashboard-request-card .badge { padding: 4px 8px; border-radius: 999px; font-size: .625rem; font-weight: 500; }
+    .workspace-theme .app-main .dashboard-request-card-footer { padding-top: 12px; }
+    .workspace-theme .app-main .dashboard-request-card-footer .dashboard-row-action { flex: 0 1 auto; padding: 8px 16px; background: linear-gradient(110deg, #160D76, #2859ba); border-color: #2848a6; font-size: .6875rem; }
+    .workspace-theme .app-main .dashboard-request-view-link { margin-left: auto; border-color: #ccd5e4; background: #fff; font-size: .6875rem; }
+    .workspace-theme .app-main .dashboard-request-view-link:hover { background: #edf3ff; border-color: #4094D9; }
+
+    .workspace-theme .app-main .dashboard-page .table-toolbar { background: #f8faff; border-color: #e0e6f0; }
+    .workspace-theme .app-main .dashboard-page .table > thead > tr > th { background: #edf3fc; color: #5b6c8a; font-size: .625rem; letter-spacing: .065em; font-weight: 600; padding-top: 14px; padding-bottom: 14px; }
+    .workspace-theme .app-main .dashboard-page .table > tbody > tr > td { border-color: #edf0f6; font-size: .75rem; padding-top: 14px; padding-bottom: 14px; }
+    .workspace-theme .dashboard-history-arrow { border-color: #b9c5d8; background: linear-gradient(180deg, #edf6ff, #e2ebff); color: #2848a6; }
+    .workspace-theme .dashboard-history-arrow:hover { background: #160D76; color: #fff; }
+
+    @media (max-width: 767.98px) {
+        .workspace-theme .app-main .dashboard-page--it .dashboard-page-header {
+            justify-content: flex-start;
+            min-height: 330px;
+            padding: 20px;
+            gap: 14px;
+            background:
+                linear-gradient(180deg, #eef4ff 0%, rgb(238 244 255 / 95%) 28%, rgb(238 244 255 / 0%) 65%),
+                var(--dashboard-header-image) right bottom / auto 72% no-repeat,
+                #eef4ff !important;
+        }
+        .workspace-theme .app-main .dashboard-page--it .dashboard-heading-block { max-width: 100%; }
+        .workspace-theme .app-main .dashboard-page--it .dashboard-header-actions { max-width: 100%; }
+        .workspace-theme .app-main .dashboard-page--it .dashboard-header-actions .btn { min-height: 44px; }
+    }
+    @media (max-width: 575.98px) {
+        .workspace-theme .app-main .dashboard-page .dashboard-kpi { min-height: 118px; }
+        .workspace-theme .app-main .dashboard-page .dashboard-kpi .card-body { padding: 14px; gap: 16px; }
+        .workspace-theme .app-main .dashboard-page .dashboard-kpi-value { font-size: 2rem; }
+        .workspace-theme .app-main .dashboard-page .dashboard-workflow-filters { padding: 16px; }
+        .workspace-theme .app-main .dashboard-page .dashboard-request-card { min-height: 0; padding: 16px; }
+        .workspace-theme .app-main .dashboard-page .dashboard-panel > .card-header { padding: 16px !important; }
+        .workspace-theme .app-main .dashboard-page .dashboard-request-list { padding: 12px; gap: 12px; }
+        .workspace-theme .app-main .dashboard-request-card-footer .dashboard-row-action { flex: 1 1 auto; }
+    }
+}

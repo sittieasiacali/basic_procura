@@ -42,8 +42,10 @@
         <h2 id="po-quotation-heading"><span class="po-focus-card-icon po-focus-card-icon--star">★</span>Approved quotation</h2>
         <dl class="po-focus-facts">
             <div><dt>Supplier</dt><dd>{{ $purchaseRequest->selectedSupplier?->name ?? 'Not selected' }} @if($approvedQuotation)<span class="po-focus-approved">Approved</span>@endif</dd></div>
+            <div><dt>Item amount (net)</dt><dd>&#8369; {{ number_format($approvedNetAmount - $approvedQuotations->sum('shipping_fee'), 2) }}</dd></div>
+            <div><dt>Shipping fee</dt><dd>&#8369; {{ number_format($approvedQuotations->sum('shipping_fee'), 2) }}</dd></div>
             <div><dt>Quoted amount</dt><dd class="po-focus-amount">{{ $approvedQuotation ? '₱ '.number_format((float) $approvedTotalAmount, 2) : 'Not available' }}</dd></div>
-            <div><dt>Lead time</dt><dd>{{ $approvedQuotation?->delivery_lead_time ?: 'Not provided' }}</dd></div>
+            <div><dt>Lead time</dt><dd>{{ $purchaseRequest->purchaseOrder?->delivery_lead_time ?: 'Not provided' }}</dd></div>
             <div><dt>Warranty</dt><dd>{{ $approvedQuotation?->warranty ?: 'Not provided' }}</dd></div>
         </dl>
         <div class="po-focus-card-footer"><a href="#po-all-quotations" onclick="document.getElementById('po-all-quotations').open = true">Compare {{ $quotations->count() }} quotation{{ $quotations->count() === 1 ? '' : 's' }} <span aria-hidden="true">→</span></a></div>
@@ -83,7 +85,7 @@
                 <input type="hidden" name="_validation_context" value="purchase-order">
                 <div class="po-form-group-heading po-form-group-heading--order"><span>Order information</span><small>Request and supplier details</small></div>
                 <div class="po-focus-field">
-                    <label for="expected_delivery_date">Expected delivery date <span class="text-danger">*</span></label>
+                    <label>Lead time (PO Team)</label><input class="form-control mb-2" name="delivery_lead_time" maxlength="255" value="{{ old('delivery_lead_time') }}"><label for="expected_delivery_date">Expected delivery date <span class="text-danger">*</span></label>
                     <input class="form-control @error('expected_delivery_date') is-invalid @enderror" id="expected_delivery_date" name="expected_delivery_date" type="date" value="{{ old('expected_delivery_date', $purchaseRequest->required_date?->copy()->addDays(7)->format('Y-m-d')) }}" required>
                     @error('expected_delivery_date')<div class="invalid-feedback">{{ $message }}</div>@enderror
                 </div>
@@ -146,11 +148,11 @@
                 <div class="po-focus-preview-hint"><x-ui.icon name="file-text" size="16" />The signed Purchase Order will be submitted to the assigned Checker.</div>
                 <button class="btn btn-primary po-focus-submit" type="submit" data-po-submit><span data-po-submit-label><x-ui.icon name="request" size="18" />Create purchase order</span></button>
             </form>
-            @include('purchase-requests.partials.skip-purchase-order')
+
         @else
             <p class="mb-0 text-muted">The approved quotation must be available before a purchase order can be created.</p>
         @endif
     @else
-        <p class="mb-0 text-muted">Only an authorized Purchasing user can create this purchase order.</p>
+        <p class="mb-0 text-muted">An authorized Purchasing user must create this purchase order.</p>
     @endcan
 </section>

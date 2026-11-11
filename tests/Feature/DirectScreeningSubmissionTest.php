@@ -8,6 +8,7 @@ use App\Models\Campaign;
 use App\Models\PurchaseRequest;
 use App\Models\Role;
 use App\Models\User;
+use App\Notifications\ProcurementUpdate;
 use App\Notifications\WorkflowHandoffEmail;
 use Database\Seeders\RoleSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -55,11 +56,10 @@ class DirectScreeningSubmissionTest extends TestCase
                 ->assertDontSee('Submit for OM Approval');
         }
         Notification::assertSentOnDemandTimes(WorkflowHandoffEmail::class, 4);
-        Notification::assertSentOnDemand(WorkflowHandoffEmail::class, fn ($notification, $channels, $recipient) =>
-            $channels === ['mail'] && $recipient->routes['mail'] === 'om@example.test');
-        Notification::assertSentOnDemand(WorkflowHandoffEmail::class, fn ($notification, $channels, $recipient) =>
-            $channels === ['mail'] && $recipient->routes['mail'] === 'smt@example.test');
-        Notification::assertCount(4);
+        Notification::assertSentOnDemand(WorkflowHandoffEmail::class, fn ($notification, $channels, $recipient) => $channels === ['mail'] && $recipient->routes['mail'] === 'om@example.test');
+        Notification::assertSentOnDemand(WorkflowHandoffEmail::class, fn ($notification, $channels, $recipient) => $channels === ['mail'] && $recipient->routes['mail'] === 'smt@example.test');
+        Notification::assertSentToTimes($owner, ProcurementUpdate::class, 2);
+        Notification::assertCount(6);
     }
 
     public function test_draft_submit_and_returned_edit_submit_skip_management_and_reject_duplicates(): void
@@ -107,7 +107,8 @@ class DirectScreeningSubmissionTest extends TestCase
         $request->update(['status' => PurchaseRequestStatus::ForPayment]);
         $migration->up();
         $this->assertSame(PurchaseRequestStatus::ForPayment, $request->fresh()->status);
-        Notification::assertCount(2);
+        Notification::assertSentToTimes($owner, ProcurementUpdate::class, 1);
+        Notification::assertCount(3);
     }
 
     public function test_embedded_screening_submissions_return_a_lightweight_receipt(): void
@@ -150,6 +151,7 @@ class DirectScreeningSubmissionTest extends TestCase
     private function owner(): User
     {
         $campaign = Campaign::query()->create(['name' => 'Submission testing', 'is_active' => true]);
+
         return User::factory()->create([
             'role_id' => $this->roleId(RoleSlug::TeamLeader), 'campaign_id' => $campaign->id,
             'om_notification_email' => 'om@example.test', 'smt_notification_email' => 'smt@example.test',

@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests;
 
+use App\Support\AttachmentFiles;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Rules\File;
@@ -26,8 +27,9 @@ class StoreScreeningDecisionRequest extends FormRequest
             'evidence' => ['nullable', 'string', 'max:5000'],
             'quotation_evidence' => [
                 'nullable',
-                File::types(['pdf', 'jpg', 'jpeg', 'png', 'csv', 'xls', 'xlsx'])->max(10 * 1024),
+                new AttachmentFiles(['pdf', 'jpg', 'jpeg', 'png', 'webp', 'csv', 'xls', 'xlsx', 'doc', 'docx'], 10240),
             ],
+            'email_evidence' => ['nullable', new AttachmentFiles(['pdf', 'jpg', 'jpeg', 'png', 'webp', 'doc', 'docx', 'xls', 'xlsx', 'eml', 'msg'])],
             'premises_import' => ['nullable', File::types(['csv'])->max(5 * 1024)],
             'assets' => [
                 Rule::requiredIf($available && ! $this->hasFile('premises_import')),

@@ -386,7 +386,9 @@ class BudgetMakerSelectionTest extends TestCase
             ->assertOk()
             ->assertSee('Waiting for Final BR')
             ->assertSee('Budget test supplier')
-            ->assertSee('Export list (2)')
+            ->assertSee('Export list (1)')
+            ->assertViewHas('processedTab', 'finance')
+            ->assertDontSee('po-history-tab--processed', false)
             ->assertDontSee('Budget Custodian')
             // Purchasing Team finalizes from this tab; only rows waiting for Finance get a tick box.
             ->assertSee('data-br-select-all', false)
@@ -577,11 +579,12 @@ class BudgetMakerSelectionTest extends TestCase
             ->assertSee($otherSource->account_number);
 
         // The list shows the first PO and account; the rest open from "+N more".
-        $this->actingAs($team)->get(route('dashboard', ['workflow' => 'budget-request', 'budget_view' => 'processed']))->assertOk()
+        $this->actingAs($team)->get(route('dashboard', ['workflow' => 'budget-request', 'budget_view' => 'processed', 'processed_tab' => 'finalized']))->assertOk()
             ->assertSee('3 POs')
             ->assertSee('+2 more')
-            ->assertSee('+1 more')
-            ->assertSee('PO-SELECT-3 · Budget test supplier', false);
+            ->assertSee($source->name)
+            ->assertSee($otherSource->name)
+            ->assertSee('PO-SELECT-3')->assertSee('Budget selection 3');
     }
 
     public function test_command_combines_budget_requests_already_finalized_together(): void

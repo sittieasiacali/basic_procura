@@ -4,7 +4,7 @@
     @if($inventoryItems->whereNotNull('sku')->isEmpty())
         <p class="small mb-0">No stock is currently available. Imported and newly added inventory receives a SKU automatically.</p>
     @else
-        <form method="POST" action="{{ route('request-flow.screening.store', $purchaseRequest) }}" data-validation-context="screening-available" data-stock-selection>
+        <form method="POST" action="{{ route('request-flow.screening.store', $purchaseRequest) }}" data-validation-context="screening-available" data-stock-selection enctype="multipart/form-data">
             @csrf
             <input type="hidden" name="_validation_context" value="screening-available">
             <input type="hidden" name="decision" value="AVAILABLE">
@@ -18,6 +18,7 @@
             </template>
             <button class="btn btn-sm btn-outline-primary mb-3" type="button" data-add-sku-row>Add another SKU</button>
             <div><label class="form-label" for="available-screening-evidence">Screening notes (optional)</label><textarea class="form-control mb-3" id="available-screening-evidence" name="evidence" maxlength="5000" rows="2">{{ old('_validation_context') === 'screening-available' ? old('evidence') : '' }}</textarea></div>
+            @include('purchase-requests.partials.screening-email-evidence', ['evidenceId' => 'available-email-evidence'])
             <x-workflow-signature-pad id="available-screening-signature" instruction="Sign to release these items and complete the request." />
             <button class="btn btn-success mt-3" type="submit">Sign &amp; Release items</button>
         </form>

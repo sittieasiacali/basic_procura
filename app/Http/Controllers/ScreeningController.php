@@ -9,6 +9,7 @@ use App\Models\PurchaseRequest;
 use App\Models\RequestScreening;
 use App\Services\PurchaseRequestWorkflow;
 use App\Support\WorkflowSignature;
+use App\Support\AttachmentFiles;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -183,7 +184,11 @@ class ScreeningController extends Controller
                 }
             }
 
-            $this->storeAttachment($screening, $request->file('quotation_evidence'), 'screening_evidence', $request->user()->id);
+            foreach (['quotation_evidence' => 'screening_evidence', 'email_evidence' => 'screening_email_evidence'] as $field => $category) {
+                foreach (AttachmentFiles::files($request->file($field)) as $file) {
+                    $this->storeAttachment($screening, $file, $category, $request->user()->id);
+                }
+            }
             $this->storeAttachment($screening, $request->file('premises_import'), 'premises_excel_import', $request->user()->id);
 
             $available = $validated['decision'] === 'AVAILABLE';
@@ -223,7 +228,7 @@ class ScreeningController extends Controller
         }
 
         // Available stock completes screening and closes the action iframe.
-        return ($request->boolean('_embedded') ? redirect()->away(route('workflow.done', [], false)) : redirect()->route('purchase-requests.show', $purchaseRequest))
+        return ($request->boolean('_embedded') ? redirect()->away(\App\Support\WorkflowUrl::route('workflow.done')) : redirect()->route('purchase-requests.show', $purchaseRequest))
             ->with('success', $purchaseRequest->request_number.': screening decision recorded.');
     }
 

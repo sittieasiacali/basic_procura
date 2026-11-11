@@ -35,7 +35,7 @@
                             <x-admin-delete-transaction :purchase-request="$purchaseRequest" />
                             <a class="btn btn-sm btn-outline-primary" href="{{ route('purchase-requests.show', $purchaseRequest) }}" data-workflow-request-preview>View request <x-ui.icon name="chevron-right" size="15" /></a>
                             @can('withdraw', $purchaseRequest)
-                                <button class="btn btn-sm btn-outline-danger" type="button" data-bs-toggle="modal" data-bs-target="#void-request-modal" data-void-url="{{ route('purchase-requests.withdraw', $purchaseRequest, false) }}" data-void-number="{{ $purchaseRequest->request_number }}" data-void-title="{{ $purchaseRequest->title }}" data-void-stage="{{ \App\Support\RequestWithdrawal::stageLabel($purchaseRequest->status->value) }}" data-void-immediate="{{ \App\Support\RequestWithdrawal::voidsImmediately($purchaseRequest) ? '1' : '0' }}"><x-ui.icon name="x-circle" size="15" /> Void</button>
+                                <button class="btn btn-sm btn-outline-danger" type="button" data-bs-toggle="modal" data-bs-target="#void-request-modal" data-void-url="{{ \App\Support\WorkflowUrl::route('purchase-requests.withdraw', $purchaseRequest) }}" data-void-number="{{ $purchaseRequest->request_number }}" data-void-title="{{ $purchaseRequest->title }}" data-void-stage="{{ \App\Support\RequestWithdrawal::stageLabel($purchaseRequest->status->value) }}" data-void-immediate="{{ \App\Support\RequestWithdrawal::voidsImmediately($purchaseRequest) ? '1' : '0' }}"><x-ui.icon name="x-circle" size="15" /> Void</button>
                             @endcan
                         </div>
                     </article>

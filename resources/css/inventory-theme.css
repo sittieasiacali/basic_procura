@@ -1,0 +1,98 @@
+/* Inventory presentation only. Register controls and modal actions retain their behavior. */
+@media screen {
+    .workspace-theme .app-main .inventory-page { min-width: 0; font-family: var(--asi-font-body); color: #253559; }
+    .workspace-theme .app-main .inventory-page .inventory-hero {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-start;
+        justify-content: center;
+        gap: 18px;
+        min-height: 260px;
+        padding: 28px 32px;
+        margin-bottom: 20px;
+        border: 1px solid var(--asi-container-border);
+        border-radius: 22px;
+        background: linear-gradient(90deg, #eef4ff 0%, rgb(238 244 255 / 95%) 25%, rgb(238 244 255 / 0%) 60%), var(--inventory-header-image) right center / auto 120% no-repeat, #eef4ff !important;
+    }
+    .workspace-theme .app-main .inventory-page .inventory-hero > div:first-child { max-width: 48%; }
+    .workspace-theme .app-main .inventory-page .inventory-hero .page-eyebrow { margin-bottom: 8px; color: #45659c; font-size: .625rem; font-weight: 700; letter-spacing: .15em; }
+    .workspace-theme .app-main .inventory-page .inventory-hero h1 { margin-bottom: 8px; font-size: clamp(1.8rem, 2.6vw, 2.4rem); color: #160D76; letter-spacing: -.045em; }
+    .workspace-theme .app-main .inventory-page .inventory-hero p { margin: 0; max-width: 43ch; color: #526586; font-size: .8125rem; line-height: 1.65; }
+    .workspace-theme .app-main .inventory-page .inventory-hero .page-actions { align-self: flex-start; width: auto; max-width: 100%; }
+    .workspace-theme .app-main .inventory-page .inventory-hero .btn { flex: 0 0 auto; width: auto; min-height: 42px; padding: 10px 18px; background: #160D76; border: 1px solid #160D76; color: #fff; font-size: .75rem; }
+    .workspace-theme .app-main .inventory-page .inventory-hero .btn:hover { background: #2848a6; }
+
+    .workspace-theme .app-main .inventory-page .card { border-radius: 18px; background: #fff; }
+    .workspace-theme .app-main .inventory-page .inventory-summary-card { overflow: hidden; }
+    .workspace-theme .app-main .inventory-page .inventory-summary-card::before,
+    .workspace-theme .app-main .inventory-page .inventory-summary-card::after { display: none; }
+    .workspace-theme .app-main .inventory-page .inventory-summary-card .card-body { justify-content: space-between; padding: 20px; min-height: 120px; }
+    .workspace-theme .app-main .inventory-page .inventory-summary-copy { order: 1; display: grid; gap: 12px; min-width: 0; }
+    .workspace-theme .app-main .inventory-page .inventory-summary-label { color: #67738a !important; font-size: .75rem; font-weight: 600; }
+    .workspace-theme .app-main .inventory-page .inventory-summary-value { margin: 0; color: #253559; font-family: var(--asi-font-body); font-size: 2.1rem; font-weight: 600; letter-spacing: -.045em; line-height: 1; font-variant-numeric: tabular-nums; }
+    .workspace-theme .app-main .inventory-page .inventory-summary-icon { order: 2; width: 44px; height: 44px; border-radius: 50%; }
+    .workspace-theme .app-main .inventory-page .inventory-summary-grid > div:first-child .card { background: radial-gradient(ellipse at 100% 0%, rgb(64 148 217 / 65%), transparent 75%), linear-gradient(120deg, #160D76, #254eb8); border-color: #2848a6 !important; }
+    .workspace-theme .app-main .inventory-page .inventory-summary-grid > div:first-child .inventory-summary-label { color: #e8f0ff !important; }
+    .workspace-theme .app-main .inventory-page .inventory-summary-grid > div:first-child .inventory-summary-value { color: #fff; }
+    .workspace-theme .app-main .inventory-page .inventory-summary-grid > div:first-child .inventory-summary-icon { background: rgb(255 255 255 / 16%); color: #fff; }
+
+    .workspace-theme .app-main .inventory-page .card > .card-header { padding: 20px; background: #fff; border-color: #e0e6f0; border-radius: 18px 18px 0 0; }
+    .workspace-theme .app-main .inventory-page .section-title { color: #253559; font-family: var(--asi-font-body); font-size: 1rem; font-weight: 700; letter-spacing: -.02em; }
+    .workspace-theme .app-main .inventory-page .inventory-register-header { flex-wrap: wrap; gap: 16px; }
+    .workspace-theme .app-main .inventory-page .btn { font-size: .75rem; min-height: 36px; padding: 8px 14px; }
+    .workspace-theme .app-main .inventory-page .btn-primary { background: linear-gradient(110deg, #160D76, #2859ba); border-color: #2848a6; color: #fff; }
+    .workspace-theme .app-main .inventory-page .btn-primary:hover { background: #160D76; }
+    .workspace-theme .app-main .inventory-page .btn-outline-primary { border-color: #ccd5e4; background: #fff; color: #2848a6; }
+    .workspace-theme .app-main .inventory-page .btn-outline-primary:hover { border-color: #4094D9; background: #edf3ff; }
+    .workspace-theme .app-main .inventory-page .po-history-tabs { display: flex; flex-wrap: wrap; gap: 8px; padding: 14px 20px; border-bottom: 1px solid #e0e6f0; background: #fff; }
+    .workspace-theme .app-main .inventory-page .po-history-tab { display: inline-flex; align-items: center; gap: 10px; min-height: 40px; padding: 8px 14px; border: 1px solid #dbe3f0; border-radius: 999px; background: #f8faff; color: #526586; font-size: .75rem; font-weight: 600; box-shadow: none; }
+    .workspace-theme .app-main .inventory-page .po-history-tab.is-active { border-color: #160D76; background: #160D76; color: #fff; }
+    .workspace-theme .app-main .inventory-page .po-history-tab:hover { border-color: #4094D9; }
+    .workspace-theme .app-main .inventory-page .po-history-tab-count { min-width: 22px; border-radius: 999px; background: #e8eef8; color: #526586; font-size: .625rem; }
+    .workspace-theme .app-main .inventory-page .po-history-tab.is-active .po-history-tab-count { background: rgb(255 255 255 / 18%); color: #fff; }
+
+    .workspace-theme .app-main .inventory-page .table-toolbar { gap: 10px; padding: 16px 20px; background: #f8faff; border-color: #e0e6f0; }
+    .workspace-theme .app-main .inventory-page .table-toolbar-search { flex: 1 1 260px; min-width: 0; max-width: 420px; }
+    .workspace-theme .app-main .inventory-page .table-toolbar-field { min-width: 0; }
+    .workspace-theme .app-main .inventory-page :is(.form-control, .form-select) { min-height: 42px; border-color: #ccd5e4; border-radius: 10px; color: #253559; font-size: .8125rem; }
+    .workspace-theme .app-main .inventory-page :is(.form-control, .form-select):focus { border-color: #4094D9; box-shadow: 0 0 0 3px rgb(64 148 217 / 12%); }
+    .workspace-theme .app-main .inventory-page .table-responsive { max-width: 100%; }
+    .workspace-theme .app-main .inventory-page .table { min-width: 1000px; }
+    .workspace-theme .app-main .inventory-page .table > thead > tr > th { padding: 14px 16px; background: #edf3fc; color: #5b6c8a; border-color: #e0e6f0; font-size: .625rem; font-weight: 600; letter-spacing: .065em; }
+    .workspace-theme .app-main .inventory-page .table > tbody > tr > td { padding: 18px 16px; border-color: #edf0f6; color: #344563; font-size: .8125rem; }
+    .workspace-theme .app-main .inventory-page .table > tbody > tr:last-child > td { border-bottom: 0; }
+    .workspace-theme .app-main .inventory-page .table > tbody > tr:hover > td { --bs-table-bg-state: #f7faff; }
+    .workspace-theme .app-main .inventory-page .inventory-item-name { margin-bottom: 6px; max-width: 320px; color: #253559; font-weight: 600; }
+    .workspace-theme .app-main .inventory-page .inventory-item-sku { display: inline-block; padding: 2px 7px; margin-bottom: 5px; border: 1px solid #dbe4f4; border-radius: 6px; background: #f2f6fd; color: #345ca5; font-size: .625rem; }
+    .workspace-theme .app-main .inventory-page .table .small { font-size: .6875rem; line-height: 1.65; }
+    .workspace-theme .app-main .inventory-page .table .badge { padding: 5px 9px; border-radius: 999px; font-size: .625rem; font-weight: 500; }
+
+    @media (max-width: 767.98px) {
+        .workspace-theme .app-main .inventory-page .inventory-hero { justify-content: flex-start; min-height: 370px; padding: 22px; background: linear-gradient(180deg, #eef4ff 0%, rgb(238 244 255 / 97%) 35%, rgb(238 244 255 / 0%) 74%), var(--inventory-header-image) right bottom / auto 63% no-repeat, #eef4ff !important; }
+        .workspace-theme .app-main .inventory-page .inventory-hero > div:first-child { max-width: 100%; }
+        .workspace-theme .app-main .inventory-page .inventory-hero p { max-width: 48ch; }
+        .workspace-theme .app-main .inventory-page .inventory-hero .btn { min-height: 44px; }
+        .workspace-theme .app-main .inventory-page .inventory-summary-card .card-body { padding: 16px; }
+        .workspace-theme .app-main .inventory-page .inventory-register-actions .btn { min-height: 44px; }
+    }
+    @media (max-width: 575.98px) {
+        .workspace-theme .app-main .inventory-page .inventory-summary-grid { --bs-gutter-x: 10px; --bs-gutter-y: 10px; }
+        .workspace-theme .app-main .inventory-page .inventory-summary-grid > div { width: 50%; }
+        .workspace-theme .app-main .inventory-page .inventory-summary-grid > div:first-child { width: 100%; }
+        .workspace-theme .app-main .inventory-page .inventory-summary-card .card-body { min-height: 106px; gap: 10px !important; }
+        .workspace-theme .app-main .inventory-page .inventory-summary-icon { width: 32px; height: 32px; }
+        .workspace-theme .app-main .inventory-page .inventory-summary-label { font-size: .6875rem; }
+        .workspace-theme .app-main .inventory-page .inventory-summary-value { font-size: 1.8rem; }
+        .workspace-theme .app-main .inventory-page .card > .card-header { padding: 16px; }
+        .workspace-theme .app-main .inventory-page .inventory-register-actions { width: 100%; }
+        .workspace-theme .app-main .inventory-page .inventory-register-actions .btn { flex: 1 1 auto; }
+        .workspace-theme .app-main .inventory-page .po-history-tabs { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; padding: 12px; }
+        .workspace-theme .app-main .inventory-page .po-history-tab { justify-content: space-between; min-height: 44px; padding: 8px 10px; font-size: .6875rem; }
+        .workspace-theme .app-main .inventory-page .table-toolbar { padding: 12px; }
+        .workspace-theme .app-main .inventory-page .table-toolbar-field { max-width: 100%; }
+        .workspace-theme .app-main .inventory-page .table-toolbar-search { max-width: none; }
+        .workspace-theme .app-main .inventory-page .table-toolbar :is(.form-control, .form-select) { min-width: 0; min-height: 44px; font-size: 1rem; }
+        .workspace-theme .app-main .inventory-page .table-toolbar-dates .form-control { flex: 1; width: 0; }
+        .workspace-theme .app-main .inventory-page .table-toolbar-actions .btn { min-height: 44px; flex: 1; }
+    }
+}

@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="utf-8">
+    <meta name="attachment-limits" data-max-files="{{ (int) ini_get('max_file_uploads') }}" data-max-bytes="{{ ini_parse_quantity(ini_get('post_max_size')) }}">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <meta name="theme-color" content="#160D76">
@@ -24,9 +25,10 @@
         }
     </script>
     @vite(['resources/css/app.css', 'resources/js/app.js'])
+    @vite('resources/css/workspace-theme.css')
     @stack('head')
 </head>
-<body>
+<body class="workspace-theme {{ ($hideNavigation ?? false) ? 'workspace-theme--without-navigation' : '' }}">
 @php
     $currentUser = auth()->user()->loadMissing(['role', 'campaign']);
     $roleSlug = $currentUser->activeRole()?->slug;
@@ -98,7 +100,7 @@
             $primaryNavigation[] = [
                 'label' => in_array($roleSlug, [\App\Enums\RoleSlug::President->value, \App\Enums\RoleSlug::OmSmtsApprover->value], true) ? 'For Approval' : 'My Actions',
                 'url' => $actionTarget['url'],
-                'active' => $actionIsActive,
+                'active' => $actionIsActive && ! isset($actionTarget['dashboard']),
                 'icon' => 'flow',
             ];
         }
@@ -116,7 +118,7 @@
 
     }
 
-    if ($isAdmin) {
+    if ($isAdmin && $currentUser->hasRole(\App\Enums\RoleSlug::Admin->value)) {
         $primaryNavigation[] = [
             'label' => 'Manage Data',
             'url' => route('admin.data.index'),
@@ -143,7 +145,43 @@
         ];
     }
 
-    $navbarNotifications = $currentUser->unreadNotifications()->latest()->limit(6)->get();
+    if ($currentUser->can('viewAny', \App\Models\InventoryItem::class)) {
+        $primaryNavigation[] = [
+            'label' => 'Inventory',
+            'url' => route('inventory.index'),
+            'active' => request()->routeIs('inventory.*'),
+            'icon' => 'inventory',
+        ];
+    }
+
+    if ($currentUser->hasRole(\App\Enums\RoleSlug::PurchasingTeam->value)) {
+        $primaryNavigation[] = [
+            'label' => 'Workflow Tracker',
+            'url' => route('workflow-tracker.index'),
+            'active' => request()->routeIs('workflow-tracker.*'),
+            'icon' => 'flow',
+        ];
+        $primaryNavigation[] = [
+            'label' => 'Voided Monitoring',
+            'url' => route('voided-monitoring.index'),
+            'active' => request()->routeIs('voided-monitoring.*'),
+            'icon' => 'x-circle',
+        ];
+    }
+
+    if ($currentUser->hasRole(\App\Enums\RoleSlug::BudgetMaker->value)) {
+        $primaryNavigation[] = [
+            'label' => 'Budget Requests',
+            'url' => route('budget.index'),
+            'active' => request()->routeIs('budget.*'),
+            'icon' => 'wallet',
+        ];
+    }
+    if ($currentUser->can('viewAny', \App\Models\Supplier::class)) {
+        $primaryNavigation[] = ['label' => 'Supplier Management', 'url' => route('suppliers.index'), 'active' => request()->routeIs('suppliers.*'), 'icon' => 'users'];
+    }
+    $navbarUnreadCount = $currentUser->unreadNotifications()->count();
+    $navbarNotifications = $currentUser->unreadNotifications()->latest()->limit(5)->get();
     $visibleNotifications = $navbarNotifications->take(5);
     $initials = str($currentUser->name)
         ->explode(' ')
@@ -154,46 +192,55 @@
 @endphp
 
 @unless($hideNavigation ?? false)
+<a class="workspace-skip-link" href="#workspace-content">Skip to content</a>
+<aside class="offcanvas-lg offcanvas-start workspace-sidebar" tabindex="-1" id="workspaceSidebar" aria-labelledby="workspace-sidebar-title">
+    <div class="workspace-sidebar-brand">
+        <a href="{{ route('dashboard') }}" id="workspace-sidebar-title">
+            <img src="{{ asset('assets/images/asi-procura-logo.png') }}" alt="ASI Procura">
+        </a>
+        <button class="btn-close d-lg-none" type="button" data-bs-dismiss="offcanvas" data-bs-target="#workspaceSidebar" aria-label="Close navigation"></button>
+    </div>
+    <div class="workspace-sidebar-role">
+        <span>Workspace</span>
+        <strong>{{ $currentUser->activeRole()?->name ?? 'Unassigned role' }}</strong>
+    </div>
+    <nav class="workspace-sidebar-links" aria-label="Workspace navigation">
+        @foreach($primaryNavigation as $item)
+            <a class="workspace-sidebar-link {{ $item['active'] ? 'is-active' : '' }}" href="{{ $item['url'] }}" @if($item['active']) aria-current="page" @endif>
+                <x-ui.icon :name="$item['icon']" size="18" />
+                <span>{{ $item['label'] }}</span>
+            </a>
+        @endforeach
+    </nav>
+    <div class="workspace-sidebar-footer">
+        <form method="POST" action="{{ route('logout') }}">
+            @csrf
+            <button class="workspace-sidebar-link w-100" type="submit"><x-ui.icon name="logout" size="18" />Sign out</button>
+        </form>
+    </div>
+</aside>
 <nav class="navbar navbar-expand-xl navbar-dark app-navbar app-navbar--workspace sticky-top" aria-label="Primary navigation">
     <div class="container-fluid px-3 px-xxl-4">
-        <a class="app-brand me-xl-3" href="{{ route('dashboard') }}">
-            <img class="app-brand-logo" src="{{ asset('assets/images/asi-procura-logo.png') }}" alt="ASI Procura">
-        </a>
-
-        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#appNavigation" aria-controls="appNavigation" aria-expanded="false" aria-label="Toggle navigation">
-            <span class="navbar-toggler-icon"></span>
+        <button class="workspace-menu-toggle d-lg-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#workspaceSidebar" aria-controls="workspaceSidebar" aria-label="Open navigation">
+            <span aria-hidden="true">&#9776;</span>
         </button>
-
+        <div class="workspace-welcome">Welcome back, <strong>{{ $currentUser->name }}</strong><span class="workspace-date">{{ now()->format('D, d M Y') }}</span></div>
         <div class="collapse navbar-collapse" id="appNavigation">
-            <ul class="navbar-nav me-auto align-items-xl-center">
-                @foreach($primaryNavigation as $item)
-                    <li class="nav-item">
-                        <a class="nav-link {{ $item['active'] ? 'active' : '' }}" href="{{ $item['url'] }}" @if($item['active']) aria-current="page" @endif>
-                            <x-ui.icon :name="$item['icon'] ?? 'request'" size="15" />
-                            {{ $item['label'] }}
-                        </a>
-                    </li>
-                @endforeach
-
-            </ul>
-
             <div class="navbar-tools">
                 <div class="dropdown">
                     <button class="navbar-tool" type="button" data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false" aria-label="Notifications">
                         <x-ui.icon name="notification" size="19" />
-                        @if($navbarNotifications->isNotEmpty())
-                            <span class="notification-indicator">{{ $navbarNotifications->count() > 5 ? '5+' : $navbarNotifications->count() }}</span>
-                        @endif
+                        <span class="notification-indicator" data-notification-count data-summary-url="{{ route('notifications.summary') }}" @if($navbarUnreadCount === 0) hidden @endif>{{ $navbarUnreadCount }}</span>
                     </button>
                     <div class="dropdown-menu dropdown-menu-end notification-menu">
                         <div class="d-flex justify-content-between align-items-center px-2 py-2">
-                            <strong class="small">Notifications</strong>
-                            <span class="small text-muted">{{ $navbarNotifications->count() > 5 ? '5+' : $navbarNotifications->count() }} unread</span>
+                            <a class="small fw-semibold" href="{{ route('notifications.index') }}">Notifications</a>
+                            <span class="small text-muted" data-notification-unread>{{ $navbarUnreadCount }} unread</span>
                         </div>
                         <div class="dropdown-divider my-1"></div>
-                        @forelse($visibleNotifications as $notification)
+                        <div class="px-2 pb-2"><a href="{{ route('notifications.index') }}">View all updates</a></div>@forelse($visibleNotifications as $notification)
                             <div class="notification-row">
-                                <div class="small fw-semibold">{{ data_get($notification->data, 'title', 'Procurement update') }}</div>
+                                <a class="small fw-semibold" href="{{ route('notifications.index') }}">{{ data_get($notification->data, 'title', 'Procurement update') }}</a>
                                 <div class="small text-muted">{{ data_get($notification->data, 'message', data_get($notification->data, 'body', 'A new notification is available.')) }}</div>
                                 <div class="small text-muted mt-1">{{ $notification->created_at->diffForHumans() }}</div>
                             </div>
@@ -223,6 +270,8 @@
                         </div>
                         <div class="dropdown-divider"></div>
                         @include('partials.workspace-role-menu')
+                        @can('viewAny', \App\Models\Supplier::class)<a class="dropdown-item" href="{{ route('suppliers.index') }}">Supplier Management</a>@endcan
+                        <a class="dropdown-item" href="{{ route('notifications.index') }}">Notification history</a>
                         <form method="POST" action="{{ route('logout') }}">
                             @csrf
                             <button class="dropdown-item text-danger d-flex align-items-center gap-2" type="submit">
@@ -237,7 +286,7 @@
 </nav>
 @endunless
 
-<main class="app-main {{ request()->routeIs('dashboard') ? 'app-main--dashboard' : '' }}">
+<main id="workspace-content" tabindex="-1" class="app-main {{ request()->routeIs('dashboard') ? 'app-main--dashboard' : '' }}">
     @include('partials.workflow-handoff')
     @if(session('success'))
         <div class="alert alert-success alert-dismissible fade show" role="status">

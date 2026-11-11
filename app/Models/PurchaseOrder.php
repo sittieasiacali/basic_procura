@@ -18,7 +18,7 @@ class PurchaseOrder extends Model
 
     protected $fillable = [
         'po_number', 'purchase_request_id', 'supplier_id', 'created_by', 'issued_at',
-        'expected_delivery_date', 'status', 'subtotal', 'tax_amount', 'total_amount',
+        'delivery_lead_time', 'expected_delivery_date', 'status', 'subtotal', 'tax_amount', 'total_amount',
         'payment_terms', 'delivery_terms', 'remarks',
         'budget_campaign_id', 'budget_campaign_account_number', 'budget_account_type',
         'budget_transaction_type', 'budget_payable_on', 'budget_fund_source',

@@ -8,8 +8,8 @@
             <tr>
                 <td class="table-row-number">{{ $items->firstItem() + $loop->index }}</td>
                 <td>
-                    <div class="fw-semibold">{{ $item->description }}</div>
-                    <div class="small"><span class="text-muted">SKU:</span> <span class="fw-semibold">{{ $item->sku }}</span></div>
+                    <div class="fw-semibold inventory-item-name">{{ $item->description }}</div>
+                    <div class="small inventory-item-sku"><span class="text-muted">SKU:</span> <span class="fw-semibold">{{ $item->sku }}</span></div>
                     <div class="small text-muted">{{ $item->inventory_code }}@if($item->serial_number) · S/N {{ $item->serial_number }}@endif</div>
                 </td>
                 <td class="text-end text-nowrap">

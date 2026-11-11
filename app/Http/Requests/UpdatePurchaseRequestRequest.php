@@ -3,11 +3,12 @@
 namespace App\Http\Requests;
 
 use App\Enums\RoleSlug;
+use App\Models\Attachment;
 use App\Models\PurchaseRequest;
 use App\Models\PurchaseRequestItem;
+use App\Support\AttachmentFiles;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
-use Illuminate\Validation\Rules\File;
 use Illuminate\Validation\Validator;
 
 class UpdatePurchaseRequestRequest extends FormRequest
@@ -41,7 +42,7 @@ class UpdatePurchaseRequestRequest extends FormRequest
                 Rule::in(array_keys(PurchaseRequest::categoriesForTeam(is_string($this->input('requested_team')) ? $this->input('requested_team') : null))),
             ],
             'purpose' => ['required', 'string', 'max:5000'],
-            'required_date' => ['required', 'date'],
+            'required_date' => ['nullable', 'date'],
             'delivery_location' => ['required', 'string', 'max:255'],
             'remarks' => ['nullable', 'string', 'max:5000'],
             // Preserve the priority assigned by IT / Premises during screening.
@@ -56,22 +57,20 @@ class UpdatePurchaseRequestRequest extends FormRequest
                     ->whereNull('deleted_at')),
             ],
             'items.*.description' => ['required', 'string', 'max:2000'],
-            // Quantity, a quotation file and the approval email are needed to
-            // submit; a draft may leave them blank. The item picture is optional.
+            // Quantity and email approval are needed to submit; quotation files and pictures are optional.
             'items.*.quantity' => ['required_if:action,submit', 'nullable', 'numeric', 'gt:0', 'max:9999999999.99'],
             'items.*.unit' => ['sometimes', 'nullable', 'string', 'max:50'],
             'items.*.estimated_unit_price' => ['sometimes', 'nullable', 'numeric', 'min:0', 'max:9999999999999.99'],
             'items.*.brand_specifications' => ['nullable', 'string', 'max:5000'],
             'items.*.reference_url' => ['nullable', 'url', 'max:2048'],
-            'items.*.attachment' => ['nullable', File::types(['pdf', 'jpg', 'jpeg', 'png'])->max(5 * 1024)],
-            'items.*.picture' => ['nullable', File::types(['jpg', 'jpeg', 'png', 'webp'])->max(5 * 1024)],
-            'items.*.quotation_file' => ['nullable', File::types(PurchaseRequestItem::quotationFileTypes())->max(5 * 1024)],
+            'items.*.attachment' => ['nullable', new AttachmentFiles(['pdf', 'jpg', 'jpeg', 'png', 'webp', 'eml', 'msg'])],
+            'items.*.picture' => ['nullable', new AttachmentFiles(['jpg', 'jpeg', 'png', 'webp'])],
+            'items.*.quotation_file' => ['nullable', new AttachmentFiles(PurchaseRequestItem::quotationFileTypes())],
         ];
     }
 
     /**
-     * An item already holding its approval email (or quotation file) may be submitted
-     * without uploading another. A quotation file is required when submitting.
+     * An item already holding its approval email may be submitted without uploading another.
      */
     public function withValidator(Validator $validator): void
     {
@@ -81,7 +80,7 @@ class UpdatePurchaseRequestRequest extends FormRequest
             }
 
             // One query for every stored file category on this request's items.
-            $storedCategories = \App\Models\Attachment::query()
+            $storedCategories = Attachment::query()
                 ->where('attachable_type', PurchaseRequestItem::class)
                 ->whereIn('attachable_id', PurchaseRequestItem::query()
                     ->where('purchase_request_id', $this->route('purchaseRequest')->id)
@@ -95,10 +94,6 @@ class UpdatePurchaseRequestRequest extends FormRequest
             foreach ((array) $this->input('items', []) as $index => $item) {
                 if (! $hasStored($item, PurchaseRequestItem::ATTACHMENT_EMAIL_APPROVAL) && ! $this->hasFile("items.$index.attachment")) {
                     $validator->errors()->add("items.$index.attachment", PurchaseRequestItem::submissionMessages()['items.*.attachment.required']);
-                }
-                if (! $this->hasFile("items.$index.quotation_file")
-                    && ! $hasStored($item, PurchaseRequestItem::ATTACHMENT_QUOTATION)) {
-                    $validator->errors()->add("items.$index.quotation_file", PurchaseRequestItem::submissionMessages()['items.*.quotation_file.required']);
                 }
             }
         });

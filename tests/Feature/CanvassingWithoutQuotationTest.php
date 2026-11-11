@@ -131,7 +131,7 @@ class CanvassingWithoutQuotationTest extends TestCase
         foreach ([RoleSlug::ItStaff, RoleSlug::PremisesStaff] as $role) {
             $user = $this->user($role);
             $request = $this->requestFor($user);
-            $request->update(['status' => PurchaseRequestStatus::ForProcurement, 'request_type' => $role === RoleSlug::ItStaff ? 'IT' : 'PREMISES', 'assigned_user_id' => $user->id]);
+            $request->update(['priority_level' => 'NORMAL', 'status' => PurchaseRequestStatus::ForProcurement, 'request_type' => $role === RoleSlug::ItStaff ? 'IT' : 'PREMISES', 'assigned_user_id' => $user->id]);
             $request->screening()->create(['screened_by' => $user->id, 'team' => $request->request_type, 'decision' => 'UNAVAILABLE', 'decided_at' => now()]);
             $this->actingAs($user)->post(route('canvassing.quotations.store', $request), [
                 'quotation_mode' => 'manual', 'quotations' => [], 'confirmed_without_quotation' => 1,

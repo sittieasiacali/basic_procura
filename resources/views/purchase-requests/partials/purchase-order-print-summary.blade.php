@@ -71,7 +71,7 @@
         <dl class="po-print-facts">
             <div><dt>Supplier</dt><dd>{{ $printQuotation?->supplier?->name ?? 'Not recorded' }}</dd></div>
             <div><dt>{{ $printApprovedQuotations->isNotEmpty() ? 'Approved amount' : 'Recorded amount' }}</dt><dd class="po-print-total">{{ $printQuotationTotal !== null ? '₱ '.number_format((float) $printQuotationTotal, 2) : 'Not available' }}</dd></div>
-            <div><dt>Lead time</dt><dd>{{ $printQuotation?->delivery_lead_time ?: 'Not provided' }}</dd></div>
+            <div><dt>Lead time</dt><dd>{{ $purchaseRequest->purchaseOrder?->delivery_lead_time ?: 'Not provided' }}</dd></div>
             <div><dt>Warranty</dt><dd>{{ $printQuotation?->warranty ?: 'Not provided' }}</dd></div>
         </dl>
     </section>
