@@ -1,9 +1,9 @@
 {{-- Preview and edit modals for each quotation. Expects $quotations and $purchaseRequest. --}}
 @foreach($quotations as $quotation)
-    <div class="modal fade" id="quotation-preview-{{ $quotation->id }}" tabindex="-1" aria-hidden="true">
-        <div class="modal-dialog modal-lg"><div class="modal-content">
-            <div class="modal-header"><h2 class="modal-title fs-5">Quotation Q-{{ str_pad((string) $quotation->id, 5, '0', STR_PAD_LEFT) }}</h2><button class="btn-close" type="button" data-bs-dismiss="modal" aria-label="Close"></button></div>
-            <div class="modal-body"><dl class="row mb-3">
+    <div class="modal fade quotation-preview-modal" id="quotation-preview-{{ $quotation->id }}" tabindex="-1" aria-labelledby="quotation-preview-title-{{ $quotation->id }}" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-scrollable"><div class="modal-content">
+            <div class="modal-header"><button class="mobile-modal-back" type="button" data-bs-dismiss="modal" aria-label="Back">&#8249;</button><div><h2 class="modal-title fs-5" id="quotation-preview-title-{{ $quotation->id }}">Quotation details</h2><p class="mb-0">Q-{{ str_pad((string) $quotation->id, 5, '0', STR_PAD_LEFT) }}</p></div><button class="btn-close" type="button" data-bs-dismiss="modal" aria-label="Close"></button></div>
+            <div class="modal-body"><div class="quotation-preview-summary"><span>Supplier quotation</span><strong>{{ $quotation->supplier?->name ?: 'Supplier not recorded' }}</strong><small>{{ $quotation->item?->description ?? $quotation->item_or_service }}</small></div><dl class="row mb-3 quotation-preview-facts">
                 <dt class="col-sm-4">Quotation stage</dt><dd class="col-sm-8">{{ $quotation->sourceLabel() }}</dd>
                 <dt class="col-sm-4">Supplier</dt><dd class="col-sm-8">{{ $quotation->supplier?->name }}</dd>
                 <dt class="col-sm-4">Item amount (net)</dt><dd class="col-sm-8">&#8369; {{ number_format($quotation->vatBreakdown()['base'] - (float) $quotation->shipping_fee, 2) }}</dd>

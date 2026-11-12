@@ -33,12 +33,12 @@
                 $active = request('summary') === $card['value'] || ($key === 'all' && ! request()->filled('summary'));
             @endphp
             <div class="col-6 col-xl-3">
-                <div class="card kpi-card h-100 {{ $active ? 'border-start border-4 border-'.$card['class'] : '' }}">
+                <a class="card kpi-card h-100 text-decoration-none {{ $active ? 'border-start border-4 border-'.$card['class'] : '' }}" href="{{ route('purchase-requests.index', $query) }}" @if($active) aria-current="page" @endif>
                     <div class="card-body py-3">
                         <div class="small text-muted mb-1">{{ $card['label'] }}</div>
                         <div class="h3 mb-0 text-dark" data-summary-count="{{ $key }}">{{ number_format($summaryCounts[$key]) }}</div>
                     </div>
-                </div>
+                </a>
             </div>
         @endforeach
     </div>
@@ -77,11 +77,11 @@
                         @endforeach
                     </select>
                 </div>
-                <div class="col-sm-6 col-xl-2 request-filter-advanced">
+                <div class="col-sm-6 col-xl-2 request-filter-advanced request-filter-date">
                     <label class="form-label small" for="date_from">Updated from</label>
                     <input class="form-control" id="date_from" type="date" name="date_from" value="{{ request('date_from') }}">
                 </div>
-                <div class="col-sm-6 col-xl-2 request-filter-advanced">
+                <div class="col-sm-6 col-xl-2 request-filter-advanced request-filter-date">
                     <label class="form-label small" for="date_to">Updated to</label>
                     <input class="form-control" id="date_to" type="date" name="date_to" value="{{ request('date_to') }}">
                 </div>
@@ -94,7 +94,7 @@
     </div>
 
     <div class="card request-list-panel">
-        <div class="flow-request-grid">
+        <div class="flow-request-grid" data-mobile-inbox>
                 @forelse($purchaseRequests as $purchaseRequest)
                     <article class="flow-request-card">
                         <div class="flow-request-card-topline">
@@ -167,7 +167,7 @@
                 <h2 id="processed-requests-heading" class="h5 mb-1">My processed requests</h2>
                 <p class="mb-0 text-muted small">Requests you completed and handed to the next stage. Select one to preview or print it.</p>
             </div></div>
-            <div class="table-responsive"><table data-mobile-cards class="table table-hover align-middle mb-0 processed-requests-table">
+            <div class="table-responsive"><table data-mobile-cards data-mobile-inbox class="table table-hover align-middle mb-0 processed-requests-table">
                 <thead><tr><th>Request</th><th>Completed step</th><th>Current status</th><th class="text-end">Processed</th></tr></thead>
                 <tbody>
                 @foreach($processedRequests as $processed)

@@ -11,7 +11,7 @@
                 </button>
             </div>
             <div class="modal-body p-0">
-                <iframe class="workflow-action-frame" title="Request preview" data-workflow-request-frame allow="fullscreen" allowfullscreen></iframe>
+                <iframe class="workflow-action-frame" title="Request preview" data-workflow-request-frame name="procura-workflow-request" allow="fullscreen" allowfullscreen></iframe>
             </div>
             <div class="modal-footer">
                 <button class="btn btn-outline-secondary" type="button" data-bs-dismiss="modal">Close</button>

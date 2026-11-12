@@ -2,8 +2,28 @@
 
 PROCURA Chat is served by the existing Laravel application at /chats.
 The Expo/React Native app source and its Android/iPhone build configuration have been removed.
-The next mobile-responsive website and browser notification changes are paused pending the user's approval.
+Mobile request lists use the phone-friendly summary presentation described below.
+Browser notification and PWA changes remain paused pending the user's approval.
 No PWA install flow or background web-push delivery is included in this cleanup.
+
+## Mobile request lists
+
+At widths below 768px, purchase-request lists and dashboard request queues use compact summaries with
+readable titles, request numbers, status and update information. Tapping a row opens the original request, PO preview or workflow action.
+Full details remain in that existing view; duplicate View/Details controls are omitted from the phone list.
+Existing request links, preview handlers, workflow actions, selection controls and administrator controls are retained.
+A shared blue app header, quick actions and a role-aware five-tab bar organize the phone website.
+Home summarizes counts and recent requests; workflow queues remain on their existing dashboard URLs, accessible from Actions/Approvals, POs and quick actions.
+The authenticated /menu page groups procurement, management, monitoring and account links using MobileNavigation.
+Only existing routes permitted for the active workspace are offered. SMT sees Updates rather than an approval tab.
+The bar is hidden in PROCURA workflow frames and while typing; content reserves space for it and iPhone safe areas.
+Unmarked device-preview iframes retain navigation. Workflow frame names and data attributes identify the embedded action/preview windows.
+Search and message inputs use 16px text.
+Desktop tables and print layouts retain their existing presentation. No workflow or database changes are required.
+
+The opt-in data-mobile-inbox attribute enables the shared resources/js/mobile-workflow.js and resources/css/mobile.css presentation.
+After deploying this presentation update, run npm ci, npm run build and php artisan optimize:clear on the serving checkout.
+Verify with php artisan test --filter="MobileNavigationTest|WorkflowSubmissionPopupTest", npm run build and node tests/Browser/mobile-workflow.mjs; the browser check uses local sample data and Chrome/Edge.
 
 ## Confirmed workflow
 

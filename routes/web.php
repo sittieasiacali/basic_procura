@@ -49,6 +49,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/change-password', [PasswordChangeController::class, 'edit'])->name('password.change');
     Route::post('/change-password', [PasswordChangeController::class, 'update'])->name('password.update');
     Route::get('/dashboard', DashboardController::class)->name('dashboard');
+    Route::view('/menu', 'mobile.menu')->name('mobile.menu');
     Route::get('/chats', [ProcuraChatController::class, 'page'])->name('chat.index');
     Route::prefix('chat-data')->name('chat.')->middleware('throttle:180,1')->group(function () {
         Route::get('requests', [ProcuraChatController::class, 'index'])->name('requests');

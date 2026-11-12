@@ -63,8 +63,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 reference.textContent = `${payload.po_number} · ${payload.status.replaceAll('_', ' ').toLowerCase()} saved record`;
                 loading.classList.add('d-none');
                 content.classList.remove('d-none');
-                window.bootstrap.Tab.getOrCreateInstance(preview.querySelector(payload.html ? '#po-print-template-tab' : '#po-details-template-tab')).show();
-                printButton.disabled = !canPrint || !preview.querySelector('.tab-pane.active .purchase-order-document');
+                const mobile = window.matchMedia('(max-width: 767.98px)').matches;
+                window.bootstrap.Tab.getOrCreateInstance(preview.querySelector(!mobile && payload.html ? '#po-print-template-tab' : '#po-details-template-tab')).show();
+                printButton.disabled = !canPrint || !preview.querySelector(mobile ? '#po-print-template-pane .purchase-order-document' : '.tab-pane.active .purchase-order-document');
             } catch (exception) {
                 if (sequence !== requestSequence) return;
                 loading.classList.add('d-none');
@@ -143,7 +144,8 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         }
         preview.addEventListener('shown.bs.tab', () => {
-            printButton.disabled = !canPrint || !preview.querySelector('.tab-pane.active .purchase-order-document');
+            const mobile = window.matchMedia('(max-width: 767.98px)').matches;
+            printButton.disabled = !canPrint || !preview.querySelector(mobile ? '#po-print-template-pane .purchase-order-document' : '.tab-pane.active .purchase-order-document');
         });
         if (preview.dataset.autoOpen === 'true') window.setTimeout(() => {
             window.bootstrap.Modal.getOrCreateInstance(preview).show();
@@ -168,7 +170,8 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         async function createPrintCopy() {
-            const source = preview?.querySelector('.tab-pane.active .purchase-order-document');
+            const mobile = window.matchMedia('(max-width: 767.98px)').matches;
+            const source = preview?.querySelector(mobile ? '#po-print-template-pane .purchase-order-document' : '.tab-pane.active .purchase-order-document');
             if (! source) return false;
 
             removePrintCopy();
@@ -201,7 +204,8 @@ document.addEventListener('DOMContentLoaded', () => {
         function resetControls(hideFeedback = true) {
             printing = false;
             controls.forEach((control) => {
-                control.disabled = !preview?.querySelector('.tab-pane.active .purchase-order-document') || control.hasAttribute('data-export-purchase-order') && preview?.dataset.canPrint !== 'true';
+                const mobile = window.matchMedia('(max-width: 767.98px)').matches;
+                control.disabled = !preview?.querySelector(mobile ? '#po-print-template-pane .purchase-order-document' : '.tab-pane.active .purchase-order-document') || control.hasAttribute('data-export-purchase-order') && preview?.dataset.canPrint !== 'true';
                 if (control.dataset.originalLabel) control.textContent = control.dataset.originalLabel;
             });
             if (hideFeedback) feedback?.classList.add('d-none');

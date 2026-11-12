@@ -544,8 +544,43 @@
                 <?php endif; ?>
         <div class="card border-0 shadow-sm mb-3 quotation-comparison-card">
             <div class="card-header bg-white"><div class="section-kicker">Supplier comparison</div><div class="fw-semibold">Canvassing &amp; Quotations</div><small class="text-muted fw-normal d-block">Compare every submitted quotation. Item-level rows are retained when a supplier submitted a bulk quotation.</small></div>
-            <div class="table-responsive">
-                <table data-mobile-cards class="table align-middle mb-0 quotation-comparison-table">
+            <div class="mobile-quotation-list d-md-none" aria-label="Supplier quotation list">
+                @foreach($quotations as $quotation)
+                    @php
+                        $quotationDestination = $quotation->quotationDestination();
+                        $quotationStatus = $quotation->is_approved
+                            ? 'Approved'
+                            : ($quotation->is_recommended ? 'Recommended' : 'Pending approval');
+                    @endphp
+                    <article class="mobile-quotation-row">
+                        <button class="mobile-quotation-open" type="button" data-bs-toggle="modal" data-bs-target="#quotation-preview-{{ $quotation->id }}" aria-label="Preview quotation Q-{{ str_pad((string) $quotation->id, 5, '0', STR_PAD_LEFT) }} from {{ $quotation->supplier?->name }}">
+                            <span class="mobile-quotation-icon" aria-hidden="true"><x-ui.icon name="file-text" size="18" /></span>
+                            <span class="mobile-quotation-copy">
+                                <span class="mobile-quotation-reference">Q-{{ str_pad((string) $quotation->id, 5, '0', STR_PAD_LEFT) }}</span>
+                                <strong>{{ $quotation->supplier?->name ?: 'Supplier not recorded' }}</strong>
+                                <small>{{ $quotation->item?->description ?? $quotation->item_or_service }}</small>
+                            </span>
+                            <span class="mobile-quotation-side">
+                                <span @class(['mobile-quotation-status', 'is-approved' => $quotation->is_approved, 'is-recommended' => $quotation->is_recommended && ! $quotation->is_approved])>{{ $quotationStatus }}</span>
+                                <strong>&#8369; {{ number_format($quotation->vatBreakdown()['total'], 2) }}</strong>
+                            </span>
+                            <span class="mobile-quotation-chevron" aria-hidden="true">&#8250;</span>
+                        </button>
+                        @if($quotationDestination || (auth()->id() === $quotation->created_by && $quotation->belongsToWorkspace(auth()->user()) && ! $quotation->is_approved))
+                            <div class="mobile-quotation-actions">
+                                @if($quotationDestination)
+                                    <a href="{{ $quotationDestination }}" target="_blank" rel="noopener noreferrer"><x-ui.icon name="eye" size="15" />Open document</a>
+                                @endif
+                                @if(auth()->id() === $quotation->created_by && $quotation->belongsToWorkspace(auth()->user()) && ! $quotation->is_approved)
+                                    <button type="button" data-bs-toggle="modal" data-bs-target="#quotation-edit-{{ $quotation->id }}">Edit quotation</button>
+                                @endif
+                            </div>
+                        @endif
+                    </article>
+                @endforeach
+            </div>
+            <div class="table-responsive d-none d-md-block">
+                <table class="table align-middle mb-0 quotation-comparison-table">
                     <thead class="table-light"><tr><th>Reference</th><th>Supplier</th><th>Quoted Item</th><th>Amount / Line Total</th><th>Lead Time</th><th>Warranty</th><th>Quotation</th><th>Recommendation</th><th>Workflow status</th><th>Actions</th></tr></thead>
                     <tbody>
                     @foreach($quotations as $quotation)

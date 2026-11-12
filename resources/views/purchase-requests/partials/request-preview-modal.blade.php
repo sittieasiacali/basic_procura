@@ -2,8 +2,9 @@
     <div class="modal-dialog modal-xl modal-dialog-scrollable">
         <div class="modal-content">
             <div class="modal-header">
+                <button class="mobile-modal-back" type="button" data-bs-dismiss="modal" aria-label="Back">&#8249;</button>
                 <div>
-                    <h2 class="modal-title fs-5" id="request-preview-heading">Purchase Request Preview</h2>
+                    <h2 class="modal-title fs-5" id="request-preview-heading">Request details</h2>
                     <p class="small text-muted mb-0" data-request-preview-reference>Loading saved record…</p>
                 </div>
                 <button class="btn-close" type="button" data-bs-dismiss="modal" aria-label="Close"></button>

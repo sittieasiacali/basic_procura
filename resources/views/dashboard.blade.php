@@ -56,7 +56,7 @@
         $kpiColumnClass = count($kpis) === 6 ? 'col-xl-2' : 'col-xl-3';
     @endphp
 
-    <div class="dashboard-page {{ $isPurchasingDashboard ? 'dashboard-page--purchasing' : '' }} {{ $isFinanceDashboard ? 'dashboard-page--finance' : '' }} {{ $user->hasAnyRole([\App\Enums\RoleSlug::ItStaff->value, \App\Enums\RoleSlug::PremisesStaff->value]) ? 'dashboard-page--screening' : '' }} {{ $user->hasRole(\App\Enums\RoleSlug::ItStaff->value) ? 'dashboard-page--it' : '' }}">
+    <div data-mobile-home="{{ ! request()->hasAny(['workflow', 'mobile_tab', 'search', 'action_search', 'processed_search', 'approval_page', 'payment_tab', 'po_history_tab']) ? 'true' : 'false' }}" class="dashboard-page {{ $isPurchasingDashboard ? 'dashboard-page--purchasing' : '' }} {{ $isFinanceDashboard ? 'dashboard-page--finance' : '' }} {{ $user->hasAnyRole([\App\Enums\RoleSlug::ItStaff->value, \App\Enums\RoleSlug::PremisesStaff->value]) ? 'dashboard-page--screening' : '' }} {{ $user->hasRole(\App\Enums\RoleSlug::ItStaff->value) ? 'dashboard-page--it' : '' }}">
         <header class="dashboard-page-header" @if($user->hasRole(\App\Enums\RoleSlug::ItStaff->value)) style="--dashboard-header-image: url('{{ asset('images/it-workspace-hero.webp') }}')" @endif>
             <div class="dashboard-heading-block">
                 <div class="dashboard-heading-top">
@@ -67,6 +67,7 @@
                 </div>
                 <h1>{{ $pageTitle }}</h1>
                 <p class="dashboard-greeting">{{ $greeting }}, {{ $user->name }}.</p>
+                <div class="mobile-home-greeting"><span>{{ $greeting }},</span><strong>{{ $user->activeRole()?->name ?? $user->name }}</strong></div>
             </div>
             <div class="dashboard-header-actions page-actions d-flex flex-wrap gap-2">
                 @if($user->isAdministrator())
@@ -78,7 +79,7 @@
                     <a class="btn btn-outline-primary d-inline-flex align-items-center gap-2" href="{{ route('returned-monitoring.index') }}"><x-ui.icon name="file-text" size="16" />Return Monitoring</a>
                 @endif
                 @if($myItemsCount > 0)
-                    <a class="btn btn-outline-primary d-inline-flex align-items-center gap-2" href="{{ route('inventory.index', ['view' => 'released']) }}"><x-ui.icon name="check-circle" size="16" />My items</a>
+                    <a class="btn btn-outline-primary dashboard-my-items-action d-inline-flex align-items-center gap-2" href="{{ route('inventory.index', ['view' => 'released']) }}"><x-ui.icon name="check-circle" size="16" />My items</a>
                 @endif
                 @can('viewAny', \App\Models\InventoryItem::class)
                     <a class="btn btn-outline-primary dashboard-inventory-action d-inline-flex align-items-center gap-2" href="{{ route('inventory.index') }}">
@@ -157,6 +158,10 @@
                 @endforeach
             </div>
         </section>
+
+        @include('partials.mobile-home-workspace')
+        @include('partials.mobile-quick-actions')
+        @include('partials.mobile-home-recent')
 
         @if($accountMonitoring)
             @include('dashboard.partials.account-monitoring')
@@ -384,7 +389,7 @@
                         'dateLabel' => 'Updated',
                     ]])
                 @endif
-                <div class="dashboard-request-list">
+                <div class="dashboard-request-list" data-mobile-inbox>
                     @forelse($myActions as $action)
                         @php($purchaseRequest = $action['request'])
                         @php($waitingDays = $executiveSummary ? (int) $purchaseRequest->updated_at->diffInDays(now()) : null)
@@ -594,7 +599,7 @@
                                 <p class="small text-muted mb-0">Purchase Orders appear here as soon as they are created, including those awaiting checking.</p>
                             </div>
                             <div class="table-responsive">
-                                <table data-mobile-cards class="table table-hover align-middle mb-0 dashboard-table">
+                                <table data-mobile-cards data-mobile-inbox class="table table-hover align-middle mb-0 dashboard-table">
                                     <thead><tr><th class="table-row-number">#</th><th>PO Number</th><th>Request</th><th>Supplier</th><th>Status</th><th>Created by</th><th class="text-end">Amount</th><th class="text-end">Action</th></tr></thead>
                                     <tbody>
                                     @forelse($createdPurchaseOrders as $purchaseOrder)
@@ -628,7 +633,7 @@
                         'dateLabel' => 'Updated',
                     ]])
                     <div class="table-responsive">
-                        <table data-mobile-cards class="table table-hover align-middle mb-0 dashboard-table">
+                        <table data-mobile-cards data-mobile-inbox class="table table-hover align-middle mb-0 dashboard-table">
                             <thead><tr><th class="table-row-number">#</th><th>Request</th><th>Status</th><th class="text-end">Updated</th></tr></thead>
                             <tbody>
                             @forelse($processedRequests as $purchaseRequest)
@@ -700,7 +705,7 @@
                         'dateLabel' => $poHistoryIsMine ? 'Processed' : 'Assigned / signed',
                     ]])
                     <div class="table-responsive">
-                        <table data-mobile-cards class="table table-hover align-middle mb-0 dashboard-table po-history-table">
+                        <table data-mobile-cards data-mobile-inbox class="table table-hover align-middle mb-0 dashboard-table po-history-table">
                             <thead><tr><th class="table-row-number">#</th><th>Purchase Order</th><th>Request</th>@if($poHistoryIsMine)<th>Completed step</th><th class="text-end">Processed</th>@else<th>Assigned / signed by</th><th class="text-end">Assigned / signed</th>@endif</tr></thead>
                             <tbody>
                             @forelse($purchaseOrderReviewActions as $activity)
@@ -789,7 +794,7 @@
                     <a class="dashboard-text-link" href="{{ route('purchase-requests.index') }}">View all <x-ui.icon name="chevron-right" size="16" /></a>
                 </div>
                 <div class="table-responsive">
-                    <table data-mobile-cards class="table table-hover align-middle mb-0 dashboard-table">
+                    <table data-mobile-cards data-mobile-inbox class="table table-hover align-middle mb-0 dashboard-table">
                         <thead><tr><th>Request</th><th>Requestor / Campaign</th><th>Status</th><th class="text-end">Updated</th></tr></thead>
                         <tbody>
                         @forelse($recentRequests as $purchaseRequest)

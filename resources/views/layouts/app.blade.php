@@ -3,21 +3,15 @@
 <head>
     <meta charset="utf-8">
     <meta name="attachment-limits" data-max-files="{{ (int) ini_get('max_file_uploads') }}" data-max-bytes="{{ ini_parse_quantity(ini_get('post_max_size')) }}">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <meta name="theme-color" content="#160D76">
     <title>@yield('title', 'Dashboard') &middot; {{ config('app.name') }}</title>
     <link rel="icon" type="image/png" href="{{ asset('assets/images/asi-coin.png') }}">
     <link rel="apple-touch-icon" href="{{ asset('assets/images/asi-coin.png') }}">
     <link href="{{ asset('assets/vendor/bootstrap/bootstrap.min.css') }}" rel="stylesheet">
+    @include('partials.workflow-frame-context')
     <script>
-        // Pages opened inside the dashboard action modal drop the app chrome.
-        try {
-            if (window.self !== window.top) document.documentElement.classList.add('is-embedded');
-        } catch (_) {
-            document.documentElement.classList.add('is-embedded');
-        }
-
         // Set this before the module bundle loads so the browser does not restore
         // a stale scroll location while a Purchasing Team queue is changing.
         if (sessionStorage.getItem('asi-procura:creator-workflow-scroll') !== null && 'scrollRestoration' in history) {
@@ -300,6 +294,8 @@
 </nav>
 @endunless
 
+@include('partials.mobile-app-header')
+
 <main id="workspace-content" tabindex="-1" class="app-main {{ request()->routeIs('dashboard') ? 'app-main--dashboard' : '' }}">
     @include('partials.workflow-handoff')
     @if(session('success'))
@@ -355,6 +351,7 @@
     @yield('content')
 </main>
 
+@include('partials.mobile-navigation')
 @include('partials.workflow-request-modal')
 @include('dashboard.partials.workflow-action-modal')
 @include('partials.workflow-submission-modal')

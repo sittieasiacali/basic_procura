@@ -110,12 +110,15 @@ class PurchaseRequestController extends Controller
             ->when($filters['date_from'] ?? null, fn ($query, string $date) => $query->whereDate('updated_at', '>=', $date))
             ->when($filters['date_to'] ?? null, fn ($query, string $date) => $query->whereDate('updated_at', '<=', $date));
 
+        $processedRequests = $this->processedRequests($request->user(), $query);
+        $purchaseRequests = (clone $query)->latest()->paginate(15)->withQueryString();
+
         return view('purchase-requests.index', [
-            'purchaseRequests' => $query->latest()->paginate(15)->withQueryString(),
+            'purchaseRequests' => $purchaseRequests,
             'statuses' => PurchaseRequestStatus::cases(),
             'campaigns' => Campaign::query()->orderBy('name')->get(),
             'summaryCounts' => $summaryCounts,
-            'processedRequests' => $this->processedRequests($request->user(), $query),
+            'processedRequests' => $processedRequests,
             'showProcessedRequests' => $this->isWorkflowUser($request->user()),
         ]);
     }

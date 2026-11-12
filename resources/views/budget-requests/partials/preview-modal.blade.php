@@ -2,7 +2,8 @@
     <div class="modal-dialog modal-xl modal-dialog-scrollable po-preview-modal br-preview-modal">
         <div class="modal-content">
             <div class="modal-header">
-                <div><h2 class="modal-title fs-5" id="budget-request-preview-heading">Budget Request Preview</h2><p class="small text-muted mb-0" data-br-preview-reference>Loading saved record...</p></div>
+                <button class="mobile-modal-back" type="button" data-bs-dismiss="modal" aria-label="Back">&#8249;</button>
+                <div><h2 class="modal-title fs-5" id="budget-request-preview-heading">Budget request details</h2><p class="small text-muted mb-0" data-br-preview-reference>Loading saved record...</p></div>
                 <button class="btn-close" type="button" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">

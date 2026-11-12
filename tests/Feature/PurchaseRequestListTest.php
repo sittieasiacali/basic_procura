@@ -175,6 +175,27 @@ class PurchaseRequestListTest extends TestCase
             ->assertSee('pagination');
     }
 
+    public function test_processed_requests_are_not_limited_to_the_current_request_page(): void
+    {
+        $requestor = $this->user(RoleSlug::Requestor, $this->operations);
+        $processed = $this->purchaseRequest($requestor, PurchaseRequestStatus::Approved, 'Processed before current page');
+        $processed->auditLogs()->create([
+            'user_id' => $requestor->id,
+            'action' => 'SUBMITTED_FOR_OM_APPROVAL',
+            'previous_status' => PurchaseRequestStatus::Draft->value,
+            'new_status' => PurchaseRequestStatus::ForOmApproval->value,
+        ]);
+
+        foreach (range(1, 15) as $number) {
+            $this->purchaseRequest($requestor, PurchaseRequestStatus::ForOmApproval, "Newer request {$number}");
+        }
+
+        $this->actingAs($requestor)->get(route('purchase-requests.index'))
+            ->assertOk()
+            ->assertViewHas('purchaseRequests', fn ($requests) => $requests->count() === 15 && $requests->total() === 16)
+            ->assertViewHas('processedRequests', fn ($requests) => $requests->contains(fn ($entry) => $entry['request']->is($processed)));
+    }
+
     public function test_create_form_renders_a_simple_item_builder_and_canvassing_supplier_notice(): void
     {
         $teamLeader = $this->user(RoleSlug::TeamLeader, $this->operations);
