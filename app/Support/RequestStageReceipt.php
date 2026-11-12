@@ -106,8 +106,16 @@ class RequestStageReceipt
         return [
             'SUBMITTED_FOR_SCREENING' => $submitted,
             'RESUBMITTED_FOR_SCREENING' => $submitted,
-            'SUBMITTED_FOR_OM_APPROVAL' => $submitted,
-            'RESUBMITTED_FOR_OM_APPROVAL' => $submitted,
+            'SUBMITTED_FOR_OM_APPROVAL' => [
+                'statuses' => [PurchaseRequestStatus::ForOmApproval],
+                'title' => 'Submitted for OM approval.',
+                'message' => 'You signed and submitted this request on :date. Your campaign OM will review it before IT / Premises screening. SMT receives notifications and may acknowledge separately.',
+            ],
+            'RESUBMITTED_FOR_OM_APPROVAL' => [
+                'statuses' => [PurchaseRequestStatus::ForOmApproval],
+                'title' => 'Submitted for OM approval.',
+                'message' => 'You signed and submitted this request on :date. Your campaign OM will review it before IT / Premises screening. SMT receives notifications and may acknowledge separately.',
+            ],
             'OM_APPROVED_FOR_SCREENING' => [
                 'statuses' => [PurchaseRequestStatus::ForTeamScreening],
                 'title' => 'Submitted to IT / Premises.',

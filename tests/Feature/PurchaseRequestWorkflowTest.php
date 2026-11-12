@@ -2,19 +2,21 @@
 
 namespace Tests\Feature;
 
-use App\Enums\PurchaseRequestStatus;
 use App\Enums\PurchaseOrderApprovalStage;
+use App\Enums\PurchaseRequestStatus;
 use App\Enums\RoleSlug;
 use App\Models\AuditLog;
 use App\Models\BudgetRequest;
 use App\Models\Campaign;
 use App\Models\InventoryItem;
-use App\Models\PurchaseRequest;
 use App\Models\PoRoleAssignment;
+use App\Models\PurchaseRequest;
 use App\Models\RequestApproval;
 use App\Models\Role;
 use App\Models\Supplier;
+use App\Models\SupplierQuotation;
 use App\Models\User;
+use App\Support\PurchaseOrderDocumentData;
 use Database\Seeders\BudgetRequestDemoSeeder;
 use Database\Seeders\CampaignSeeder;
 use Database\Seeders\ProcurementWorkflowDemoSeeder;
@@ -109,7 +111,7 @@ class PurchaseRequestWorkflowTest extends TestCase
                 ->assertJsonPath('is_processed', true)
                 ->assertJsonPath('template', 'official-purchase-order')
                 ->assertJsonPath('html', fn ($html) => str_contains($html, 'PURCHASE ORDER')
-                    && str_contains($html, '9,876.54') && !str_contains($html, '<script>alert'));
+                    && str_contains($html, '9,876.54') && ! str_contains($html, '<script>alert'));
         }
         $orders['APPROVED']->update(['budget_transaction_type' => 'UNKNOWN']);
         $this->getJson(route('purchase-orders.preview', $orders['APPROVED']))
@@ -133,6 +135,7 @@ class PurchaseRequestWorkflowTest extends TestCase
             ->assertSee('No processed purchase orders yet.')
             ->assertSee('id="purchase-order-review-modal"', false);
     }
+
     public function test_po_account_classification_and_campaign_bank_account_are_independent(): void
     {
         $owner = $this->user(RoleSlug::TeamLeader);
@@ -162,12 +165,12 @@ class PurchaseRequestWorkflowTest extends TestCase
             ->assertJsonPath('account_classification.isLegacy', false)
             ->assertJsonPath('campaign_bank_account.accountNumber', 'CAMPAIGN-SAVED-001')
             ->assertJsonPath('campaign_bank_account.configuredAccountNumber', 'CAMPAIGN-NEW-002')
-            ->assertJsonPath('account_type_html', fn ($html) => str_contains($html, 'Other Party') && !str_contains($html, 'CAMPAIGN-SAVED-001'))
-            ->assertJsonPath('campaign_bank_account_html', fn ($html) => str_contains($html, 'CAMPAIGN-SAVED-001') && !str_contains($html, 'Other Party') && !str_contains($html, 'UNRELATED-ACCOUNT'))
+            ->assertJsonPath('account_type_html', fn ($html) => str_contains($html, 'Other Party') && ! str_contains($html, 'CAMPAIGN-SAVED-001'))
+            ->assertJsonPath('campaign_bank_account_html', fn ($html) => str_contains($html, 'CAMPAIGN-SAVED-001') && ! str_contains($html, 'Other Party') && ! str_contains($html, 'UNRELATED-ACCOUNT'))
             ->assertJsonPath('html', fn ($html) => str_contains($html, 'PURCHASE ORDER') && str_contains($html, 'Saved item') && str_contains($html, '125.00') && ! str_contains($html, 'ACCOUNT TYPE'));
 
         $html = $this->getJson(route('purchase-orders.preview', $order))->json('account_type_html');
-        $dom = new \DOMDocument();
+        $dom = new \DOMDocument;
         $previous = libxml_use_internal_errors(true);
         $dom->loadHTML($html);
         libxml_clear_errors();
@@ -192,7 +195,7 @@ class PurchaseRequestWorkflowTest extends TestCase
         }
         $this->assertSame(['Requested by:', 'Prepared by:', 'Checked by:', 'Noted by:', 'APPROVED BY:'], $labels);
         $campaignHtml = $this->getJson(route('purchase-orders.preview', $order))->json('campaign_bank_account_html');
-        $campaignDom = new \DOMDocument();
+        $campaignDom = new \DOMDocument;
         $previous = libxml_use_internal_errors(true);
         $campaignDom->loadHTML($campaignHtml);
         libxml_clear_errors();
@@ -213,7 +216,7 @@ class PurchaseRequestWorkflowTest extends TestCase
         $this->assertSame(['DETAILS', 'REQUESTED BY', 'ACCOUNT TYPE', 'AMOUNT', 'Bank Details (for Deposit)'], $campaignHeaders);
         $this->assertSame('', trim($campaignXpath->query('//tbody/tr[1]/td[3]')->item(0)->textContent));
         $this->assertStringNotContainsString('po-sheet-logo', $html);
-        $document = \App\Support\PurchaseOrderDocumentData::from($request->fresh());
+        $document = PurchaseOrderDocumentData::from($request->fresh());
         $blank = [
             'line_number' => 2, 'details' => '', 'specifications' => null, 'requested_by' => '',
             'account_type' => '', 'quantity' => null, 'unit' => '', 'unit_price' => null,
@@ -237,10 +240,10 @@ class PurchaseRequestWorkflowTest extends TestCase
         $campaign->update(['account_number' => null]);
         $this->getJson(route('purchase-orders.preview', $order))->assertOk()
             ->assertJsonPath('campaign_bank_account.accountNumber', null)
-            ->assertJsonPath('campaign_bank_account_html', fn ($html) => str_contains($html, 'Campaign Bank Account') && !str_contains($html, 'OTHER-SOURCE') && !str_contains($html, 'UNRELATED-ACCOUNT'))
+            ->assertJsonPath('campaign_bank_account_html', fn ($html) => str_contains($html, 'Campaign Bank Account') && ! str_contains($html, 'OTHER-SOURCE') && ! str_contains($html, 'UNRELATED-ACCOUNT'))
             ->assertJsonPath('account_classification.value', 'OWN_ACCOUNT')
             ->assertJsonPath('template', 'official-purchase-order')
-            ->assertJsonPath('html', fn ($html) => str_contains($html, 'PURCHASE ORDER')); 
+            ->assertJsonPath('html', fn ($html) => str_contains($html, 'PURCHASE ORDER'));
         $this->assertSame('APPROVED', $order->fresh()->status);
         $this->assertSame('ACA', $order->fresh()->budget_account_type);
         $budget->delete();
@@ -250,8 +253,9 @@ class PurchaseRequestWorkflowTest extends TestCase
         $order->update(['budget_account_type' => null]);
         $this->getJson(route('purchase-orders.preview', $order))->assertOk()
             ->assertJsonPath('account_classification.value', null)
-            ->assertJsonPath('account_type_html', fn ($html) => str_contains($html, 'ACCOUNT TYPE') && !str_contains($html, '>ACA<') && !str_contains($html, 'OPERATIONS-001'));
+            ->assertJsonPath('account_type_html', fn ($html) => str_contains($html, 'ACCOUNT TYPE') && ! str_contains($html, '>ACA<') && ! str_contains($html, 'OPERATIONS-001'));
     }
+
     public function test_requestor_creates_a_draft_without_selecting_a_supplier(): void
     {
         $requestor = $this->user(RoleSlug::Requestor);
@@ -525,6 +529,7 @@ class PurchaseRequestWorkflowTest extends TestCase
                     ->assertOk()
                     ->assertSee('Budget Request Preparation')
                     ->assertSee('class="dropdown-item workflow-dropdown-item active" href="'.route('budget.index').'"', false);
+
                 continue;
             }
             $this->actingAs($admin)->get($url)
@@ -571,17 +576,19 @@ class PurchaseRequestWorkflowTest extends TestCase
 
         $this->assertSame(PurchaseRequestStatus::ForOmApproval, $request->fresh()->status);
     }
+
     public function test_om_signature_must_match_the_authenticated_account(): void
     {
         [$request, $om] = $this->submittedRequest('IT');
 
         $this->actingAs($om)->post(route('om-approvals.approve', $request), [
             'signature_name' => 'Someone Else',
-                'signature_data' => $this->signatureData(),
+            'signature_data' => $this->signatureData(),
         ])->assertSessionHasErrors('signature_name');
 
         $this->assertSame(PurchaseRequestStatus::ForOmApproval, $request->fresh()->status);
     }
+
     public function test_om_request_view_hides_the_quotation_summary_without_hiding_it_from_purchasing(): void
     {
         [$request, $om] = $this->submittedRequest('IT');
@@ -596,6 +603,7 @@ class PurchaseRequestWorkflowTest extends TestCase
             ->assertSee('Quotation Summary')
             ->assertSee('Supplier response');
     }
+
     public function test_om_can_edit_a_submitted_request_without_submitting_for_the_team_leader(): void
     {
         [$request, $om, $teamLeader] = $this->submittedRequest('IT');
@@ -1550,7 +1558,7 @@ class PurchaseRequestWorkflowTest extends TestCase
                 'quoted_amount' => 500,
                 'vat_treatment' => 'EXEMPT',
                 'delivery_lead_time' => '7 days',
-                'delivery_location' => \App\Models\SupplierQuotation::DELIVERY_LOCATIONS[0],
+                'delivery_location' => SupplierQuotation::DELIVERY_LOCATIONS[0],
                 'warranty' => '1 year',
                 'quotation_url' => 'https://example.com/approved-quote.pdf',
                 'bank_details' => 'Example Bank 123456789',
@@ -1896,7 +1904,7 @@ class PurchaseRequestWorkflowTest extends TestCase
             ->assertDontSee('ACCOUNT TYPE')
             ->assertDontSee('Main Fund')
             ->assertDontSee('Export / Save as PDF')
-            ->assertDontSee("window.print()", false);
+            ->assertDontSee('window.print()', false);
 
         $this->get(route('purchase-requests.show', ['purchaseRequest' => $request, 'from_stage' => 'budget-request']))
             ->assertOk()
@@ -1940,7 +1948,8 @@ class PurchaseRequestWorkflowTest extends TestCase
             $this->assertSame($savedApproval?->assigned_user_id, $savedApproval?->acted_by);
         }
         $request->refresh();
-        $this->assertSame('APPROVED', $request->purchaseOrder->status);        $this->actingAs($purchasing)
+        $this->assertSame('APPROVED', $request->purchaseOrder->status);
+        $this->actingAs($purchasing)
             ->get(route('purchase-requests.show', $request))
             ->assertOk()
             ->assertSee($request->purchaseOrder->po_number)
@@ -1982,7 +1991,6 @@ class PurchaseRequestWorkflowTest extends TestCase
             ->assertDontSee('Prepare Budget Request')
             ->assertDontSee('Approve as Budget Maker');
     }
-
 
     public function test_legacy_budget_request_can_be_finalized_by_purchasing(): void
     {
@@ -2277,7 +2285,8 @@ class PurchaseRequestWorkflowTest extends TestCase
             ->assertSee('purchase-order-task-edit-modal', false)
             ->assertDontSee('Recent requests');
         $this->actingAs($purchasing)->patchJson(route('purchase-orders.task.update', $request), ['account_number' => $originalAccountNumber, 'payment_terms' => (string) $order->fresh()->payment_terms])->assertOk();
-        $this->assertSame(2, AuditLog::query()->where('action', 'PO_TASK_EDITED')->where('user_id', $purchasing->id)->count());        $this->actingAs($purchasing)
+        $this->assertSame(2, AuditLog::query()->where('action', 'PO_TASK_EDITED')->where('user_id', $purchasing->id)->count());
+        $this->actingAs($purchasing)
             ->get(route('purchase-requests.show', $request))
             ->assertOk()
             ->assertSee($request->purchaseOrder->po_number)
@@ -2380,6 +2389,7 @@ class PurchaseRequestWorkflowTest extends TestCase
         $this->assertDatabaseCount('purchase_order_approvals', 0);
         $this->assertDatabaseCount('po_role_assignments', 0);
     }
+
     public function test_budget_request_queue_accepts_br_owned_fields_and_links_eligible_issued_pos_to_details(): void
     {
         $this->seed([SampleUserSeeder::class, BudgetRequestDemoSeeder::class]);
@@ -2522,6 +2532,7 @@ class PurchaseRequestWorkflowTest extends TestCase
         $this->assertSame('APPROVED', $firstBudget->fresh()->final_approval_status);
         $this->assertNull($secondBudget->fresh()->final_approval_status);
     }
+
     public function test_it_screening_request_opens_directly_and_records_the_screener_without_changing_requestor(): void
     {
         $requestor = $this->user(RoleSlug::TeamLeader);
@@ -3034,7 +3045,7 @@ class PurchaseRequestWorkflowTest extends TestCase
     {
         return User::factory()->create([
             'role_id' => $this->roleId($role),
-            'campaign_id' => in_array($role, [RoleSlug::Requestor, RoleSlug::TeamLeader], true)
+            'campaign_id' => in_array($role, [RoleSlug::Requestor, RoleSlug::TeamLeader, RoleSlug::Om, RoleSlug::OmSmtsApprover, RoleSlug::Smt], true)
                 ? Campaign::query()->firstOrFail()->id
                 : null,
         ]);
@@ -3127,11 +3138,14 @@ class PurchaseRequestWorkflowTest extends TestCase
 
     private function approvedForTeamClassification(): PurchaseRequest
     {
-        $request = $this->createRequest($this->user(RoleSlug::TeamLeader), true);
+        $request = $this->createRequest($this->user(RoleSlug::TeamLeader), true, ['title' => 'Office furniture',
+            'items' => [['description' => 'Office chair', 'quantity' => 1, 'unit' => 'pc', 'brand_specifications' => 'Ergonomic',
+                'attachment' => UploadedFile::fake()->create('approval.pdf', 20, 'application/pdf'), 'picture' => UploadedFile::fake()->image('item.jpg')]]]);
         $om = $this->user(RoleSlug::OmSmtsApprover);
         $this->actingAs($om)
             ->post(route('om-approvals.approve', $request), ['signature_name' => $om->name, 'signature_data' => $this->signatureData()])
             ->assertSessionHasNoErrors();
+
         return $request->fresh();
     }
 
@@ -3139,6 +3153,7 @@ class PurchaseRequestWorkflowTest extends TestCase
     {
         return $this->signatureImage();
     }
+
     private function inventoryItem(PurchaseRequest $purchaseRequest, float $quantity): InventoryItem
     {
         $inventoryStaff = $this->user(RoleSlug::InventoryStaff);
@@ -3212,6 +3227,7 @@ class PurchaseRequestWorkflowTest extends TestCase
             'recipient' => $purchaseRequest->requestor->name,
         ];
     }
+
     public function test_only_the_quotation_creator_can_update_saved_quotation_details(): void
     {
         $request = $this->createRequest($this->user(RoleSlug::TeamLeader), false, ['request_type' => 'OTHER']);
@@ -3252,7 +3268,7 @@ class PurchaseRequestWorkflowTest extends TestCase
         $this->assertSame('Updated Supplier', $quotation->fresh()->supplier->name);
         $this->actingAs($otherUser)->get(route('purchase-requests.show', $request))
             ->assertOk()->assertSee('quotation-preview-'.$quotation->id, false)->assertDontSee('quotation-edit-'.$quotation->id, false);
-$this->actingAs($creator)->get(route('purchase-requests.show', $request))
+        $this->actingAs($creator)->get(route('purchase-requests.show', $request))
             ->assertOk()
             ->assertSee('quotation-edit-'.$quotation->id, false)
             ->assertSee('Created By / Requestor')
@@ -3349,6 +3365,7 @@ $this->actingAs($creator)->get(route('purchase-requests.show', $request))
             ->assertSee('It is saved automatically when you select Check Purchase Order.')
             ->assertSee('data-signature-canvas', false);
     }
+
     public function test_missing_po_signatures_restore_the_earliest_stage_and_preserve_existing_signatures(): void
     {
         $request = $this->createRequest($this->user(RoleSlug::TeamLeader), true);
@@ -3465,6 +3482,7 @@ $this->actingAs($creator)->get(route('purchase-requests.show', $request))
             $this->assertNotNull($order->approvalFor($stage)?->fresh()->signature_data);
         }
     }
+
     public function test_authorized_po_preparer_can_sign_and_save(): void
     {
         $purchasing = $this->user(RoleSlug::Purchasing);

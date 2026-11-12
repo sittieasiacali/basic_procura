@@ -21,6 +21,13 @@ trait ValidatesAccountRoles
 
     private function roleRequiresCampaign(): bool
     {
+        return $this->roleRequiresActivityRecipients() || Role::query()
+            ->whereIn('id', array_filter((array) $this->input('role_ids'), 'is_scalar'))
+            ->whereIn('slug', [RoleSlug::Om->value, RoleSlug::OmSmtsApprover->value, RoleSlug::Smt->value])->exists();
+    }
+
+    private function roleRequiresActivityRecipients(): bool
+    {
         $ids = $this->input('role_ids');
 
         return is_array($ids) && Role::query()->whereIn('id', array_filter($ids, 'is_scalar'))

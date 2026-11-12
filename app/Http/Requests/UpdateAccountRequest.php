@@ -20,7 +20,7 @@ class UpdateAccountRequest extends FormRequest
     /** @return array<string, mixed> */
     public function rules(): array
     {
-        $requiresRecipients = $this->roleRequiresCampaign();
+        $requiresRecipients = $this->roleRequiresActivityRecipients();
 
         return [
             'name' => ['required', 'string', 'max:255'],

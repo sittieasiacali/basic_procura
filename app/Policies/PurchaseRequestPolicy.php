@@ -7,6 +7,7 @@ use App\Enums\PurchaseRequestStatus;
 use App\Enums\RoleSlug;
 use App\Models\PurchaseRequest;
 use App\Models\User;
+use App\Support\ProcuraChatAccess;
 use App\Support\RequestWithdrawal;
 
 class PurchaseRequestPolicy
@@ -18,7 +19,8 @@ class PurchaseRequestPolicy
             return false;
         }
 
-        if (in_array($ability, ['review', 'reviewOm'], true)) {
+        if ($purchaseRequest instanceof PurchaseRequest && ProcuraChatAccess::isCampaignRole($user)
+            && ! ProcuraChatAccess::sameCampaign($user, $purchaseRequest)) {
             return false;
         }
         if ($user->hasRole(RoleSlug::Admin->value) && ! in_array($ability, ['claim', 'screen', 'releaseInventory', 'withdraw', 'returnToRequestor'], true)) {
@@ -116,7 +118,9 @@ class PurchaseRequestPolicy
 
     public function reviewOm(User $user, PurchaseRequest $purchaseRequest): bool
     {
-        return false;
+        return $user->is_active && $user->hasAnyRole([RoleSlug::Om->value, RoleSlug::OmSmtsApprover->value])
+            && $purchaseRequest->status === PurchaseRequestStatus::ForOmApproval
+            && ProcuraChatAccess::sameCampaign($user, $purchaseRequest);
     }
 
     public function reviewPresident(User $user, PurchaseRequest $purchaseRequest): bool

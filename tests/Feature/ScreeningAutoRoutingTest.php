@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Enums\PurchaseRequestStatus;
 use App\Enums\RoleSlug;
+use App\Models\Campaign;
 use App\Models\PurchaseRequest;
 use App\Models\PurchaseRequestItem;
 use App\Models\Role;
@@ -40,7 +41,7 @@ class ScreeningAutoRoutingTest extends TestCase
         $this->assertSame('IT', $request->request_type);
         $this->assertNull($request->assigned_user_id);
         $this->assertSame($this->roleId(RoleSlug::ItStaff), $request->current_responsible_role_id);
-        $log = $request->auditLogs()->where('action', 'SUBMITTED_FOR_SCREENING')->sole();
+        $log = $request->auditLogs()->where('action', 'OM_APPROVED_FOR_IT_SCREENING')->sole();
         $this->assertSame('IT', $log->metadata['auto_routed']);
         $this->assertContains('laptop', $log->metadata['matched_keywords']);
 
@@ -87,7 +88,7 @@ class ScreeningAutoRoutingTest extends TestCase
         $this->assertSame(PurchaseRequestStatus::ForPremisesScreening, $request->status);
         $this->assertSame('PREMISES', $request->request_type);
         $this->assertSame($this->roleId(RoleSlug::PremisesStaff), $request->current_responsible_role_id);
-        $log = $request->auditLogs()->where('action', 'SUBMITTED_FOR_SCREENING')->sole();
+        $log = $request->auditLogs()->where('action', 'OM_APPROVED_FOR_PREMISES_SCREENING')->sole();
         $this->assertSame('requestor', $log->metadata['routed_by']);
 
         // It is offered only to Premises: IT neither sees it in their queue nor can claim it.
@@ -175,11 +176,15 @@ class ScreeningAutoRoutingTest extends TestCase
             'signature_name' => $owner->name,
             'signature_data' => $this->signatureImage(),
         ])->assertSessionHasNoErrors();
+        $this->assertSame(PurchaseRequestStatus::ForOmApproval, $request->fresh()->status);
+        $om = $this->user(RoleSlug::Om);
+        $this->actingAs($om)->post(route('om-approvals.approve', $request), $this->workflowSignature($om))
+            ->assertRedirect()->assertSessionHasNoErrors();
     }
 
     private function user(RoleSlug $role): User
     {
-        return User::factory()->create(['role_id' => $this->roleId($role)]);
+        return User::factory()->create(['role_id' => $this->roleId($role), 'campaign_id' => Campaign::firstOrCreate(['name' => 'Routing campaign'], ['is_active' => true])->id]);
     }
 
     private function roleId(RoleSlug $role): int

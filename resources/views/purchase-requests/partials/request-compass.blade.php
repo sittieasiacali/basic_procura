@@ -15,7 +15,7 @@
             <ol class="request-compass-steps">
                 <li><a href="#request-details-heading" data-compass-step="1" aria-current="step"><strong>Provide Request Details</strong><small>Complete the core information for your purchase request.</small></a></li>
                 <li><a href="#requested-items-heading" data-compass-step="2"><strong>Review &amp; Confirm</strong><small>Add items, quantities, and supporting documents.</small></a></li>
-                <li><a href="#request-submission-signature-heading" data-compass-step="3"><strong>Submit for Approval</strong><small>Sign your request and submit it for screening.</small></a></li>
+                <li><a href="#request-submission-signature-heading" data-compass-step="3"><strong>Submit for Approval</strong><small>Sign your request and submit it for OM approval.</small></a></li>
             </ol>
         </nav>
         <section class="request-compass-path" aria-labelledby="compass-path-heading">

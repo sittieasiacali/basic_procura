@@ -33,3 +33,11 @@ Thumbs.db
 # Local browser profiles, temporary artifacts, and session cookies
 /tmp/
 /cookies.txt
+
+/mobile/procura-chat/node_modules/
+/mobile/procura-chat/.expo/
+/mobile/procura-chat/.env*
+/mobile/procura-chat/android/
+/mobile/procura-chat/ios/
+/mobile/procura-chat/dist/
+!/mobile/procura-chat/.env.example

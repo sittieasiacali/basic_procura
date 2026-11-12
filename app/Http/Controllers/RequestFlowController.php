@@ -111,7 +111,7 @@ class RequestFlowController extends Controller
                 && $lockedRequest->auditLogs()->where(fn ($query) => $query
                     ->where('action', 'OM_APPROVED_FOR_IT_SCREENING')
                     ->orWhere(fn ($submission) => $submission
-                        ->whereIn('action', ['SUBMITTED_FOR_SCREENING', 'RESUBMITTED_FOR_SCREENING'])
+                        ->whereIn('action', ['SUBMITTED_FOR_SCREENING', 'RESUBMITTED_FOR_SCREENING', 'SUBMITTED_FOR_OM_APPROVAL', 'RESUBMITTED_FOR_OM_APPROVAL'])
                         ->where('metadata->auto_routed', 'IT')))->exists();
             $previousStatus = $claim?->previous_status === PurchaseRequestStatus::ForTeamScreening->value || $wasAutoRouted
                 ? PurchaseRequestStatus::ForTeamScreening

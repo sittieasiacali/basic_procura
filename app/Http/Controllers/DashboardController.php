@@ -16,8 +16,10 @@ use App\Models\PurchaseRequest;
 use App\Models\User;
 use App\Policies\PurchaseOrderPolicy;
 use App\Support\AccountMonitoring;
+use App\Support\ProcuraChatAccess;
 use App\Support\PurchaseOrderActionQueue;
 use App\Support\RequestWithdrawal;
+use App\Support\WorkflowAction;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
@@ -882,7 +884,11 @@ class DashboardController extends Controller
                 ->whereIn('status', [PurchaseRequestStatus::Draft->value, PurchaseRequestStatus::Returned->value]);
         }
 
-        if (in_array($role, [RoleSlug::OmSmtsApprover->value, RoleSlug::Om->value, RoleSlug::Smt->value], true)) {
+        if (in_array($role, [RoleSlug::OmSmtsApprover->value, RoleSlug::Om->value], true)) {
+            return ProcuraChatAccess::campaignQuery($query, $user)->where('status', PurchaseRequestStatus::ForOmApproval->value);
+        }
+
+        if ($role === RoleSlug::Smt->value) {
             return $query->whereRaw('1 = 0');
         }
 
@@ -1038,7 +1044,7 @@ class DashboardController extends Controller
     /** @return array{label: string, url: string}|null */
     private function actionDetails(User $user, PurchaseRequest $purchaseRequest): ?array
     {
-        return \App\Support\WorkflowAction::for($user, $purchaseRequest);
+        return WorkflowAction::for($user, $purchaseRequest);
     }
 
     /** @return array<string, string> */

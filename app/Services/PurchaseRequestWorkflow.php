@@ -16,8 +16,12 @@ class PurchaseRequestWorkflow
 
     public function submitForScreening(PurchaseRequest $purchaseRequest, User $user, ?string $remarks, string $signatureName, string $signatureData): void
     {
+        $campaign = $purchaseRequest->requestor?->campaign;
+        if (! $campaign || ! $campaign->is_active) {
+            throw ValidationException::withMessages(['campaign' => 'Ask the administrator to assign an active campaign before submitting.']);
+        }
         $action = $purchaseRequest->status === PurchaseRequestStatus::Returned
-            ? 'RESUBMITTED_FOR_SCREENING' : 'SUBMITTED_FOR_SCREENING';
+            ? 'RESUBMITTED_FOR_OM_APPROVAL' : 'SUBMITTED_FOR_OM_APPROVAL';
         $team = $purchaseRequest->requested_team;
         $metadata = [];
         if ($team === null && ($matches = app(ScreeningRouter::class)->itMatches($purchaseRequest)) !== []) {
@@ -32,7 +36,8 @@ class PurchaseRequestWorkflow
             default => PurchaseRequestStatus::ForTeamScreening,
         };
         $purchaseRequest->forceFill(['request_type' => $team ?? 'UNCLASSIFIED', 'assigned_user_id' => null]);
-        $this->transition($purchaseRequest, $status, $user, $action, filled($remarks) ? $remarks : 'Submitted for IT / Premises screening.', 'REQUESTOR_SUBMISSION', $metadata, $signatureName, $signatureData);
+        $purchaseRequest->forceFill(['chat_campaign_id' => $purchaseRequest->chat_campaign_id ?? $campaign->id]);
+        $this->transition($purchaseRequest, PurchaseRequestStatus::ForOmApproval, $user, $action, filled($remarks) ? $remarks : 'Submitted for OM approval. SMT acknowledgement is optional.', 'REQUESTOR_SUBMISSION', $metadata, $signatureName, $signatureData);
     }
 
     public function recordCreated(PurchaseRequest $purchaseRequest, User $user): void
@@ -75,6 +80,9 @@ class PurchaseRequestWorkflow
             $remarks,
             $metadata,
         );
+        if (filled($remarks)) {
+            app(ProcuraChat::class)->activity($purchaseRequest, $user, $action, $remarks);
+        }
     }
 
     public function transition(
@@ -103,7 +111,7 @@ class PurchaseRequestWorkflow
         $purchaseRequest->forceFill([
             'status' => $newStatus,
             'current_responsible_role_id' => $this->responsibleRoleId($newStatus, $purchaseRequest),
-            'submitted_at' => in_array($action, ['SUBMITTED_FOR_SCREENING', 'RESUBMITTED_FOR_SCREENING'], true) ? now() : $purchaseRequest->submitted_at,
+            'submitted_at' => in_array($action, ['SUBMITTED_FOR_SCREENING', 'RESUBMITTED_FOR_SCREENING', 'SUBMITTED_FOR_OM_APPROVAL', 'RESUBMITTED_FOR_OM_APPROVAL'], true) ? now() : $purchaseRequest->submitted_at,
         ])->save();
 
         if ($approvalLevel !== null) {
@@ -128,6 +136,9 @@ class PurchaseRequestWorkflow
                 default => 'Current stage: '.str($newStatus->value)->replace('_', ' ')->title(),
             };
             app(ProcurementNotifications::class)->send($purchaseRequest, $action, $message);
+        }
+        if ($previousStatus !== $newStatus) {
+            app(ProcuraChat::class)->workflow($purchaseRequest, $user, $action, $remarks);
         }
         $this->activityNotifier->requestMoved($purchaseRequest, $previousStatus, $action);
         if (request()->hasSession()) {
@@ -156,7 +167,7 @@ class PurchaseRequestWorkflow
         }
 
         $slug = match ($status) {
-            PurchaseRequestStatus::ForOmApproval => RoleSlug::OmSmtsApprover->value,
+            PurchaseRequestStatus::ForOmApproval => RoleSlug::Om->value,
             PurchaseRequestStatus::ForItScreening => RoleSlug::ItStaff->value,
             PurchaseRequestStatus::ForPremisesScreening => RoleSlug::PremisesStaff->value,
             PurchaseRequestStatus::ForInventoryRelease,

@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Enums\PurchaseOrderApprovalStage;
 use App\Enums\PurchaseRequestStatus;
 use App\Enums\RoleSlug;
+use App\Support\ProcuraChatAccess;
 use App\Support\PurchaseOrderLinePricing;
 use App\Support\RequestStageReceipt;
 use Illuminate\Database\Eloquent\Builder;
@@ -117,6 +118,10 @@ class PurchaseRequest extends Model
     {
         $user->loadMissing('role');
 
+        if (ProcuraChatAccess::isCampaignRole($user)) {
+            return ProcuraChatAccess::campaignQuery($query, $user);
+        }
+
         if ($user->hasAnyRole([RoleSlug::PoWorkflow->value, RoleSlug::PoChecker->value, RoleSlug::PoNoted->value, RoleSlug::PoApprover->value])) {
             return $query->where(function (Builder $query) use ($user) {
                 if ($user->hasPoRole(PurchaseOrderApprovalStage::PreparedBy)) {
@@ -217,6 +222,11 @@ class PurchaseRequest extends Model
         return $query->whereHas('auditLogs', fn (Builder $log) => $log
             ->where('user_id', $user->id)
             ->whereIn('action', array_keys(RequestStageReceipt::handoffLabels())));
+    }
+
+    public function chatMessages(): HasMany
+    {
+        return $this->hasMany(ChatMessage::class);
     }
 
     public function requestor(): BelongsTo

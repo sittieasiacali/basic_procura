@@ -9,7 +9,7 @@ class PurchaseRequestStatusTest extends TestCase
 {
     public function test_workflow_allows_expected_initial_transitions(): void
     {
-        $this->assertFalse(PurchaseRequestStatus::Draft->canTransitionTo(PurchaseRequestStatus::ForOmApproval));
+        $this->assertTrue(PurchaseRequestStatus::Draft->canTransitionTo(PurchaseRequestStatus::ForOmApproval));
         $this->assertTrue(PurchaseRequestStatus::Draft->canTransitionTo(PurchaseRequestStatus::ForTeamScreening));
         $this->assertTrue(PurchaseRequestStatus::Draft->canTransitionTo(PurchaseRequestStatus::ForItScreening));
         $this->assertTrue(PurchaseRequestStatus::Returned->canTransitionTo(PurchaseRequestStatus::ForPremisesScreening));

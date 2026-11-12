@@ -371,7 +371,7 @@ class RequestWithdrawalTest extends TestCase
     {
         return User::factory()->create([
             'role_id' => $this->roleId($role),
-            'campaign_id' => in_array($role, [RoleSlug::Requestor, RoleSlug::TeamLeader], true) ? Campaign::query()->value('id') : null,
+            'campaign_id' => in_array($role, [RoleSlug::Requestor, RoleSlug::TeamLeader, RoleSlug::Om, RoleSlug::OmSmtsApprover, RoleSlug::Smt], true) ? Campaign::query()->value('id') : null,
         ]);
     }
 

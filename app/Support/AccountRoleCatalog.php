@@ -12,6 +12,9 @@ final class AccountRoleCatalog
     public static function labels(): array
     {
         return [
+            RoleSlug::Om->value => 'OM',
+            RoleSlug::Smt->value => 'SMT (notifications / acknowledgement)',
+            RoleSlug::President->value => 'PRESIDENT',
             RoleSlug::PurchasingTeam->value => 'PURCHASING',
             RoleSlug::Finance->value => 'FINANCE',
             RoleSlug::Requestor->value => 'TL / REQUESTOR',

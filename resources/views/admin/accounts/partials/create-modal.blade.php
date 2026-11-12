@@ -1,6 +1,7 @@
 @php
     $newUserSelectedRoles = old('role_ids', old('role_selection') ? [] : [old('role_id', $newUserRoles->firstWhere('slug', \App\Enums\RoleSlug::Requestor->value)['id'] ?? $newUserRoles->first()['id'] ?? '')]);
     $newUserRequestorIds = $newUserRoles->whereIn('slug', [\App\Enums\RoleSlug::Requestor->value, \App\Enums\RoleSlug::TeamLeader->value])->pluck('id')->map(fn ($id) => (string) $id)->all();
+    $newUserCampaignIds = $newUserRoles->whereIn('slug', ['requestor', 'team-leader', 'om', 'om-smts-approver', 'smt'])->pluck('id')->map(fn ($id) => (string) $id)->all();
     $newUserIsRequestor = count(array_intersect((array) $newUserSelectedRoles, $newUserRequestorIds)) > 0;
     $newUserHasErrors = old('create_account_modal') && $errors->any();
 @endphp
@@ -47,15 +48,17 @@
                         @if($newUserHasErrors) @error('team_id')<div class="invalid-feedback">{{ $message }}</div>@enderror @endif
                     </div>
                 </div>
-                <fieldset class="new-user-requestor-fields" data-new-user-requestor-fields @disabled(! $newUserIsRequestor)>
-                    <legend>TL workflow email recipients</legend>
-                    <p class="small text-muted mb-2">OM and SMT email addresses are required for TL / REQUESTOR accounts. Both receive updates as the TL's request moves through the workflow.</p>
-                    <label for="new-user-campaign">Campaign <span>*</span></label>
+                <div class="new-user-requestor-fields">
+                    <label for="new-user-campaign">Campaign <span>* for TL / OM / SMT</span></label>
                     <select class="form-select" id="new-user-campaign" name="campaign_id" @required($newUserIsRequestor)>
                         <option value="">Select a campaign</option>
                         @foreach($newUserCampaigns as $newUserCampaign)<option value="{{ $newUserCampaign->id }}" @selected((string) old('campaign_id') === (string) $newUserCampaign->id)>{{ $newUserCampaign->name }}</option>@endforeach
                     </select>
                     @if($newUserHasErrors) @error('campaign_id')<div class="new-user-field-error">{{ $message }}</div>@enderror @endif
+                </div>
+                <fieldset class="new-user-requestor-fields" data-new-user-requestor-fields @disabled(! $newUserIsRequestor)>
+                    <legend>TL workflow email recipients</legend>
+                    <p class="small text-muted mb-2">Required for TL / REQUESTOR accounts. OM approves; SMT receives updates and may acknowledge.</p>
                     <label for="new-user-om-email">OM notification email <span>*</span></label>
                     <input class="form-control @if($newUserHasErrors && $errors->has('om_notification_email')) is-invalid @endif" type="email" id="new-user-om-email" name="om_notification_email" value="{{ old('om_notification_email') }}" maxlength="255" placeholder="Assigned OM email" @required($newUserIsRequestor)>
                     @if($newUserHasErrors) @error('om_notification_email')<div class="new-user-field-error">{{ $message }}</div>@enderror @endif
@@ -92,8 +95,10 @@
     const roles = modal.querySelectorAll('[data-role-picker] input[type="checkbox"]');
     const requestorFields = modal.querySelector('[data-new-user-requestor-fields]');
     const requestorRoleIds = @json($newUserRequestorIds);
+    const campaignRoleIds = @json($newUserCampaignIds);
     const syncRole = () => {
         const isRequestor = Array.from(roles).some(role => role.checked && requestorRoleIds.includes(role.value));
+        modal.querySelector('#new-user-campaign').required = Array.from(roles).some(role => role.checked && campaignRoleIds.includes(role.value));
         requestorFields.disabled = !isRequestor;
         requestorFields.querySelectorAll('input,select').forEach(input => input.required = isRequestor);
     };

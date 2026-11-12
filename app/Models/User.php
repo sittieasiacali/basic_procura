@@ -21,7 +21,7 @@ class User extends Authenticatable
     private ?Role $workspaceRole = null;
 
     /** @use HasFactory<UserFactory> */
-    use HasFactory, Notifiable;
+    use HasFactory, \Laravel\Sanctum\HasApiTokens, Notifiable;
 
     /**
      * The attributes that are mass assignable.

@@ -52,9 +52,11 @@ class PurchaseRequestListTest extends TestCase
         $this->get(route('purchase-requests.show', $salesRequest))->assertForbidden();
         $this->assertListVisibility($this->user(RoleSlug::TeamLeader, $this->sales), [], [$operationsRequest, $salesRequest, $teamLeaderRequest]);
 
-        foreach ([RoleSlug::OmSmtsApprover, RoleSlug::Smt, RoleSlug::Admin] as $role) {
-            $this->assertListVisibility($this->user($role), [$operationsRequest, $salesRequest, $teamLeaderRequest], []);
+        foreach ([RoleSlug::OmSmtsApprover, RoleSlug::Om, RoleSlug::Smt] as $role) {
+            $this->assertListVisibility($this->user($role, $this->operations), [$operationsRequest, $teamLeaderRequest], [$salesRequest]);
+            $this->assertListVisibility($this->user($role), [], [$operationsRequest, $salesRequest, $teamLeaderRequest]);
         }
+        $this->assertListVisibility($this->user(RoleSlug::Admin), [$operationsRequest, $salesRequest, $teamLeaderRequest], []);
     }
 
     public function test_summary_counts_use_only_requests_visible_to_the_current_user(): void
@@ -180,7 +182,7 @@ class PurchaseRequestListTest extends TestCase
 
         $response->assertOk()
             ->assertSee('Request Details')
-            ->assertSee('Screening route is assigned by IT or Premises.')
+            ->assertSee('Your request category determines IT or Premises screening.')
             ->assertDontSee('name="request_type"', false)
             ->assertSee('Supplier selection happens during Canvassing.')
             ->assertDontSee('Bulk Purchase')
@@ -284,7 +286,7 @@ class PurchaseRequestListTest extends TestCase
         ])->assertSessionHasNoErrors();
         $submitted = PurchaseRequest::query()->firstOrFail();
         $this->assertSame(1, $submitted->items()->count());
-        $this->assertSame(PurchaseRequestStatus::ForTeamScreening, $submitted->status);
+        $this->assertSame(PurchaseRequestStatus::ForOmApproval, $submitted->status);
 
         $this->actingAs($requestor)->post(route('purchase-requests.store'), [
             ...$payload,
@@ -295,7 +297,7 @@ class PurchaseRequestListTest extends TestCase
         $draft = PurchaseRequest::query()->where('status', PurchaseRequestStatus::Draft)->firstOrFail();
         $this->post(route('purchase-requests.submit', $draft), $this->workflowSignature(auth()->user()))
             ->assertSessionHasNoErrors();
-        $this->assertSame(PurchaseRequestStatus::ForTeamScreening, $draft->fresh()->status);
+        $this->assertSame(PurchaseRequestStatus::ForOmApproval, $draft->fresh()->status);
     }
 
     public function test_request_without_estimates_can_be_saved_submitted_and_viewed(): void
@@ -325,7 +327,7 @@ class PurchaseRequestListTest extends TestCase
             ->assertDontSee('Request estimate');
 
         $this->post(route('purchase-requests.submit', $draft), $this->workflowSignature(auth()->user()))->assertSessionHasNoErrors();
-        $this->assertSame(PurchaseRequestStatus::ForTeamScreening, $draft->fresh()->status);
+        $this->assertSame(PurchaseRequestStatus::ForOmApproval, $draft->fresh()->status);
     }
 
     public function test_purchase_order_requires_confirmed_lines_for_an_unestimated_request(): void
@@ -423,7 +425,7 @@ class PurchaseRequestListTest extends TestCase
 
         $purchaseRequest = PurchaseRequest::query()->firstOrFail();
         $this->assertSame('REQ00001', $purchaseRequest->request_number);
-        $this->assertSame(PurchaseRequestStatus::ForTeamScreening, $purchaseRequest->status);
+        $this->assertSame(PurchaseRequestStatus::ForOmApproval, $purchaseRequest->status);
         $this->assertSame('500.99', $purchaseRequest->total_amount);
         $this->assertSame(['251.00', '150.00', '99.99'], $purchaseRequest->items()->orderBy('id')->pluck('estimated_total')->all());
     }

@@ -223,6 +223,9 @@ class BudgetRevisionRulesTest extends TestCase
         $this->actingAs($creator)->post(route('purchase-orders.return-to-requestor', $request), ['correction_reason' => 'Repeated request.'])->assertForbidden();
         $this->actingAs($owner);
         app(PurchaseRequestWorkflow::class)->submitForScreening($request, $owner, 'Corrected specifications.', $owner->name, $this->signatureImage());
+        $this->assertSame(PurchaseRequestStatus::ForOmApproval, $request->fresh()->status);
+        $om = User::factory()->create(['role_id' => Role::where('slug', RoleSlug::Om->value)->value('id'), 'campaign_id' => $owner->campaign_id]);
+        $this->actingAs($om)->post(route('om-approvals.approve', $request), $this->workflowSignature($om))->assertRedirect()->assertSessionHasNoErrors();
         $this->assertSame(PurchaseRequestStatus::ForItScreening, $request->fresh()->status);
         $this->actingAs($screener)->post(route('request-flow.screening.store', $request), ['decision' => 'UNAVAILABLE', 'evidence' => 'Fresh evidence', ...$this->workflowSignature($screener)])->assertSessionHasNoErrors();
         $this->assertSame('Fresh evidence', $request->fresh()->screening->evidence);
@@ -264,7 +267,7 @@ class BudgetRevisionRulesTest extends TestCase
             'purpose' => 'Corrected specifications', 'delivery_location' => 'Main Office', ...$this->workflowSignature($owner),
             'items' => array_map(fn ($item) => ['id' => $item->id, 'description' => $item->description.' revised', 'quantity' => 1, 'unit' => 'pc', 'brand_specifications' => '16 GB RAM'], $items)];
         $this->put(route('purchase-requests.update', $request), $payload)->assertRedirect()->assertSessionHasNoErrors();
-        $this->assertSame(PurchaseRequestStatus::ForItScreening, $request->fresh()->status);
+        $this->assertSame(PurchaseRequestStatus::ForOmApproval, $request->fresh()->status);
         $this->get(route('dashboard'))->assertOk()->assertDontSee('id="needs-correction-heading"', false)->assertSee('Corrected request');
         $this->assertFalse($owner->can('update', $request->fresh()));
         $this->actingAs($creator)->get(route('returned-monitoring.index', ['returned_status' => 'RESUBMITTED']))->assertOk()

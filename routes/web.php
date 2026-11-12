@@ -21,6 +21,7 @@ use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\OmApprovalController;
 use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\PresidentApprovalController;
+use App\Http\Controllers\ProcuraChatController;
 use App\Http\Controllers\PurchaseOrderController;
 use App\Http\Controllers\PurchaseOrderWorkflowTrackerController;
 use App\Http\Controllers\PurchaseRequestController;
@@ -48,6 +49,16 @@ Route::middleware('auth')->group(function () {
     Route::get('/change-password', [PasswordChangeController::class, 'edit'])->name('password.change');
     Route::post('/change-password', [PasswordChangeController::class, 'update'])->name('password.update');
     Route::get('/dashboard', DashboardController::class)->name('dashboard');
+    Route::get('/chats', [ProcuraChatController::class, 'page'])->name('chat.index');
+    Route::prefix('chat-data')->name('chat.')->middleware('throttle:180,1')->group(function () {
+        Route::get('requests', [ProcuraChatController::class, 'index'])->name('requests');
+        Route::get('requests/{purchaseRequest}', [ProcuraChatController::class, 'show'])->name('show');
+        Route::post('requests/{purchaseRequest}/messages', [ProcuraChatController::class, 'store'])->middleware('throttle:procura-chat-write')->name('store');
+        Route::post('requests/{purchaseRequest}/read', [ProcuraChatController::class, 'read'])->name('read');
+        Route::post('requests/{purchaseRequest}/acknowledge', [ProcuraChatController::class, 'acknowledge'])->name('acknowledge');
+        Route::get('messages/{message}/attachment', [ProcuraChatController::class, 'attachment'])->name('attachment');
+        Route::get('requests/{purchaseRequest}/files/{attachment}', [ProcuraChatController::class, 'workflowAttachment'])->name('workflow-attachment');
+    });
     Route::resource('suppliers', SupplierController::class)
         ->only(['index', 'store', 'update'])->middleware('role:it-staff,premises-staff,purchasing,purchasing-team,procurement-staff,canvassing-staff,admin');
     Route::get('/notifications', [NotificationController::class, 'index'])->name('notifications.index');
@@ -108,7 +119,7 @@ Route::middleware('auth')->group(function () {
 
     Route::prefix('om-approvals')
         ->name('om-approvals.')
-        ->middleware('role:om-smts-approver,admin')
+        ->middleware('role:om,om-smts-approver,admin')
         ->group(function () {
             Route::post('/{purchaseRequest}/approve', [OmApprovalController::class, 'approve'])->name('approve');
             Route::post('/{purchaseRequest}/return', [OmApprovalController::class, 'return'])->name('return');

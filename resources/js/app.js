@@ -1422,3 +1422,5 @@ import './supplier-picker';
 
 import '../css/attachment-fields.css';
 import './attachment-fields';
+
+import './procura-chat';

@@ -23,7 +23,7 @@ class ReturnedMonitoringController extends Controller
         $returnedMonitoring = PurchaseRequest::query()->visibleTo($request->user())
             ->whereHas('latestReturnApproval')
             ->when(($filters['returned_status'] ?? '') === 'RETURNED', fn ($query) => $query->where('status', PurchaseRequestStatus::Returned))
-            ->when(($filters['returned_status'] ?? '') === 'RESUBMITTED', fn ($query) => $query->whereNotIn('status', [PurchaseRequestStatus::Returned, PurchaseRequestStatus::Voided, PurchaseRequestStatus::WithdrawalPending])->whereHas('auditLogs', fn ($log) => $log->where('action', 'RESUBMITTED_FOR_SCREENING')))
+            ->when(($filters['returned_status'] ?? '') === 'RESUBMITTED', fn ($query) => $query->whereNotIn('status', [PurchaseRequestStatus::Returned, PurchaseRequestStatus::Voided, PurchaseRequestStatus::WithdrawalPending])->whereHas('auditLogs', fn ($log) => $log->whereIn('action', ['RESUBMITTED_FOR_SCREENING', 'RESUBMITTED_FOR_OM_APPROVAL'])))
             ->when($search !== '', function (Builder $query) use ($search): void {
                 $term = '%'.addcslashes($search, '%_\\').'%';
                 $query->where(fn ($query) => $query->where('request_number', 'like', $term)->orWhere('title', 'like', $term)

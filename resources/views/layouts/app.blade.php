@@ -51,6 +51,13 @@
         'icon' => 'dashboard',
     ]];
 
+    $primaryNavigation[] = [
+        'label' => 'Procura Chats',
+        'url' => route('chat.index'),
+        'active' => request()->routeIs('chat.*'),
+        'icon' => 'notification',
+    ];
+
     if ($currentUser->can('create', \App\Models\PurchaseRequest::class)) {
         $primaryNavigation[] = [
             'label' => 'Create Request',

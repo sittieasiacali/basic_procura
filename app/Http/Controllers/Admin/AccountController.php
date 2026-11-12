@@ -153,6 +153,10 @@ class AccountController extends Controller
                 'is_active' => $validated['is_active'],
             ]);
 
+            if (! empty($validated['password']) || ! $validated['is_active']) {
+                $lockedAccount->tokens()->delete();
+            }
+
             if (! empty($validated['password'])) {
                 $lockedAccount->password = Hash::make($validated['password']);
                 $lockedAccount->must_change_password = true;

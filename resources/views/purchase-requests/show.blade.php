@@ -287,7 +287,7 @@
                 <a class="btn btn-outline-primary" href="{{ route('purchase-requests.edit', $purchaseRequest) }}">Edit Request</a>
             @endcan
             @can('submit', $purchaseRequest)
-                <button class="btn btn-primary" type="button" data-bs-toggle="modal" data-bs-target="#submit-request-modal">Submit for Screening</button>
+                <button class="btn btn-primary" type="button" data-bs-toggle="modal" data-bs-target="#submit-request-modal">Submit for OM Approval</button>
             @endcan
             @can('withdraw', $purchaseRequest)
                 <button class="btn btn-outline-danger" type="button" data-bs-toggle="modal" data-bs-target="#withdraw-request-modal">Withdraw Request</button>
@@ -304,12 +304,12 @@
                 <form class="modal-content" method="POST" action="{{ route('purchase-requests.submit', $purchaseRequest) }}">
                     @csrf
                     <div class="modal-header">
-                        <h2 class="modal-title fs-5" id="submit-request-heading">Submit for Screening</h2>
+                        <h2 class="modal-title fs-5" id="submit-request-heading">Submit for OM Approval</h2>
                         <button class="btn-close" type="button" data-bs-dismiss="modal" aria-label="Close"></button>
                     </div>
                     <div class="modal-body">
                         <label class="form-label" for="submission-remarks">Remarks <span class="text-muted fw-normal">(optional)</span></label>
-                        <textarea class="form-control mb-3" id="submission-remarks" name="submission_remarks" rows="2" maxlength="5000" placeholder="Notes for the screening team">{{ old('submission_remarks') }}</textarea>
+                        <textarea class="form-control mb-3" id="submission-remarks" name="submission_remarks" rows="2" maxlength="5000" placeholder="Notes for your OM">{{ old('submission_remarks') }}</textarea>
                         <x-workflow-signature-pad
                             id="request-submit-signature"
                             label="Requestor signature"

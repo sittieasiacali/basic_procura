@@ -332,10 +332,11 @@
             <div class="card-body">
                 <ol class="builder-workflow-list">
                     <li class="is-current"><span>1</span><div><strong>Request</strong><small>Provide the business need and items.</small></div></li>
-                    <li><span>2</span><div><strong>Department screening</strong><small>Screening route is assigned by IT or Premises.</small></div></li>
-                    <li><span>3</span><div><strong>Purchasing &amp; canvassing</strong><small>Purchasing obtains comparable quotations.</small></div></li>
-                    <li><span>4</span><div><strong>Recommendation</strong><small>Purchasing records its recommendation.</small></div></li>
-                    <li><span>5</span><div><strong>President approval</strong><small>The President approves or returns the supplier review.</small></div></li>
+                    <li><span>2</span><div><strong>OM approval</strong><small>Your campaign OM approves. SMT is notified and may acknowledge.</small></div></li>
+                    <li><span>3</span><div><strong>Department screening</strong><small>Your request category determines IT or Premises screening.</small></div></li>
+                    <li><span>4</span><div><strong>Purchasing &amp; canvassing</strong><small>Purchasing obtains comparable quotations.</small></div></li>
+                    <li><span>5</span><div><strong>Recommendation</strong><small>Purchasing records its recommendation.</small></div></li>
+                    <li><span>6</span><div><strong>President approval</strong><small>The President approves or returns the supplier review.</small></div></li>
                 </ol>
                 <div class="builder-workflow-note" role="note">
                     <x-ui.icon name="supplier" size="18" />
@@ -497,7 +498,7 @@
                 itemsFeedback.querySelector('span').textContent = 'Give every item a description, quantity, and email approval to enable submission. The item picture is optional. You can still save a draft.';
                 readiness.textContent = 'Complete each item\'s description, quantity, and email approval to enable submission.';
             } else {
-                readiness.textContent = 'Your item list is ready. Submit it to IT / Premises screening or save it as a draft.';
+                readiness.textContent = 'Your item list is ready. Submit it for OM approval or save it as a draft.';
             }
 
             if (submitButton) {
@@ -684,7 +685,7 @@
                 event.stopPropagation();
                 return;
             }
-            if (action === 'submit' && ! window.confirm('Submit this request for IT / Premises screening?')) {
+            if (action === 'submit' && ! window.confirm('Submit this request for OM approval?')) {
                 event.preventDefault();
                 event.stopPropagation();
                 return;

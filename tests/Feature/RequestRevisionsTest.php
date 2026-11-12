@@ -4,7 +4,6 @@ namespace Tests\Feature;
 
 use App\Enums\PurchaseRequestStatus;
 use App\Enums\RoleSlug;
-use App\Models\BudgetRequest;
 use App\Models\Campaign;
 use App\Models\PurchaseRequest;
 use App\Models\PurchaseRequestItem;
@@ -170,7 +169,7 @@ class RequestRevisionsTest extends TestCase
             $this->post(route('purchase-requests.store'), $payload)->assertSessionHasNoErrors();
             $request = PurchaseRequest::query()->latest('id')->firstOrFail();
             $this->assertNull($request->priority_level);
-            $this->assertSame(PurchaseRequestStatus::ForItScreening, $request->status);
+            $this->assertSame(PurchaseRequestStatus::ForOmApproval, $request->status);
         }
     }
 
@@ -202,7 +201,7 @@ class RequestRevisionsTest extends TestCase
             ->assertSessionHasErrors('priority_level');
         $this->assertNull($request->fresh()->priority_level);
         $this->post(route('purchase-requests.submit', $request), $signature)->assertSessionHasNoErrors();
-        $this->assertSame(PurchaseRequestStatus::ForItScreening, $request->fresh()->status);
+        $this->assertSame(PurchaseRequestStatus::ForOmApproval, $request->fresh()->status);
         $this->assertNull($request->fresh()->priority_level);
     }
 

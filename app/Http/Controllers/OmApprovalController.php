@@ -7,6 +7,7 @@ use App\Http\Requests\OmDecisionRequest;
 use App\Models\PurchaseRequest;
 use App\Services\PurchaseRequestWorkflow;
 use App\Support\ScreeningRouter;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -17,7 +18,7 @@ class OmApprovalController extends Controller
         OmDecisionRequest $request,
         PurchaseRequest $purchaseRequest,
         PurchaseRequestWorkflow $workflow,
-    ): RedirectResponse {
+    ): RedirectResponse|JsonResponse {
         return $this->decide(
             $request,
             $purchaseRequest,
@@ -32,7 +33,7 @@ class OmApprovalController extends Controller
         OmDecisionRequest $request,
         PurchaseRequest $purchaseRequest,
         PurchaseRequestWorkflow $workflow,
-    ): RedirectResponse {
+    ): RedirectResponse|JsonResponse {
         return $this->decide($request, $purchaseRequest, $workflow, PurchaseRequestStatus::Returned, 'OM_RETURNED', 'Request returned for correction.');
     }
 
@@ -43,7 +44,7 @@ class OmApprovalController extends Controller
         PurchaseRequestStatus $newStatus,
         string $action,
         string $message,
-    ): RedirectResponse {
+    ): RedirectResponse|JsonResponse {
         DB::transaction(function () use ($request, $purchaseRequest, $workflow, $newStatus, $action) {
             $lockedRequest = PurchaseRequest::query()->lockForUpdate()->findOrFail($purchaseRequest->id);
             $this->authorize('reviewOm', $lockedRequest);
@@ -85,6 +86,10 @@ class OmApprovalController extends Controller
                 $request->validated('signature_data'),
             );
         });
+
+        if ($request->expectsJson()) {
+            return response()->json(['message' => $message, 'status' => $purchaseRequest->fresh()->status->value]);
+        }
 
         // The OM's view closes to a receipt naming the next stage, so no flash message.
         return redirect()->route('purchase-requests.show', $purchaseRequest);

@@ -1,6 +1,7 @@
 @php
     $editing = isset($account);
     $campaignRoleIds = $roles->whereIn('slug', [\App\Enums\RoleSlug::Requestor->value, \App\Enums\RoleSlug::TeamLeader->value])->pluck('id')->values();
+    $managementRoleIds = $roles->whereIn('slug', ['om', 'om-smts-approver', 'smt'])->pluck('id')->values();
     $selectedRoles = old('role_ids', old('role_selection') ? [] : (isset($account) ? $account->assignedRoles()->pluck('id')->all() : []));
     $requiresActivityRecipients = $campaignRoleIds->intersect((array) $selectedRoles)->isNotEmpty();
     $passwordError = $errors->first('password');
@@ -39,7 +40,7 @@
                 <x-account-role-checkboxes :options="$roles->map(fn ($role) => ['id' => $role->id, 'label' => \App\Support\AccountRoleCatalog::label($role)])" :selected="$selectedRoles" prefix="edit-account" />
             </div>
             <div class="col-md-6">
-                <label class="form-label" for="campaign_id">Campaign <span class="text-muted" id="campaign-requirement">(required for Requestor and Team Leader / Requestor)</span></label>
+                <label class="form-label" for="campaign_id">Campaign <span class="text-muted" id="campaign-requirement">(required for TL / Requestor, OM and SMT)</span></label>
                 <select class="form-select @error('campaign_id') is-invalid @enderror" id="campaign_id" name="campaign_id">
                     <option value="">Not assigned</option>
                     @foreach($campaigns as $campaign)<option value="{{ $campaign->id }}" @selected((string) old('campaign_id', $account->campaign_id ?? '') === (string) $campaign->id)>{{ $campaign->name }}</option>@endforeach
@@ -106,9 +107,10 @@
         const roles = document.querySelectorAll('.procura-form-page [data-role-picker] input[type="checkbox"]');
         const campaign = document.getElementById('campaign_id');
         const requiredRoleIds = @json($campaignRoleIds);
+        const managementRoleIds = @json($managementRoleIds);
         const syncCampaignRequirement = () => {
             const requiresRecipients = Array.from(roles).some(role => role.checked && requiredRoleIds.includes(Number(role.value)));
-            campaign.required = requiresRecipients;
+            campaign.required = requiresRecipients || Array.from(roles).some(role => role.checked && managementRoleIds.includes(Number(role.value)));
             document.getElementById('tl-notification-fields').hidden = ! requiresRecipients;
             ['om_notification_email', 'smt_notification_email'].forEach((id) => {
                 const input = document.getElementById(id);

@@ -80,7 +80,7 @@ function render(input, state) {
 }
 
 export function initializeAttachmentFields(root = document) {
-    root.querySelectorAll('input[type="file"]:not([data-single-import])').forEach((input) => {
+    root.querySelectorAll('input[type="file"]:not([data-single-import]):not([data-chat-attachment])').forEach((input) => {
         if (states.has(input)) return;
         let field = input.closest('[data-attachment-field]');
         if (!field) {

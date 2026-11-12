@@ -29,11 +29,11 @@ class DirectScreeningSubmissionTest extends TestCase
         Storage::fake('local');
     }
 
-    public function test_submission_routes_to_each_selected_team_and_only_emails_assigned_management(): void
+    public function test_submission_waits_for_om_and_notifies_assigned_management(): void
     {
         $owner = $this->owner();
         $this->actingAs($owner)->get(route('purchase-requests.create'))->assertOk()
-            ->assertSee('Submit this request for IT / Premises screening?')
+            ->assertSee('Submit this request for OM approval?')
             ->assertDontSee('Operations Manager review');
         foreach (['IT' => 'COMPUTERS', 'PREMISES' => 'FURNITURE'] as $team => $category) {
             $this->post(route('purchase-requests.store'), [
@@ -41,17 +41,17 @@ class DirectScreeningSubmissionTest extends TestCase
                 'request_category' => $category,
             ])->assertSessionHasNoErrors();
             $request = PurchaseRequest::query()->latest('id')->firstOrFail();
-            $this->assertSame($team === 'IT' ? PurchaseRequestStatus::ForItScreening : PurchaseRequestStatus::ForPremisesScreening, $request->status);
+            $this->assertSame(PurchaseRequestStatus::ForOmApproval, $request->status);
             $this->assertSame($team, $request->request_type);
             $this->assertNotNull($request->submitted_at);
-            $this->assertSame($this->roleId($team === 'IT' ? RoleSlug::ItStaff : RoleSlug::PremisesStaff), $request->current_responsible_role_id);
+            $this->assertSame($this->roleId(RoleSlug::Om), $request->current_responsible_role_id);
             $this->assertNull($request->assigned_user_id);
-            $this->assertSame('SUBMITTED_FOR_SCREENING', $request->approvals()->sole()->action);
+            $this->assertSame('SUBMITTED_FOR_OM_APPROVAL', $request->approvals()->sole()->action);
             $this->assertSame('REQUESTOR_SUBMISSION', $request->approvals()->sole()->approval_level);
             $this->get(route('purchase-requests.show', $request))->assertOk()
-                ->assertDontSee('You signed and submitted this request')
-                ->assertDontSee('data-po-handoff-confirmation', false)
-                ->assertSee('purchase-request-page-header', false)
+                ->assertSee($request->request_number)
+                ->assertSee('data-po-handoff-confirmation', false)
+
                 ->assertSee('id="workflow-submission-data"', false)
                 ->assertDontSee('Submit for OM Approval');
         }
@@ -62,7 +62,7 @@ class DirectScreeningSubmissionTest extends TestCase
         Notification::assertCount(6);
     }
 
-    public function test_draft_submit_and_returned_edit_submit_skip_management_and_reject_duplicates(): void
+    public function test_draft_and_returned_submissions_require_om_and_reject_duplicates(): void
     {
         $owner = $this->owner();
         $this->actingAs($owner)->post(route('purchase-requests.store'), [...$this->payload(), 'action' => 'save_draft'])
@@ -71,16 +71,16 @@ class DirectScreeningSubmissionTest extends TestCase
         Notification::assertNothingSent();
         $signature = $this->workflowSignature($owner);
         $this->post(route('purchase-requests.submit', $request), $signature)->assertSessionHasNoErrors();
-        $this->assertSame(PurchaseRequestStatus::ForTeamScreening, $request->fresh()->status);
+        $this->assertSame(PurchaseRequestStatus::ForOmApproval, $request->fresh()->status);
         $this->post(route('purchase-requests.submit', $request), $signature)->assertForbidden();
         $request->update(['status' => PurchaseRequestStatus::Returned]);
         $this->put(route('purchase-requests.update', $request), $this->payload())->assertSessionHasNoErrors();
-        $this->assertSame(PurchaseRequestStatus::ForTeamScreening, $request->fresh()->status);
-        $this->assertTrue($request->auditLogs()->where('action', 'RESUBMITTED_FOR_SCREENING')->exists());
+        $this->assertSame(PurchaseRequestStatus::ForOmApproval, $request->fresh()->status);
+        $this->assertTrue($request->auditLogs()->where('action', 'RESUBMITTED_FOR_OM_APPROVAL')->exists());
         $this->assertSame(2, $request->approvals()->count());
     }
 
-    public function test_om_and_smt_cannot_review_or_edit_submitted_requests(): void
+    public function test_unassigned_om_and_smt_cannot_review_or_edit_submitted_requests(): void
     {
         $owner = $this->owner();
         $this->actingAs($owner)->post(route('purchase-requests.store'), $this->payload())->assertSessionHasNoErrors();
@@ -111,7 +111,7 @@ class DirectScreeningSubmissionTest extends TestCase
         Notification::assertCount(3);
     }
 
-    public function test_embedded_screening_submissions_return_a_lightweight_receipt(): void
+    public function test_embedded_om_submissions_return_a_lightweight_receipt(): void
     {
         $owner = $this->owner();
         $this->actingAs($owner);
@@ -124,7 +124,7 @@ class DirectScreeningSubmissionTest extends TestCase
             ->assertSessionHasNoErrors()->assertHeader('Location', route('workflow.done', [], false))
             ->assertSessionHas('workflow_submission_notice');
         $request = PurchaseRequest::query()->sole();
-        $this->assertSame(PurchaseRequestStatus::ForItScreening, $request->status);
+        $this->assertSame(PurchaseRequestStatus::ForOmApproval, $request->status);
         $this->get(route('workflow.done'))->assertOk()
             ->assertSee('name="workflow-completed" content="true"', false)
             ->assertSee($request->request_number);
@@ -136,7 +136,7 @@ class DirectScreeningSubmissionTest extends TestCase
         $this->post(route('purchase-requests.submit', $request), [
             ...$this->workflowSignature($owner), '_embedded' => 1,
         ])->assertSessionHasNoErrors()->assertHeader('Location', route('workflow.done', [], false));
-        $this->assertSame(PurchaseRequestStatus::ForItScreening, $request->fresh()->status);
+        $this->assertSame(PurchaseRequestStatus::ForOmApproval, $request->fresh()->status);
         $this->post(route('purchase-requests.submit', $request), [
             ...$this->workflowSignature($owner), '_embedded' => 1,
         ])->assertForbidden();
@@ -144,7 +144,7 @@ class DirectScreeningSubmissionTest extends TestCase
         $request->update(['status' => PurchaseRequestStatus::Returned]);
         $this->put(route('purchase-requests.update', $request), $payload())
             ->assertSessionHasNoErrors()->assertHeader('Location', route('workflow.done', [], false));
-        $this->assertSame(PurchaseRequestStatus::ForItScreening, $request->fresh()->status);
+        $this->assertSame(PurchaseRequestStatus::ForOmApproval, $request->fresh()->status);
         Notification::assertSentOnDemandTimes(WorkflowHandoffEmail::class, 6);
     }
 

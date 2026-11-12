@@ -8,6 +8,7 @@ use App\Models\PurchaseRequest;
 use App\Services\PurchaseRequestWorkflow;
 use App\Support\WorkflowSignature;
 use App\Support\WorkflowUrl;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -113,7 +114,7 @@ class PresidentApprovalController extends Controller
         Request $request,
         PurchaseRequest $purchaseRequest,
         PurchaseRequestWorkflow $workflow,
-    ): RedirectResponse {
+    ): RedirectResponse|JsonResponse {
         $validated = $request->validate([
             'decision' => ['required', 'in:APPROVE,REJECT,ACKNOWLEDGE'],
             'quotation_id' => ['required_if:decision,APPROVE', 'nullable', 'integer'],
@@ -222,6 +223,10 @@ class PresidentApprovalController extends Controller
                 $validated['signature_data'],
             );
         });
+
+        if ($request->expectsJson()) {
+            return response()->json(['message' => 'President decision recorded.', 'status' => $purchaseRequest->fresh()->status->value]);
+        }
 
         // Land on the request, which closes to a receipt naming the next stage.
         return ($request->boolean('_embedded') ? redirect()->away(WorkflowUrl::route('workflow.done')) : redirect()->route('purchase-requests.show', $purchaseRequest))
