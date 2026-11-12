@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Enums\PurchaseRequestStatus as Status;
 use App\Enums\RoleSlug;
+use App\Jobs\CheckProcuraPushReceipt;
 use App\Jobs\SendProcuraChatPush;
 use App\Models\Campaign;
 use App\Models\PurchaseRequest;
@@ -220,7 +221,7 @@ class ProcuraChatTest extends TestCase
         $this->getJson('/api/mobile/v1/requests')->assertOk();
     }
 
-    public function test_push_notifies_campaign_smt_and_om_but_excludes_other_campaigns(): void
+    public function test_web_notifications_include_campaign_smt_and_om_without_contacting_native_push_services(): void
     {
         $owner = $this->user(RoleSlug::Requestor);
         $request = $this->request($owner);
@@ -228,18 +229,25 @@ class ProcuraChatTest extends TestCase
         $smt = $this->user(RoleSlug::Smt);
         $foreign = $this->user(RoleSlug::Smt, Campaign::create(['name' => 'Foreign', 'is_active' => true])->id);
         $message = $request->chatMessages()->create(['user_id' => $owner->id, 'kind' => 'workflow', 'body' => 'For OM approval']);
-        foreach ([$om, $smt, $foreign] as $user) {
-            $token = $user->createToken('Phone', ['procura-chat', 'role:'.$user->role_id], now()->addDay());
-            DB::table('mobile_devices')->insert(['user_id' => $user->id, 'personal_access_token_id' => $token->accessToken->id,
-                'push_token' => 'ExpoPushToken[test-'.$user->id.']', 'platform' => 'ios', 'created_at' => now(), 'updated_at' => now()]);
-        }
-        config(['procura_chat.push_enabled' => true]);
-        Http::fake(['exp.host/*' => Http::response(['data' => ['status' => 'ok', 'id' => 'receipt-id']])]);
+        config(['procura_chat.push_enabled' => true]); // Old server settings cannot reactivate the retired transport.
+        Http::fake();
         (new SendProcuraChatPush($message->id))->handle(app(ProcuraChat::class));
-        Http::assertSentCount(2);
-        Http::assertSent(fn ($http) => $http['sound'] === 'default' && $http['priority'] === 'high');
+        (new SendProcuraChatPush($message->id))->handle(app(ProcuraChat::class));
+        Http::assertNothingSent();
+        $this->assertSame(1, $om->notifications()->count());
         $this->assertSame(1, $smt->notifications()->count());
         $this->assertSame(0, $foreign->notifications()->count());
+    }
+
+    public function test_retired_device_registration_and_receipt_jobs_do_not_send_or_store_native_push_credentials(): void
+    {
+        $this->mobile($this->user(RoleSlug::Om));
+        Http::fake();
+        config(['procura_chat.push_enabled' => true]);
+        $this->postJson('/api/mobile/v1/devices', ['push_token' => 'ExpoPushToken[retired-device]', 'platform' => 'ios'])->assertStatus(410);
+        (new CheckProcuraPushReceipt(999, 'retired-receipt'))->handle();
+        Http::assertNothingSent();
+        $this->assertDatabaseCount('mobile_devices', 0);
     }
 
     public function test_web_chat_loads_with_session_authentication(): void
