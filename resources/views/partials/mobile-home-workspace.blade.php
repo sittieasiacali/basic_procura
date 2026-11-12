@@ -18,7 +18,7 @@
     ]);
 @endphp
 
-<nav class="mobile-home-workspace" aria-label="Workspace shortcuts">
+<nav class="mobile-home-workspace d-md-none" aria-label="Workspace shortcuts">
     @foreach($mobileSections as $section => $links)
         <section class="mobile-home-section">
             <h2>{{ $section }}</h2>

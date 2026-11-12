@@ -67,7 +67,7 @@
                 </div>
                 <h1>{{ $pageTitle }}</h1>
                 <p class="dashboard-greeting">{{ $greeting }}, {{ $user->name }}.</p>
-                <div class="mobile-home-greeting"><span>{{ $greeting }},</span><strong>{{ $user->activeRole()?->name ?? $user->name }}</strong></div>
+                <div class="mobile-home-greeting d-md-none"><span>{{ $greeting }},</span><strong>{{ $user->activeRole()?->name ?? $user->name }}</strong></div>
             </div>
             <div class="dashboard-header-actions page-actions d-flex flex-wrap gap-2">
                 @if($user->isAdministrator())
