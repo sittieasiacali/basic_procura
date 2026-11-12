@@ -30,12 +30,14 @@ Windows can build Android locally; iOS compilation/signing needs macOS/Xcode or 
 ## Configure a device build
 
 1. Sign in to your organization's Expo account with npx eas-cli login.
-2. Create/link the app's EAS project with npx eas-cli init. Record the project UUID.
-3. Put the following values in a local .env file (use .env.example as a template),
-   and set the same values for your EAS build environment:
+2. The app is configured for EAS project 3c8830e8-f4c6-40f0-9d1d-ff3bbc6428af. Verify access with npx eas-cli project:info.
+   app.config.js is dynamic, so EAS cannot automatically write a project ID into it.
+3. The public API URL and project ID below are built-in defaults; no .env file is required for this project.
+   To use a different deployment/project, override them in a local .env file (use .env.example as a template)
+   and set the same overrides for your EAS build environment:
 
 EXPO_PUBLIC_PROCURA_API_URL=https://asiprocura.allianzsynergia.com.ph/api/mobile/v1
-EXPO_PUBLIC_EAS_PROJECT_ID=<project UUID>
+EXPO_PUBLIC_EAS_PROJECT_ID=3c8830e8-f4c6-40f0-9d1d-ff3bbc6428af
 
 Only public configuration belongs in EXPO_PUBLIC variables. Never put service-account keys or passwords there.
 

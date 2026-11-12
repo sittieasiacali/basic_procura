@@ -11,7 +11,7 @@ export default {
         plugins: ['expo-secure-store', 'expo-sharing', ['expo-notifications', { defaultChannel: 'procura-approvals', color: '#171F70' }]],
         extra: {
             apiUrl: process.env.EXPO_PUBLIC_PROCURA_API_URL || 'https://asiprocura.allianzsynergia.com.ph/api/mobile/v1',
-            eas: { projectId: process.env.EXPO_PUBLIC_EAS_PROJECT_ID || '' },
+            eas: { projectId: process.env.EXPO_PUBLIC_EAS_PROJECT_ID || '3c8830e8-f4c6-40f0-9d1d-ff3bbc6428af' },
         },
     },
 };
