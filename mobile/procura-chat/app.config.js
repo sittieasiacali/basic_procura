@@ -2,12 +2,17 @@ export default {
     expo: {
         name: 'PROCURA Chat',
         slug: 'procura-chat',
+        owner: 'allianzsittiecalis-team',
         version: '1.0.0',
         scheme: 'procurachat',
         orientation: 'portrait',
         userInterfaceStyle: 'light',
         ios: { supportsTablet: true, bundleIdentifier: 'com.asiprocura.chat' },
-        android: { package: 'com.asiprocura.chat', permissions: ['POST_NOTIFICATIONS'] },
+        android: {
+            package: 'com.asiprocura.chat',
+            permissions: ['POST_NOTIFICATIONS'],
+            googleServicesFile: process.env.GOOGLE_SERVICES_JSON || './google-services.json',
+        },
         plugins: ['expo-secure-store', 'expo-sharing', ['expo-notifications', { defaultChannel: 'procura-approvals', color: '#171F70' }]],
         extra: {
             apiUrl: process.env.EXPO_PUBLIC_PROCURA_API_URL || 'https://asiprocura.allianzsynergia.com.ph/api/mobile/v1',

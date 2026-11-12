@@ -42,9 +42,15 @@ EXPO_PUBLIC_EAS_PROJECT_ID=3c8830e8-f4c6-40f0-9d1d-ff3bbc6428af
 Only public configuration belongs in EXPO_PUBLIC variables. Never put service-account keys or passwords there.
 
 4. Confirm com.asiprocura.chat is the intended Android package and Apple bundle identifier in app.config.js before the first signed build.
-5. Configure Android Firebase FCM v1 and Apple APNs/signing credentials using npx eas-cli credentials.
-   Upload credentials using Expo's supported credential flow; keep credential files outside this repository.
-6. Build for internal testing:
+5. Register an Android app in Firebase with package com.asiprocura.chat. Download google-services.json
+   and copy it to mobile/procura-chat/google-services.json (beside app.config.js). Keep the filename exact.
+   app.config.js uses this client configuration during Expo prebuild; manual Gradle edits are unnecessary.
+   Ensure the file is included in the EAS build upload. It contains public Firebase client identifiers.
+   Alternatively, set GOOGLE_SERVICES_JSON to the path supplied by an EAS file environment variable.
+6. Configure Android Firebase FCM v1 and Apple APNs/signing credentials using npx eas-cli credentials.
+   The FCM v1 service-account private key is a separate file from google-services.json.
+   Upload that private key through Expo's credential flow; keep it outside this repository.
+7. Build for internal testing:
 
 npx eas-cli build --profile preview --platform android
 npx eas-cli build --profile preview --platform ios
@@ -82,5 +88,5 @@ Official guide: https://docs.expo.dev/push-notifications/push-notifications-setu
 ## Current verification limits
 
 TypeScript and both platform bundle exports can be verified locally.
-No Apple/Firebase credentials or Expo project ID were available during implementation.
+The EAS project is linked. Apple/FCM service-account credentials and the downloaded Firebase client file still need configuration on the build computer.
 A signed installable APK/IPA and physical-device notification delivery therefore still need configuration and testing.
