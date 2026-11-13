@@ -879,3 +879,202 @@
     }
     body :is(#workflow-action-modal, #workflow-request-modal) .workflow-action-close span { display: none; }
 }
+
+/* Reference-inspired phone shell: branded sweep, navy hero and soft record cards. */
+@media screen and (max-width: 767.98px) {
+    html:has(meta[name="mobile-campaign-workspace"][data-allowed="false"]) body { visibility: hidden; }
+    body .mobile-app-unread {
+        display: grid;
+        place-items: center;
+        top: 2px;
+        right: 0;
+        width: auto;
+        min-width: 18px;
+        height: 18px;
+        padding: 0 3px;
+        color: #fff;
+        font-size: 10px;
+        font-weight: 700;
+        line-height: 1;
+    }
+    body .mobile-app-unread[hidden] { display: none; }
+    body:is(.workspace-theme, .procura-home-body) { background: #f5f7ff; color: #14265c; }
+    body .mobile-app-header {
+        position: relative;
+        z-index: auto;
+        isolation: isolate;
+        gap: 0 12px;
+        padding-top: max(14px, env(safe-area-inset-top));
+        padding-bottom: 0;
+        min-height: 82px;
+        background: #f9faff;
+        box-shadow: none;
+    }
+    body .mobile-app-header::before {
+        content: '';
+        position: absolute;
+        z-index: -1;
+        top: -108px;
+        left: -18%;
+        width: 138%;
+        height: 190px;
+        border-radius: 0 0 70% 45%;
+        background: linear-gradient(145deg, #fff 55%, #edf1fd);
+        box-shadow: 30px 9px 0 #ff9819, 54px 19px 0 #075cbd;
+        transform: rotate(-12deg);
+    }
+    body .mobile-app-brand { min-height: 62px; }
+    body .mobile-app-brand .mobile-brand-logo,
+    body .mobile-app-header--home .mobile-app-brand .mobile-brand-logo { width: 142px; height: 44px; filter: none; }
+    body .mobile-app-tools a { color: #10449f; }
+    body .mobile-app-unread { border-color: #fff; background: #ff951b; }
+    body .mobile-app-brand:focus-visible,
+    body .mobile-app-tools a:focus-visible { outline-color: #1760d1; }
+    body .mobile-app-heading {
+        position: relative;
+        isolation: isolate;
+        overflow: hidden;
+        justify-content: center;
+        gap: 5px;
+        min-height: 112px;
+        margin: 0 -16px;
+        padding: 22px 82px 29px 20px;
+        border-radius: 22px 22px 0 0;
+        background: linear-gradient(125deg, #073582, #071847 80%);
+        box-shadow: inset 0 1px 0 rgb(255 255 255 / 30%);
+    }
+    body .mobile-app-heading::before {
+        content: '';
+        position: absolute;
+        z-index: -1;
+        width: 160px;
+        height: 180px;
+        top: -10px;
+        right: -42px;
+        border-radius: 65% 0 0 0;
+        transform: rotate(28deg);
+        background: linear-gradient(145deg, rgb(65 130 225 / 58%), rgb(19 56 132 / 8%));
+        border-left: 1px solid rgb(255 255 255 / 12%);
+    }
+    body .mobile-app-heading strong { font: 500 26px/1.15 Georgia, 'Times New Roman', serif; letter-spacing: -.025em; }
+    body .mobile-app-heading small { color: #d4e2ff; font-size: 12px; line-height: 1.45; }
+    body .mobile-app-heading-icon { position: absolute; right: 18px; top: 25px; color: #a7c8ff; opacity: .28; transform: rotate(10deg); }
+    body:is(.workspace-theme, .procura-home-body):has(.mobile-app-header:not(.mobile-app-header--home)) :is(.app-main, .procura-home-main) {
+        position: relative;
+        margin-top: -13px;
+        padding-top: 14px;
+        border-radius: 22px 22px 0 0;
+        background: linear-gradient(#fff, #f8faff 400px);
+    }
+    body :is(.dashboard-creator-tabs, .po-history-tabs, .budget-register-tabs, .mobile-workflow-switcher) {
+        gap: 3px;
+        padding: 5px;
+        border: 1px solid #e3eaff;
+        border-radius: 999px;
+        background: #f4f7ff;
+        box-shadow: inset 0 1px 4px rgb(47 84 170 / 5%), 0 3px 9px rgb(26 61 145 / 9%);
+    }
+    body :is(.dashboard-creator-tabs .dashboard-creator-tab, .po-history-tabs .po-history-tab, .budget-register-tabs .budget-register-tab, .mobile-workflow-switcher button) {
+        flex: 1 0 auto;
+        justify-content: center;
+        gap: 6px;
+        min-height: 44px;
+        padding: 8px 10px;
+        border: 0;
+        border-radius: 999px;
+        background: transparent;
+        color: #18346c;
+        box-shadow: none;
+        font-size: 12px;
+    }
+    body :is(.dashboard-creator-tabs .dashboard-creator-tab.is-active, .po-history-tabs .po-history-tab.is-active, .budget-register-tabs .budget-register-tab.is-active, .mobile-workflow-switcher button[aria-pressed="true"]) {
+        background: linear-gradient(160deg, #0751b7, #071d68 85%);
+        color: #fff;
+        box-shadow: inset 0 1px 2px #7ba6ec, 0 4px 10px rgb(12 50 132 / 24%);
+    }
+    body .dashboard-creator-tabs .dashboard-creator-tab.is-active .dashboard-creator-tab-label { color: #fff; }
+    body :is(.dashboard-creator-tab-count, .po-history-tab-count) { background: #dce7ff; color: #173d90; border-radius: 999px; }
+    body .mobile-workflow-switcher { margin-bottom: 18px; }
+    body :is(.app-main, .procura-home-main) :is(.dashboard-workflow-filters, .filter-panel) {
+        padding: 12px !important;
+        border: 1px solid #e6ecfa !important;
+        border-radius: 18px !important;
+        background: #f7f9ff !important;
+        box-shadow: 0 3px 12px rgb(29 63 136 / 4%) !important;
+    }
+    body :is(.app-main, .procura-home-main) .filter-panel .card-body { padding: 0; }
+    body .btn-primary { border-color: #17479f; border-radius: 999px; background: linear-gradient(165deg, #0853bc, #101e69); box-shadow: inset 0 1px 2px #86b1f4, 0 4px 10px rgb(24 60 151 / 17%); }
+    body .mobile-filter-toggle { border-radius: 999px; color: #1b4baf; border-color: #d8e3ff; }
+    body :is(.form-control, .form-select) { border-color: #dfe7fc; background-color: #fff; }
+    body:is(.workspace-theme, .procura-home-body) :is(.app-main, .procura-home-main) [data-mobile-inbox]:not(table) {
+        display: grid;
+        gap: 12px;
+        border: 0;
+        background: transparent;
+        overflow: visible;
+    }
+    body .mobile-inbox-table tbody { display: grid; gap: 12px; padding: 4px 0; }
+    body:is(.workspace-theme, .procura-home-body) :is(.app-main, .procura-home-main) article.mobile-request-row,
+    body :is(.app-main, .procura-home-main) .mobile-inbox-table tbody > tr.mobile-request-row {
+        margin: 0;
+        padding: 0;
+        overflow: hidden;
+        border: 1px solid #e2e9fc !important;
+        border-radius: 16px !important;
+        background: linear-gradient(125deg, #fff, #f7f9ff) !important;
+        box-shadow: 0 2px 5px rgb(23 57 140 / 7%) !important;
+    }
+    body .mobile-request-row:last-child { border-bottom: 1px solid #e2e9fc !important; }
+    body .mobile-request-open,
+    body .request-list-panel .mobile-request-open { min-height: 116px; gap: 12px; padding: 15px 14px; }
+    body .mobile-request-icon { align-self: flex-start; flex-basis: 44px; width: 44px; height: 48px; border-radius: 12px; background: #e7eeff; color: #0860ed; }
+    body .mobile-request-icon svg { width: 24px; height: 24px; }
+    body .mobile-request-copy { gap: 5px; }
+    body .mobile-request-code { color: #152b68; font-size: 16px; line-height: 1.35; }
+    body .mobile-request-title { color: #475c88; font-size: 13px; line-height: 1.4; }
+    body .mobile-request-foot { gap: 6px; }
+    body .mobile-request-status { padding: 3px 9px; background: #dfeeff; color: #0860d3; font-size: 11px; }
+    body .mobile-request-status[data-tone="success"] { background: #d5f4e5; color: #087e51; }
+    body .mobile-request-status[data-tone="warning"] { background: #ffead3; color: #ae520c; }
+    body .mobile-request-time { flex-basis: 100%; color: #647ba6; font-size: 11px; }
+    body .mobile-request-chevron { border-color: #3660ad; }
+    body .mobile-bottom-navigation { border-radius: 20px 20px 0 0; box-shadow: 0 -4px 20px rgb(27 57 128 / 7%); }
+    body .mobile-bottom-navigation a[aria-current="page"] { background: linear-gradient(155deg, #0752b8, #0c226b); }
+    body.workspace-theme .app-main .dashboard-page .dashboard-step-theme {
+        gap: 14px;
+        padding: 0;
+        border: 0;
+        background: transparent;
+    }
+    body.workspace-theme .app-main .dashboard-page .dashboard-panel {
+        border: 0 !important;
+        border-radius: 0 !important;
+        background: transparent !important;
+        box-shadow: none !important;
+    }
+    body.workspace-theme .app-main .dashboard-page .dashboard-panel > .card-header {
+        border-top: 0;
+        background: transparent !important;
+    }
+    body.workspace-theme .app-main .dashboard-page nav.dashboard-creator-tabs {
+        border: 1px solid #e3eaff;
+        border-radius: 999px;
+        background: #f4f7ff;
+    }
+    body.workspace-theme .app-main .dashboard-page .dashboard-creator-tab { border: 0; border-radius: 999px; }
+    body.workspace-theme .app-main .dashboard-page .dashboard-creator-tab.is-active {
+        border: 0;
+        background: linear-gradient(160deg, #0751b7, #071d68 85%);
+        box-shadow: inset 0 1px 2px #7ba6ec, 0 4px 10px rgb(12 50 132 / 24%);
+    }
+    body.workspace-theme .app-main .dashboard-page .dashboard-creator-tab.is-active .dashboard-creator-tab-label { color: #fff; }
+    .is-embedded body:is(.workspace-theme, .procura-home-body) :is(.app-main, .procura-home-main) { margin-top: 0; border-radius: 0; }
+}
+
+@media (max-width: 767.98px) {
+    body:is(.workspace-theme, .procura-home-body):has(.mobile-app-header.mobile-app-header--compact) :is(.app-main, .procura-home-main) {
+        margin-top: 0;
+        padding-top: 8px;
+        border-radius: 0;
+    }
+}

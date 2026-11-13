@@ -12,6 +12,7 @@ import './inventory';
 import './inventory-sku';
 import './dashboard-history';
 import './mobile-workflow';
+import './mobile-campaign-workspace';
 
 function initializeBudgetRequestQueue() {
     const queue = document.querySelector('[data-budget-request-queue]');
@@ -1415,6 +1416,8 @@ function initializeBudgetTableZoom() {
 
 document.addEventListener('DOMContentLoaded', initializeBudgetTableZoom);
 
+import './campaign-alerts';
+import './notification-sound';
 import './procurement-revisions';
 
 import '../css/supplier-picker.css';

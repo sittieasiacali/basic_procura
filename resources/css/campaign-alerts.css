@@ -1,0 +1,13 @@
+.campaign-alert-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; width: 100%; }
+.campaign-alert-controls label { min-height: 44px; font-size: 13px; cursor: pointer; }
+.campaign-alert-controls [role="status"] { flex: 1 1 180px; font-size: 12px; }
+.campaign-notification-alert { width: min(400px, calc(100vw - 32px)); max-height: calc(100dvh - 32px); margin: auto; padding: 0; overflow: auto; border: 1px solid #dfe7fc; border-radius: 20px; color: #172956; background: #fff; box-shadow: 0 20px 70px #071d6840; }
+.campaign-notification-alert:not([open]) { display: none; }
+.campaign-notification-alert::backdrop { background: #0b174c88; }
+.campaign-notification-alert-heading { display: flex; align-items: center; gap: 12px; padding: 20px; background: linear-gradient(135deg, #084aab, #101966); color: #fff; }
+.campaign-notification-alert-heading h2 { margin: 0; font-size: 19px; color: inherit; }
+.campaign-notification-alert-body { padding: 20px; overflow-wrap: anywhere; }
+.campaign-notification-alert-body > strong { display: block; margin-bottom: 10px; font-size: 16px; }
+.campaign-notification-alert-body p { color: #536487; font-size: 14px; line-height: 1.6; }
+.campaign-notification-alert .btn { min-height: 44px; }
+[data-campaign-alert-setup][hidden], [data-notification-sound-enable][hidden] { display: none !important; }

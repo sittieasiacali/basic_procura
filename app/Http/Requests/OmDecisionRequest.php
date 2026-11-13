@@ -16,7 +16,7 @@ class OmDecisionRequest extends FormRequest
 
     public function rules(): array
     {
-        return ['remarks' => [$this->routeIs('*.return') ? 'required' : 'nullable', 'string', 'max:5000'],
+        return ['remarks' => [$this->routeIs('*.return', '*.reject') ? 'required' : 'nullable', 'string', 'max:5000'],
             ...WorkflowSignature::rules()];
     }
 

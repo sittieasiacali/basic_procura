@@ -27,7 +27,8 @@ class ProcuraChatController extends Controller
     public function index(Request $request): JsonResponse
     {
         $data = $request->validate(['search' => ['nullable', 'string', 'max:100'],
-            'filter' => ['nullable', 'in:all,unread,mine,approval'], 'page' => ['nullable', 'integer', 'min:1']]);
+            'filter' => ['nullable', 'in:all,unread,mine,approval'], 'scope' => ['nullable', 'in:all,department,screening'],
+            'page' => ['nullable', 'integer', 'min:1']]);
         $user = $request->user();
         $query = ProcuraChatAccess::visibleQuery($user)
             ->with(['requestor:id,name,campaign_id', 'responsibleRole:id,name'])
@@ -58,6 +59,16 @@ class ProcuraChatController extends Controller
                     $q->whereRaw('1 = 0');
                 }
             });
+        if (($data['scope'] ?? 'all') !== 'all') {
+            $team = ProcuraChatAccess::screeningTeamFor($user);
+            if (! ProcuraChatAccess::isCampaignRole($user) || ! $team) {
+                $query->whereRaw('1 = 0');
+            } elseif ($data['scope'] === 'department') {
+                ProcuraChatAccess::originCampaignQuery($query, $user);
+            } else {
+                ProcuraChatAccess::screeningQuery($query, $team);
+            }
+        }
         $page = $query->orderByDesc('last_message_id')->orderByDesc('updated_at')->paginate(30);
         $latest = ChatMessage::query()->whereIn('id', $page->getCollection()->pluck('last_message_id')->filter())->get()->keyBy('id');
 
@@ -81,7 +92,7 @@ class ProcuraChatController extends Controller
         // Initial page is the newest 80; incremental pages are ascending to avoid gaps.
         $items = isset($data['after']) ? $messages->orderBy('id')->limit(80)->get() : $messages->latest('id')->limit(80)->get()->reverse()->values();
         $latestWorkflowId = $purchaseRequest->chatMessages()->where('kind', 'workflow')->max('id');
-        $canAcknowledge = $request->user()->hasRole(RoleSlug::Smt->value) && $latestWorkflowId !== null;
+        $canAcknowledge = $request->user()->hasRole(RoleSlug::Smt->value) && $latestWorkflowId !== null && $purchaseRequest->status !== PurchaseRequestStatus::Rejected;
         $purchaseRequest->load(['requestor:id,name,campaign_id', 'responsibleRole:id,name', 'items.attachments', 'attachments', 'quotations.supplier', 'quotations.attachments']);
 
         return response()->json([
@@ -97,10 +108,11 @@ class ProcuraChatController extends Controller
             ],
             'permissions' => [
                 'send' => ProcuraChatAccess::canSend($request->user(), $purchaseRequest),
-                'approve_om' => $request->user()->can('reviewOm', $purchaseRequest),
-                'approve_president' => $request->user()->can('reviewPresident', $purchaseRequest),
+                'approve_om' => $purchaseRequest->status === PurchaseRequestStatus::ForOmApproval && $request->user()->can('reviewOm', $purchaseRequest),
+                'approve_president' => $purchaseRequest->status !== PurchaseRequestStatus::Rejected && $request->user()->can('reviewPresident', $purchaseRequest),
                 'acknowledge' => $canAcknowledge,
             ],
+            'workflow' => $this->workflow($purchaseRequest),
             'workflow_message_id' => $latestWorkflowId,
             'acknowledged' => $canAcknowledge && DB::table('chat_acknowledgements')
                 ->where('chat_message_id', $latestWorkflowId)->where('user_id', $request->user()->id)->exists(),
@@ -159,6 +171,12 @@ class ProcuraChatController extends Controller
             DB::table('chat_reads')->insertOrIgnore($key + ['last_message_id' => 0, 'created_at' => now(), 'updated_at' => now()]);
             DB::table('chat_reads')->where($key)->where('last_message_id', '<', $data['message_id'])
                 ->update(['last_message_id' => $data['message_id'], 'updated_at' => now()]);
+            // Clear only alerts for messages that this reader has actually loaded.
+            $request->user()->unreadNotifications()
+                ->where('data->purchase_request_id', $purchaseRequest->id)
+                ->whereNotNull('data->chat_message_id')
+                ->where('data->chat_message_id', '<=', $data['message_id'])
+                ->update(['read_at' => now()]);
         });
 
         return response()->json(['read' => true]);
@@ -167,10 +185,11 @@ class ProcuraChatController extends Controller
     public function acknowledge(Request $request, PurchaseRequest $purchaseRequest): JsonResponse
     {
         $this->checkView($request, $purchaseRequest);
-        abort_unless($request->user()->hasRole(RoleSlug::Smt->value), 403);
+        abort_unless($request->user()->hasRole(RoleSlug::Smt->value) && $purchaseRequest->status !== PurchaseRequestStatus::Rejected, 403);
         $data = $request->validate(['message_id' => ['required', 'integer']]);
         DB::transaction(function () use ($request, $purchaseRequest, $data) {
             $locked = PurchaseRequest::query()->lockForUpdate()->findOrFail($purchaseRequest->id);
+            abort_if($locked->status === PurchaseRequestStatus::Rejected, 403);
             $latest = $locked->chatMessages()->where('kind', 'workflow')->latest('id')->first();
             if (! $latest || $latest->id !== (int) $data['message_id']) {
                 throw ValidationException::withMessages(['message_id' => 'The workflow changed. Refresh and acknowledge the current update.']);
@@ -214,6 +233,39 @@ class ProcuraChatController extends Controller
     private function checkView(Request $request, PurchaseRequest $purchaseRequest): void
     {
         abort_unless(ProcuraChatAccess::canView($request->user(), $purchaseRequest), 403);
+    }
+
+    private function workflow(PurchaseRequest $purchaseRequest): array
+    {
+        $groups = [
+            'Campaign Requestor' => ['DRAFT', 'RETURNED'],
+            'OM' => ['FOR_TL_APPROVAL', 'FOR_OM_APPROVAL', 'FOR_OM_SMTS_APPROVAL', 'REJECTED'],
+            'IT Screening' => ['FOR_TEAM_SCREENING', 'FOR_IT_SCREENING'],
+            'Premises' => ['FOR_PREMISES_SCREENING'],
+            'Purchasing / PO Checking' => ['FOR_INVENTORY_RELEASE', 'FOR_PROCUREMENT', 'FOR_CANVASSING', 'APPROVED', 'PO_CREATED'],
+            'President' => ['FOR_SUPPLIER_APPROVAL', 'SUPPLIER_APPROVED', 'AWAITING_PRESIDENT_FINAL_APPROVAL'],
+            'Budget / Finance' => ['FOR_BUDGET_PROCESSING', 'FOR_BUDGET_MAKER', 'FOR_BUDGET_CHECKER', 'FOR_BUDGET_PROCEEDER', 'FOR_PAYMENT', 'PAYMENT_PENDING', 'PARTIALLY_PAID', 'FULLY_PAID'],
+            'Delivery / Inventory' => ['FOR_DELIVERY', 'PARTIALLY_RECEIVED', 'RECEIVED_WITH_INVOICE', 'FOR_RECEIVING', 'FOR_INVENTORY_LOGGING', 'ENDORSED'],
+            'Completed' => ['COMPLETED', 'FULFILLED'],
+        ];
+        if (in_array($purchaseRequest->status, [PurchaseRequestStatus::WithdrawalPending, PurchaseRequestStatus::Cancelled, PurchaseRequestStatus::Voided], true)) {
+            $groups[$purchaseRequest->status === PurchaseRequestStatus::WithdrawalPending ? 'Processing paused' : 'Request closed'] = [$purchaseRequest->status->value];
+        }
+        $visited = $purchaseRequest->auditLogs()->whereNotNull('previous_status')
+            ->whereColumn('previous_status', '!=', 'new_status')
+            ->get(['previous_status', 'new_status'])
+            ->flatMap(fn ($log) => [$log->previous_status, $log->new_status])->unique()->all();
+        $status = $purchaseRequest->status->value;
+
+        return collect($groups)->map(function ($statuses, $name) use ($visited, $status) {
+            $current = in_array($status, $statuses, true);
+
+            return [
+                'name' => $name,
+                'state' => $current ? (in_array($status, ['REJECTED', 'CANCELLED', 'VOIDED'], true) ? 'stopped' : ($name === 'Completed' ? 'completed' : 'current'))
+                    : ($name === 'Campaign Requestor' ? 'submitted' : (count(array_intersect($statuses, $visited)) ? 'visited' : 'not_visited')),
+            ];
+        })->values()->all();
     }
 
     private function summary(PurchaseRequest $purchaseRequest): array

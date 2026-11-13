@@ -5,12 +5,17 @@
     <meta name="attachment-limits" data-max-files="{{ (int) ini_get('max_file_uploads') }}" data-max-bytes="{{ ini_parse_quantity(ini_get('post_max_size')) }}">
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <meta name="csrf-token" content="{{ csrf_token() }}">
+    @auth
+        <meta name="notification-sound-user" content="{{ auth()->id() }}">
+        <meta name="notification-sound-tone" content="{{ \App\Models\NotificationSoundSetting::currentTone() }}">
+    @endauth
     <meta name="theme-color" content="#160D76">
     <title>@yield('title', 'Dashboard') &middot; {{ config('app.name') }}</title>
     <link rel="icon" type="image/png" href="{{ asset('assets/images/asi-coin.png') }}">
     <link rel="apple-touch-icon" href="{{ asset('assets/images/asi-coin.png') }}">
     <link href="{{ asset('assets/vendor/bootstrap/bootstrap.min.css') }}" rel="stylesheet">
     @include('partials.workflow-frame-context')
+    @include('partials.mobile-campaign-workspace')
     <script>
         // Set this before the module bundle loads so the browser does not restore
         // a stale scroll location while a Purchasing Team queue is changing.
@@ -23,7 +28,7 @@
     @vite('resources/css/mobile.css')
     @stack('head')
 </head>
-<body class="workspace-theme {{ ($hideNavigation ?? false) ? 'workspace-theme--without-navigation' : '' }}">
+<body class="workspace-theme {{ request()->routeIs('chat.index') ? 'workspace-chat' : '' }} {{ ($hideNavigation ?? false) ? 'workspace-theme--without-navigation' : '' }}">
 @php
     $currentUser = auth()->user()->loadMissing(['role', 'campaign']);
     $roleSlug = $currentUser->activeRole()?->slug;
@@ -140,6 +145,12 @@
             'icon' => 'campaign',
         ];
         $primaryNavigation[] = [
+            'label' => 'Notification ringtone',
+            'url' => route('admin.notification-sound.edit'),
+            'active' => request()->routeIs('admin.notification-sound.*'),
+            'icon' => 'notification',
+        ];
+        $primaryNavigation[] = [
             'label' => 'System Health',
             'url' => route('admin.system-health'),
             'active' => request()->routeIs('admin.system-health'),
@@ -188,8 +199,8 @@
     if ($currentUser->can('viewAny', \App\Models\Supplier::class)) {
         $primaryNavigation[] = ['label' => 'Supplier Management', 'url' => route('suppliers.index'), 'active' => request()->routeIs('suppliers.*'), 'icon' => 'users'];
     }
-    $navbarUnreadCount = $currentUser->unreadNotifications()->count();
-    $navbarNotifications = $currentUser->unreadNotifications()->latest()->limit(5)->get();
+    $navbarUnreadCount = \App\Support\NotificationInbox::forUser($currentUser)->whereNull('read_at')->count();
+    $navbarNotifications = \App\Support\NotificationInbox::forUser($currentUser)->whereNull('read_at')->latest()->limit(5)->get();
     $visibleNotifications = $navbarNotifications->take(5);
     $initials = str($currentUser->name)
         ->explode(' ')
@@ -197,6 +208,7 @@
         ->take(2)
         ->map(fn ($part) => str($part)->substr(0, 1)->upper())
         ->join('');
+    $drawerNavigation = app(\App\Support\MobileNavigation::class)->forUser($currentUser);
 @endphp
 
 @unless($hideNavigation ?? false)
@@ -208,6 +220,16 @@
         </a>
         <button class="btn-close d-lg-none" type="button" data-bs-dismiss="offcanvas" data-bs-target="#workspaceSidebar" aria-label="Close navigation"></button>
     </div>
+    <div class="workspace-drawer-profile">
+        <span class="workspace-drawer-avatar" aria-hidden="true">{{ $initials }}</span>
+        <div class="workspace-drawer-person"><strong>{{ $currentUser->name }}</strong><small>{{ $currentUser->activeRole()?->name ?? 'Workspace' }}</small><small>{{ $currentUser->campaign?->name }}</small></div>
+        <button class="workspace-drawer-close" type="button" data-bs-dismiss="offcanvas" data-bs-target="#workspaceSidebar" aria-label="Close menu"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m14 5-7 7 7 7"/></svg></button>
+    </div>
+    <nav class="workspace-drawer-links" aria-label="Mobile workspace navigation">
+        @foreach($drawerNavigation['tabs'] as $tab)
+            <a class="workspace-drawer-link {{ $tab['active'] ? 'is-active' : '' }}" href="{{ $tab['url'] }}" @if($tab['active']) aria-current="page" @endif><x-ui.icon :name="$tab['icon']" size="22" /><span>{{ $tab['label'] }}</span></a>
+        @endforeach
+    </nav>
     <div class="workspace-sidebar-role">
         <span>Workspace</span>
         <strong>{{ $currentUser->activeRole()?->name ?? 'Unassigned role' }}</strong>
@@ -294,7 +316,7 @@
 </nav>
 @endunless
 
-@include('partials.mobile-app-header')
+@include('partials.mobile-app-header', ['hasWorkspaceDrawer' => true])
 
 <main id="workspace-content" tabindex="-1" class="app-main {{ request()->routeIs('dashboard') ? 'app-main--dashboard' : '' }}">
     @include('partials.workflow-handoff')
@@ -351,7 +373,8 @@
     @yield('content')
 </main>
 
-@include('partials.mobile-navigation')
+@include('partials.campaign-notification-alert')
+
 @include('partials.workflow-request-modal')
 @include('dashboard.partials.workflow-action-modal')
 @include('partials.workflow-submission-modal')

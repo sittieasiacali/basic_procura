@@ -89,8 +89,26 @@ class AccountNotificationRecipientsTest extends TestCase
         $this->assertDatabaseHas('users', ['email' => $payload['email'], 'om_notification_email' => null, 'smt_notification_email' => null]);
         $response = $this->withSession(['_old_input' => ['role_id' => $payload['role_id']]])->get(route('admin.accounts.index'))->assertOk();
         $xpath = $this->xpath($response->getContent());
-        $this->assertSame(1, $xpath->query('//fieldset[@data-new-user-requestor-fields and @disabled and not(@hidden)]')->length);
+        $this->assertSame(1, $xpath->query('//fieldset[@data-new-user-requestor-fields and @disabled and @hidden]')->length);
         $this->assertSame(0, $xpath->query('//fieldset[@data-new-user-requestor-fields]//input[@required]')->length);
+    }
+
+    public function test_management_only_roles_hide_tl_recipients_but_keep_campaign_required(): void
+    {
+        foreach ([[RoleSlug::Om], [RoleSlug::Smt], [RoleSlug::Om, RoleSlug::Smt], [RoleSlug::Om, RoleSlug::Requestor]] as $roles) {
+            $requiresRecipients = in_array(RoleSlug::Requestor, $roles, true);
+            foreach (['admin.accounts.index', 'dashboard'] as $route) {
+                $response = $this->withSession(['_old_input' => [
+                    'role_selection' => 1,
+                    'role_ids' => array_map(fn ($role) => $this->roleId($role), $roles),
+                ]])->get(route($route))->assertOk();
+                $xpath = $this->xpath($response->getContent());
+                $condition = $requiresRecipients ? 'not(@hidden) and not(@disabled)' : '@hidden and @disabled';
+                $this->assertSame(1, $xpath->query('//fieldset[@data-new-user-requestor-fields and '.$condition.']')->length);
+                $this->assertSame(1, $xpath->query('//select[@id="new-user-campaign" and @required]')->length);
+                $this->assertSame($requiresRecipients ? 2 : 0, $xpath->query('//fieldset[@data-new-user-requestor-fields]//input[@required]')->length);
+            }
+        }
     }
 
     private function xpath(string $html): DOMXPath

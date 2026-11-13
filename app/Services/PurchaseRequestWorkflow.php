@@ -111,6 +111,9 @@ class PurchaseRequestWorkflow
         $purchaseRequest->forceFill([
             'status' => $newStatus,
             'current_responsible_role_id' => $this->responsibleRoleId($newStatus, $purchaseRequest),
+            'assigned_user_id' => in_array($newStatus, [PurchaseRequestStatus::ForTeamScreening, PurchaseRequestStatus::ForItScreening,
+                PurchaseRequestStatus::ForPremisesScreening, PurchaseRequestStatus::ForProcurement, PurchaseRequestStatus::WithdrawalPending], true)
+                ? $purchaseRequest->assigned_user_id : null,
             'submitted_at' => in_array($action, ['SUBMITTED_FOR_SCREENING', 'RESUBMITTED_FOR_SCREENING', 'SUBMITTED_FOR_OM_APPROVAL', 'RESUBMITTED_FOR_OM_APPROVAL'], true) ? now() : $purchaseRequest->submitted_at,
         ])->save();
 
@@ -172,6 +175,9 @@ class PurchaseRequestWorkflow
             PurchaseRequestStatus::ForPremisesScreening => RoleSlug::PremisesStaff->value,
             PurchaseRequestStatus::ForInventoryRelease,
             PurchaseRequestStatus::ForInventoryLogging,
+            PurchaseRequestStatus::ForDelivery,
+            PurchaseRequestStatus::PartiallyReceived,
+            PurchaseRequestStatus::ReceivedWithInvoice,
             PurchaseRequestStatus::ForReceiving => RoleSlug::InventoryStaff->value,
             PurchaseRequestStatus::ForProcurement => $purchaseRequest->request_type === 'PREMISES'
                 ? RoleSlug::PremisesStaff->value
@@ -184,7 +190,10 @@ class PurchaseRequestWorkflow
             PurchaseRequestStatus::ForBudgetMaker,
             PurchaseRequestStatus::ForBudgetChecker,
             PurchaseRequestStatus::ForBudgetProceeder => RoleSlug::Purchasing->value,
-            PurchaseRequestStatus::ForPayment => RoleSlug::Finance->value,
+            PurchaseRequestStatus::ForPayment,
+            PurchaseRequestStatus::PaymentPending,
+            PurchaseRequestStatus::PartiallyPaid,
+            PurchaseRequestStatus::FullyPaid => RoleSlug::Finance->value,
             default => null,
         };
 

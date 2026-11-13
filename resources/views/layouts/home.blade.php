@@ -5,12 +5,17 @@
     <meta name="attachment-limits" data-max-files="{{ (int) ini_get('max_file_uploads') }}" data-max-bytes="{{ ini_parse_quantity(ini_get('post_max_size')) }}">
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <meta name="csrf-token" content="{{ csrf_token() }}">
+    @auth
+        <meta name="notification-sound-user" content="{{ auth()->id() }}">
+        <meta name="notification-sound-tone" content="{{ \App\Models\NotificationSoundSetting::currentTone() }}">
+    @endauth
     @isset($purchaseRequest)<meta name="workflow-request-code" content="{{ $purchaseRequest->request_number }}">@endisset
     <meta name="theme-color" content="#0b3b8f">
     <title>@yield('title', 'Home') &middot; {{ config('app.name') }}</title>
     <link rel="icon" type="image/png" href="{{ asset('assets/images/asi-coin.png') }}">
     <link href="{{ asset('assets/vendor/bootstrap/bootstrap.min.css') }}" rel="stylesheet">
     @include('partials.workflow-frame-context')
+    @include('partials.mobile-campaign-workspace')
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     @vite('resources/css/mobile.css')
 </head>
@@ -66,7 +71,8 @@
         @yield('content')
     </main>
 
-    @include('partials.mobile-navigation')
+    @include('partials.campaign-notification-alert')
+@include('partials.mobile-navigation')
     @include('partials.workflow-request-modal')
     @include('dashboard.partials.workflow-action-modal')
     @include('partials.workflow-submission-modal')

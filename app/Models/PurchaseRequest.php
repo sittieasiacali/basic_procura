@@ -132,6 +132,18 @@ class PurchaseRequest extends Model
                     ->where(fn (Builder $assigned) => $assigned
                         ->where('assigned_user_id', $user->id)
                         ->orWhere('acted_by', $user->id)));
+
+                // PO checking, noting and approval use role queues, including separate
+                // accounts that have not signed or been named in an older approval row.
+                foreach ([
+                    'FOR_CHECKING' => PurchaseOrderApprovalStage::CheckedBy,
+                    'FOR_ACKNOWLEDGEMENT' => PurchaseOrderApprovalStage::NotedBy,
+                    'FOR_APPROVAL' => PurchaseOrderApprovalStage::ApprovedBy,
+                ] as $status => $stage) {
+                    if ($user->hasPoRole($stage)) {
+                        $query->orWhereHas('purchaseOrder', fn (Builder $order) => $order->where('status', $status));
+                    }
+                }
             });
         }
 

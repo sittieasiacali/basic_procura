@@ -11,6 +11,16 @@ class MobileNavigation
 {
     public function forUser(User $user): array
     {
+        if (ProcuraChatAccess::isCampaignRole($user)) {
+            $tabs = [
+                ['label' => 'Chats', 'url' => route('chat.index'), 'icon' => 'message-square', 'tone' => 'blue', 'active' => request()->routeIs('chat.*')],
+                ['label' => 'Updates', 'url' => route('notifications.index'), 'icon' => 'notification', 'tone' => 'orange', 'active' => request()->routeIs('notifications.*')],
+                ['label' => 'Account', 'url' => route('mobile.menu'), 'icon' => 'user', 'tone' => 'blue', 'active' => request()->routeIs('mobile.menu')],
+            ];
+
+            return ['tabs' => $tabs, 'groups' => ['Campaign workspace' => array_slice($tabs, 0, 2)], 'quickActions' => []];
+        }
+
         $purchasing = $user->hasRole('purchasing-team');
         $poRole = $user->hasAnyRole(['po-workflow', 'po-checker', 'po-noted', 'po-approver']) || $user->poRoleAssignments()->exists();
         $hasWorkQueue = $poRole || $user->hasAnyRole(['purchasing-team', 'finance', 'it-staff', 'premises-staff', 'budget-maker', 'inventory', 'inventory-staff']);
@@ -67,6 +77,7 @@ class MobileNavigation
                 $link('Campaigns', route('admin.campaigns.index'), 'campaign', 'green'),
                 $link('Manage data', route('admin.data.index'), 'file-text'),
                 $link('System health', route('admin.system-health'), 'info'),
+                $link('Notification ringtone', route('admin.notification-sound.edit'), 'notification', 'orange'),
             ];
         }
         $account = [

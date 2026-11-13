@@ -69,7 +69,7 @@ class MobileNavigationTest extends TestCase
         $this->get(route('dashboard'))->assertOk()
             ->assertSee('data-mobile-home="true"', false)->assertSee('mobile-home-recent');
         $this->get(route('dashboard', ['mobile_tab' => 'actions']))->assertOk()
-            ->assertSee('data-mobile-home="false"', false)->assertSee('My actions');
+            ->assertSee('data-mobile-home="false"', false)->assertSee('My Activities');
         $this->get(route('dashboard', ['workflow' => 'purchase-order']))->assertOk()
             ->assertSee('data-mobile-home="false"', false)->assertSee('Purchase Orders');
     }

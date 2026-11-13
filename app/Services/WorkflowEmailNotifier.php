@@ -70,7 +70,8 @@ final class WorkflowEmailNotifier
         $nextSigner = $missingSignature
             ? $order->approvals()->where('stage', $missingSignature->value)->value('assigned_user_id')
             : $order->approvals()->where('status', 'PENDING')->orderBy('id')->value('assigned_user_id');
-        app(ProcurementNotifications::class)->send($purchaseRequest, 'PURCHASE_ORDER_'.$order->status, $stage, $nextSigner);
+        $notified = app(ProcurementNotifications::class)->send($purchaseRequest, 'PURCHASE_ORDER_'.$order->status, $stage, $nextSigner);
+        app(ProcuraChat::class)->activity($purchaseRequest, $actor, 'PURCHASE_ORDER_'.$order->status, $stage, ['notified_user_ids' => $notified]);
         $this->send($purchaseRequest, $addresses, $stage, 'PURCHASE_ORDER_'.$order->status);
         $purchaseRequest->auditLogs()->create([
             'user_id' => $actor->id,

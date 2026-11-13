@@ -3,6 +3,7 @@
 use App\Http\Controllers\Admin\AccountController;
 use App\Http\Controllers\Admin\CampaignController;
 use App\Http\Controllers\Admin\DataManagementController;
+use App\Http\Controllers\Admin\NotificationSoundController;
 use App\Http\Controllers\Admin\PurchaseOrderWorkflowAssignmentController;
 use App\Http\Controllers\Admin\SystemHealthController;
 use App\Http\Controllers\Admin\TransactionDeletionController;
@@ -124,6 +125,7 @@ Route::middleware('auth')->group(function () {
         ->group(function () {
             Route::post('/{purchaseRequest}/approve', [OmApprovalController::class, 'approve'])->name('approve');
             Route::post('/{purchaseRequest}/return', [OmApprovalController::class, 'return'])->name('return');
+            Route::post('/{purchaseRequest}/reject', [OmApprovalController::class, 'reject'])->name('reject');
         });
 
     Route::post('/request-flow/{purchaseRequest}/screening', [ScreeningController::class, 'store'])
@@ -245,6 +247,8 @@ Route::middleware('auth')->group(function () {
             Route::resource('campaigns', CampaignController::class)->except(['destroy']);
             Route::patch('/campaigns/{campaign}/status', [CampaignController::class, 'status'])
                 ->name('campaigns.status');
+            Route::get('/notification-sound', [NotificationSoundController::class, 'edit'])->name('notification-sound.edit');
+            Route::put('/notification-sound', [NotificationSoundController::class, 'update'])->name('notification-sound.update');
             Route::get('/system-health', SystemHealthController::class)->name('system-health');
         });
 

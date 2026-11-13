@@ -37,6 +37,14 @@ class OmApprovalController extends Controller
         return $this->decide($request, $purchaseRequest, $workflow, PurchaseRequestStatus::Returned, 'OM_RETURNED', 'Request returned for correction.');
     }
 
+    public function reject(
+        OmDecisionRequest $request,
+        PurchaseRequest $purchaseRequest,
+        PurchaseRequestWorkflow $workflow,
+    ): RedirectResponse|JsonResponse {
+        return $this->decide($request, $purchaseRequest, $workflow, PurchaseRequestStatus::Rejected, 'OM_REJECTED', 'Request rejected. Processing and conversation are closed.');
+    }
+
     private function decide(
         OmDecisionRequest $request,
         PurchaseRequest $purchaseRequest,

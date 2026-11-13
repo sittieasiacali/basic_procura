@@ -21,12 +21,12 @@ class ProcuraChat
         $this->notify($message);
     }
 
-    public function activity(PurchaseRequest $purchaseRequest, User $actor, string $action, string $remarks): void
+    public function activity(PurchaseRequest $purchaseRequest, User $actor, string $action, string $remarks, array $metadata = []): void
     {
         $message = ChatMessage::query()->create([
             'purchase_request_id' => $purchaseRequest->id, 'user_id' => $actor->id, 'kind' => 'activity',
             'body' => str($action)->replace('_', ' ')->lower()->ucfirst()."\n".$remarks,
-            'metadata' => ['status' => $purchaseRequest->status->value, 'action' => $action],
+            'metadata' => ['status' => $purchaseRequest->status->value, 'action' => $action, ...$metadata],
         ]);
         $this->notify($message);
     }

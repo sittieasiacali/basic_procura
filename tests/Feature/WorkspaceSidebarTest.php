@@ -27,7 +27,10 @@ class WorkspaceSidebarTest extends TestCase
             ]);
             $html = $this->actingAs($user)->get(route('dashboard'))->assertOk()->getContent();
             preg_match('/<aside\b.*?<\/aside>/s', $html, $matches);
-            $this->assertSame(1, substr_count($matches[0], 'aria-current="page"'), $role->value);
+            preg_match('/<nav class="workspace-sidebar-links".*?<\/nav>/s', $matches[0], $primary);
+            $this->assertSame(1, substr_count($primary[0], 'aria-current="page"'), $role->value);
+            preg_match('/<nav class="workspace-drawer-links".*?<\/nav>/s', $matches[0], $mobile);
+            $this->assertLessThanOrEqual(1, substr_count($mobile[0], 'aria-current="page"'), $role->value);
         }
     }
 

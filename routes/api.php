@@ -24,6 +24,7 @@ Route::prefix('mobile/v1')->name('mobile.')->group(function () {
         Route::get('requests/{purchaseRequest}/files/{attachment}', [ProcuraChatController::class, 'workflowAttachment'])->name('workflow-attachment');
         Route::post('requests/{purchaseRequest}/om/approve', [OmApprovalController::class, 'approve'])->name('om.approve');
         Route::post('requests/{purchaseRequest}/om/return', [OmApprovalController::class, 'return'])->name('om.return');
+        Route::post('requests/{purchaseRequest}/om/reject', [OmApprovalController::class, 'reject'])->name('om.reject');
         Route::post('requests/{purchaseRequest}/president', [PresidentApprovalController::class, 'supplierDecision'])->name('president.decision');
     });
 });

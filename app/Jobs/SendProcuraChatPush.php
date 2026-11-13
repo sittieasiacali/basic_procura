@@ -29,6 +29,10 @@ class SendProcuraChatPush implements ShouldQueue
         }
         $recipients = $chat->recipients($message);
         foreach ($recipients as $recipient) {
+            // PO handoffs already notify the owner and named signer synchronously.
+            if (in_array((int) $recipient->id, $message->metadata['notified_user_ids'] ?? [], true)) {
+                continue;
+            }
             // These entries also notify SMT in the web application.
             if (! $recipient->notifications()->where('data->chat_message_id', $message->id)->exists()) {
                 $recipient->notify(new ProcurementUpdate([

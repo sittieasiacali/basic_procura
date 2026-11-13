@@ -10,7 +10,7 @@ use Illuminate\Support\Facades\Gate;
 
 class ProcurementNotifications
 {
-    public function send(PurchaseRequest $purchaseRequest, string $action, string $message, ?int $assignedUserId = null): void
+    public function send(PurchaseRequest $purchaseRequest, string $action, string $message, ?int $assignedUserId = null): array
     {
         $recipients = User::query()->where('is_active', true)->where(function ($query) use ($purchaseRequest, $assignedUserId, $action) {
             $query->whereKey($purchaseRequest->requestor_id);
@@ -26,6 +26,7 @@ class ProcurementNotifications
             }
         })->get();
 
+        $notified = [];
         foreach ($recipients as $recipient) {
             if (! Gate::forUser($recipient)->allows('view', $purchaseRequest)) {
                 continue;
@@ -38,6 +39,9 @@ class ProcurementNotifications
                 'purchase_request_id' => $purchaseRequest->id,
                 'url' => WorkflowUrl::route('purchase-requests.show', $purchaseRequest),
             ]));
+            $notified[] = (int) $recipient->id;
         }
+
+        return $notified;
     }
 }
