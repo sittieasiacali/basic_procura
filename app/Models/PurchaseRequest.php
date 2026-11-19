@@ -17,6 +17,7 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\Relations\HasOneThrough;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Facades\DB;
 
 class PurchaseRequest extends Model
 {
@@ -35,30 +36,26 @@ class PurchaseRequest extends Model
         'PREMISES' => 'Premises',
     ];
 
-    /** Request categories offered for each team on the request form. */
-    public const REQUEST_CATEGORIES = [
-        'IT' => [
-            'COMPUTERS' => 'Computers and laptops',
-            'PERIPHERALS' => 'Peripherals and accessories',
-            'NETWORK' => 'Network equipment',
-            'PRINTERS' => 'Printers and consumables',
-            'SOFTWARE' => 'Software and licenses',
-            'IT_REPAIR' => 'IT repair and parts',
-        ],
-        'PREMISES' => [
-            'FURNITURE' => 'Furniture and fixtures',
-            'OFFICE_SUPPLIES' => 'Office supplies',
-            'PANTRY' => 'Pantry and cleaning supplies',
-            'FACILITY_REPAIR' => 'Repair and maintenance',
-            'ELECTRICAL' => 'Electrical and lighting',
-            'SAFETY' => 'Safety and security',
-        ],
-    ];
+    /** @return array<string, array<string, string>> */
+    public static function categoryGroups(): array
+    {
+        $groups = [];
+        foreach (array_keys(self::REQUESTED_TEAMS) as $team) {
+            $groups[$team] = self::categoriesForTeam($team);
+        }
+
+        return $groups;
+    }
 
     /** @return array<string, string> Categories offered for the chosen screening team. */
     public static function categoriesForTeam(?string $team): array
     {
-        return self::REQUEST_CATEGORIES[$team ?? ''] ?? [];
+        if (! isset(self::REQUESTED_TEAMS[$team ?? ''])) {
+            return [];
+        }
+
+        return DB::table('request_categories')->where('team', $team)
+            ->orderBy('sort_order')->orderBy('id')->pluck('label', 'code')->all();
     }
 
     public static function requestCategoryLabel(?string $team, ?string $category): ?string

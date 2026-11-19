@@ -61,7 +61,7 @@
                             <label class="request-classifier-label" for="request_category"><span class="request-classifier-number">2</span>Request title category<span class="request-classifier-required" aria-hidden="true">*</span></label>
                             <select class="form-select @error('request_category') is-invalid @enderror @error('title') is-invalid @enderror" id="request_category" name="request_category" data-request-category required>
                                 <option value="">{{ $selectedTeam === '' ? 'Select a screening team first' : 'Select category' }}</option>
-                                @foreach(\App\Models\PurchaseRequest::REQUEST_CATEGORIES as $teamValue => $categories)
+                                @foreach(\App\Models\PurchaseRequest::categoryGroups() as $teamValue => $categories)
                                     <optgroup label="{{ \App\Models\PurchaseRequest::REQUESTED_TEAMS[$teamValue] }}" data-team="{{ $teamValue }}" @if($categoryGroup !== $teamValue) hidden disabled @endif>
                                         @foreach($categories as $categoryValue => $categoryLabel)
                                             <option value="{{ $categoryValue }}" @selected($categoryGroup === $teamValue && $selectedCategory === $categoryValue)>{{ $categoryLabel }}</option>

@@ -10,6 +10,7 @@ use App\Models\User;
 use Database\Seeders\CampaignSeeder;
 use Database\Seeders\RoleSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
 
 class RequestTeamCategoryTest extends TestCase
@@ -61,6 +62,34 @@ class RequestTeamCategoryTest extends TestCase
         $this->post(route('purchase-requests.store'), $this->payload(['requested_team' => 'IT', 'request_category' => 'PERIPHERALS']))
             ->assertSessionHasNoErrors();
         $this->assertSame('Peripherals and accessories', PurchaseRequest::query()->latest('id')->first()->title);
+    }
+
+    public function test_sql_categories_appear_in_the_form_and_validate_for_their_team(): void
+    {
+        DB::table('request_categories')->insert([
+            'team' => 'IT', 'code' => 'FOR_TEST', 'label' => 'FOR test', 'sort_order' => 100,
+        ]);
+
+        $this->actingAs($this->user())->get(route('purchase-requests.create'))
+            ->assertOk()->assertSee('value="FOR_TEST"', false)->assertSee('FOR test');
+
+        $this->post(route('purchase-requests.store'), $this->payload([
+            'requested_team' => 'PREMISES', 'request_category' => 'FOR_TEST',
+        ]))->assertSessionHasErrors('request_category');
+
+        $this->post(route('purchase-requests.store'), $this->payload([
+            'requested_team' => 'IT', 'request_category' => 'FOR_TEST',
+        ]))->assertSessionHasNoErrors();
+        $saved = PurchaseRequest::query()->sole();
+        $this->assertSame('FOR test', $saved->title);
+
+        DB::table('request_categories')->where('code', 'FOR_TEST')->update(['label' => 'Updated test']);
+        $this->get(route('purchase-requests.create'))->assertOk()->assertSee('Updated test');
+        $this->patch(route('purchase-requests.update', $saved), $this->payload([
+            'department_campaign' => $saved->department_campaign,
+            'requested_team' => 'IT', 'request_category' => 'FOR_TEST',
+        ]))->assertSessionHasNoErrors();
+        $this->assertSame('Updated test', $saved->fresh()->title);
     }
 
     /** @param array<string, mixed> $overrides */
